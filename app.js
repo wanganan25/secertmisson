@@ -62,50 +62,6 @@ function persistPlayerStore(store) {
 }
 
 let playerStore = loadPlayerStore();
-
-function setStoredPlayer(roomId, playerId) {
-  playerStore[roomId] = { playerId };
-  persistPlayerStore(playerStore);
-}
-
-function removeStoredPlayer(roomId) {
-  if (playerStore[roomId]) {
-    delete playerStore[roomId];
-    persistPlayerStore(playerStore);
-  }
-}
-
-function getStoredPlayer(roomId) {
-  return playerStore[roomId];
-}
-
-function setLastRoom(roomId) {
-  if (!('localStorage' in window)) return;
-  try {
-    localStorage.setItem(lastRoomKey, roomId);
-  } catch (error) {
-    console.warn('儲存最後房間失敗', error);
-  }
-}
-
-function clearLastRoom() {
-  if (!('localStorage' in window)) return;
-  try {
-    localStorage.removeItem(lastRoomKey);
-  } catch (error) {
-    console.warn('清除最後房間失敗', error);
-  }
-}
-
-function getLastRoom() {
-  if (!('localStorage' in window)) return null;
-  try {
-    return localStorage.getItem(lastRoomKey);
-  } catch (error) {
-    return null;
-  }
-}
-
 const state = {
   rooms: new Map(),
   roomData: null,
@@ -135,11 +91,48 @@ const startGameBtn = document.getElementById('start-game');
 const resetGameBtn = document.getElementById('reset-game');
 const leaveRoomBtn = document.getElementById('leave-room');
 
+function setStoredPlayer(roomId, playerId) {
+  playerStore[roomId] = { playerId };
+  persistPlayerStore(playerStore);
+}
+function removeStoredPlayer(roomId) {
+  if (playerStore[roomId]) {
+    delete playerStore[roomId];
+    persistPlayerStore(playerStore);
+  }
+}
+function getStoredPlayer(roomId) {
+  return playerStore[roomId];
+}
+function setLastRoom(roomId) {
+  if (!('localStorage' in window)) return;
+  try {
+    localStorage.setItem(lastRoomKey, roomId);
+  } catch (error) {
+    console.warn('儲存最後房間失敗', error);
+  }
+}
+function clearLastRoom() {
+  if (!('localStorage' in window)) return;
+  try {
+    localStorage.removeItem(lastRoomKey);
+  } catch (error) {
+    console.warn('清除最後房間失敗', error);
+  }
+}
+function getLastRoom() {
+  if (!('localStorage' in window)) return null;
+  try {
+    return localStorage.getItem(lastRoomKey);
+  } catch {
+    return null;
+  }
+}
+
 function showError(message, error) {
   console.error(message, error || '');
   alert(message);
 }
-
 function shuffle(arr) {
   const copy = [...arr];
   for (let i = copy.length - 1; i > 0; i -= 1) {
@@ -148,7 +141,6 @@ function shuffle(arr) {
   }
   return copy;
 }
-
 function generateBoard(startingTeam) {
   const boardWords = shuffle(wordPool).slice(0, 25);
   const otherTeam = startingTeam === 'red' ? 'blue' : 'red';
@@ -179,7 +171,6 @@ function getCurrentPlayer() {
   if (!state.currentPlayerId) return null;
   return state.players.find(player => player.id === state.currentPlayerId) || null;
 }
-
 function updateViews() {
   const inRoom = Boolean(state.currentRoomId);
   lobbyView.classList.toggle('active', !inRoom);
@@ -752,12 +743,10 @@ roomListEl.addEventListener('click', event => {
   if (!target) return;
   handleJoinRoom(target.dataset.room);
 });
-
 toggleReadyBtn.addEventListener('click', toggleReady);
 startGameBtn.addEventListener('click', startGame);
 resetGameBtn.addEventListener('click', resetGame);
 leaveRoomBtn.addEventListener('click', leaveRoom);
-
 boardGridEl.addEventListener('click', event => {
   const cardEl = event.target.closest('.card');
   if (!cardEl) return;
