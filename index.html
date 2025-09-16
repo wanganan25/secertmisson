@@ -504,6 +504,38 @@
       currentPlayerId: null
     };
 
+    const STORAGE_KEY = 'codenameRooms-v1';
+
+    function loadRoomsFromStorage() {
+      if (!('localStorage' in window)) return [];
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed.map(room => ({
+          ...room,
+          players: Array.isArray(room.players) ? room.players.map(player => ({ ...player })) : [],
+          state: room.state ? {
+            ...room.state,
+            cards: Array.isArray(room.state.cards) ? room.state.cards.map(card => ({ ...card })) : []
+          } : { cards: [], winner: null, startingTeam: 'red' }
+        }));
+      } catch (error) {
+        console.warn('讀取房間資料失敗', error);
+        return [];
+      }
+    }
+
+    function saveRoomsToStorage() {
+      if (!('localStorage' in window)) return;
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state.rooms));
+      } catch (error) {
+        console.warn('無法儲存房間資料', error);
+      }
+    }
+
     const lobbyView = document.getElementById('lobby-view');
     const roomView = document.getElementById('room-view');
     const roomListEl = document.getElementById('room-list');
@@ -777,6 +809,7 @@
       state.rooms.push(room);
       state.currentRoomId = roomId;
       state.currentPlayerId = playerId;
+      saveRoomsToStorage();
       updateViews();
       event.target.reset();
     });
@@ -789,16 +822,19 @@
       if (!room || room.players.length >= room.capacity || room.status !== 'lobby') return;
       const nickname = prompt('輸入你的暱稱');
       if (!nickname) return;
+      const trimmed = nickname.trim();
+      if (!trimmed) return;
       const playerId = uuid();
       room.players.push({
         id: playerId,
-        name: nickname.trim().slice(0, 16),
+        name: trimmed.slice(0, 16),
         ready: false,
         team: null,
         isCaptain: false
       });
       state.currentRoomId = roomId;
       state.currentPlayerId = playerId;
+      saveRoomsToStorage();
       updateViews();
     });
 
@@ -807,6 +843,7 @@
       const player = getCurrentPlayer(room);
       if (!room || !player || room.status !== 'lobby') return;
       player.ready = !player.ready;
+      saveRoomsToStorage();
       updateViews();
     });
 
@@ -818,6 +855,7 @@
       if (!everyoneReady) return;
       assignTeamsAndBoard(room);
       room.status = 'in-progress';
+      saveRoomsToStorage();
       updateViews();
     });
 
@@ -833,6 +871,7 @@
       });
       room.state.cards = [];
       room.state.winner = null;
+      saveRoomsToStorage();
       updateViews();
     });
 
@@ -847,6 +886,7 @@
       if (!card || card.revealed) return;
       card.revealed = true;
       checkVictory(room, player, card);
+      saveRoomsToStorage();
       updateViews();
     });
 
@@ -857,9 +897,23 @@
       removePlayerFromRoom(room, player.id);
       state.currentRoomId = null;
       state.currentPlayerId = null;
+      saveRoomsToStorage();
       updateViews();
     });
 
+    window.addEventListener('storage', event => {
+      if (event.key !== STORAGE_KEY) return;
+      state.rooms = loadRoomsFromStorage();
+      const room = getCurrentRoom();
+      const player = getCurrentPlayer(room);
+      if (!room || !player) {
+        state.currentRoomId = null;
+        state.currentPlayerId = null;
+      }
+      updateViews();
+    });
+
+    state.rooms = loadRoomsFromStorage();
     updateViews();
   </script>
 </body>
