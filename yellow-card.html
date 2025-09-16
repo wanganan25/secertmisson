@@ -3,170 +3,42 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>黃牌大挑戰</title>
+  <title>黃牌遊戲</title>
   <style>
     :root {
       font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
       color-scheme: light dark;
-      --bg: #fef3c7;
-      --panel: #fffdf5;
-      --accent: #facc15;
-      --accent-dark: #f97316;
-      --ink: #1f2937;
     }
-    * { box-sizing: border-box; }
     body {
       margin: 0;
       min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      padding: clamp(1.5rem, 4vw, 3rem);
-      background: radial-gradient(circle at top, #fde68a, #f59e0b 65%);
-      color: var(--ink);
-    }
-    main {
-      width: min(1120px, 100%);
-      background: var(--panel);
-      border-radius: 28px;
-      box-shadow: 0 30px 70px rgba(249,115,22,.35);
-      padding: clamp(2rem, 4vw, 3rem);
       display: grid;
-      gap: 2rem;
+      place-items: center;
+      background: radial-gradient(circle at top, #fde68a, #f97316 70%);
+      color: #1f2933;
+      padding: 2rem;
     }
-    header h1 { margin: 0 0 .6rem; font-size: clamp(2rem, 4vw, 2.8rem); letter-spacing: .08em; }
-    header p { margin: 0; line-height: 1.7; color: #374151; }
-    section {
-      background: rgba(255,255,255,.88);
-      border: 1px solid rgba(249, 158, 47, .28);
-      border-radius: 22px;
-      padding: clamp(1.3rem, 3vw, 2rem);
+    .panel {
+      background: rgba(255, 255, 255, 0.86);
+      border-radius: 24px;
+      box-shadow: 0 24px 60px rgba(249, 115, 22, .35);
+      width: min(680px, 100%);
+      padding: clamp(2rem, 6vw, 3rem);
       display: grid;
-      gap: 1.2rem;
+      gap: 1.6rem;
+      text-align: center;
     }
-    section h2 { margin: 0; font-size: clamp(1.3rem, 3vw, 1.7rem); display: flex; align-items:center; gap:.8rem; }
-    section h2 span {
-      display:inline-flex; align-items:center; justify-content:center; width:2.2rem; height:2.2rem;
-      border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent-dark)); color:#1f2937; font-weight:700;
-    }
-    input, button, select { font: inherit; }
-    input {
-      width: 100%; padding: .65rem 1rem; border-radius: 14px;
-      border: 1px solid rgba(15,23,42,.16); background: rgba(255,255,255,.96);
-    }
-    button {
-      border:none; border-radius:999px; padding:.7rem 1.4rem; font-weight:600; cursor:pointer;
-      display:inline-flex; align-items:center; justify-content:center; gap:.4rem;
-      background:linear-gradient(135deg,var(--accent),var(--accent-dark)); color:#1f2937;
-      box-shadow:0 14px 24px rgba(249,115,22,.3); transition:transform .18s ease, box-shadow .18s ease;
-    }
-    button:hover { transform:translateY(-2px); box-shadow:0 18px 32px rgba(249,115,22,.4); }
-    button:active { transform:translateY(1px); }
-    button[disabled] { opacity:.55; cursor:not-allowed; transform:none; box-shadow:none; }
-    .ghost { background:rgba(15,23,42,.08); box-shadow:none; }
-    .room-grid { display:grid; gap:1rem; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); }
-    .room-card {
-      border-radius:18px; border:1px solid rgba(249,158,47,.35); background:rgba(255,255,255,.94);
-      padding:1rem 1.2rem; display:grid; gap:.6rem; box-shadow:0 10px 24px rgba(249,115,22,.25);
-    }
-    .room-card.active { border:2px solid var(--accent-dark); box-shadow:0 14px 30px rgba(249,115,22,.35); }
-    .badges { display:flex; gap:.5rem; flex-wrap:wrap; font-size:.85rem; color:#475569; }
-    .pill { display:inline-flex; align-items:center; padding:.3rem .7rem; border-radius:999px; background:rgba(15,23,42,.1); font-size:.85rem; }
-    table { width:100%; border-collapse:collapse; }
-    th, td { padding:.65rem .75rem; border-bottom:1px solid rgba(15,23,42,.08); text-align:left; }
-    tbody tr.current-player { background:rgba(56,189,248,.15); }
-    tbody tr.eliminated { background:rgba(248,113,113,.2); }
-    .hand { display:flex; flex-wrap:wrap; gap:.4rem; }
-    .hand span { background:rgba(15,23,42,.08); border-radius:12px; padding:.3rem .6rem; }
-    .hidden { display:none!important; }
-    footer { text-align:center; font-size:.95rem; color:#4b5563; }
-    footer a { color:#1f2937; text-decoration:none; font-weight:600; }
+    h1 { margin: 0; font-size: clamp(2rem, 5vw, 2.8rem); letter-spacing: .1em; }
+    p { margin: 0; line-height: 1.7; color: #374151; }
+    a { align-self: center; padding: .8rem 1.4rem; border-radius: 999px; text-decoration: none; background: #1f2937; color: #f9fafb; font-weight: 600; transition: transform .2s ease; }
+    a:hover { transform: translateY(-2px); }
   </style>
 </head>
 <body>
-  <main>
-    <header>
-      <h1>瘋狂黃牌大挑戰 · 多人同步版</h1>
-      <p>輸入暱稱後加入黃牌房間，房主按「開始遊戲」後即可依序輪流擔任裁判、抽題目、判定黃牌。</p>
-    </header>
-
-    <section id="room-selection">
-      <h2><span>01</span>選擇房間與暱稱</h2>
-      <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));align-items:end;">
-        <div>
-          <label for="nickname">我的暱稱</label>
-          <input id="nickname" type="text" placeholder="輸入暱稱">
-        </div>
-        <div id="current-room-box" class="hidden">
-          <strong id="current-room-name">目前未加入房間</strong>
-          <p id="current-room-count" style="margin:.35rem 0 0;font-size:.95rem;color:#475569;">—</p>
-          <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.6rem;">
-            <button id="ready-btn" class="ghost">我準備好了</button>
-            <button id="leave-room-btn" class="ghost">離開房間</button>
-            <button id="start-btn" class="ghost" style="display:none;">房主開始遊戲</button>
-          </div>
-        </div>
-      </div>
-      <div id="room-cards" class="room-grid"></div>
-    </section>
-
-    <section id="status-panel" class="hidden">
-      <h2><span>02</span>房間狀態</h2>
-      <p id="game-status">遊戲狀態：等待開始</p>
-      <p id="judge-status">裁判：—</p>
-      <p id="topic-hint">題目尚未抽出</p>
-    </section>
-
-    <section id="players-panel" class="hidden">
-      <h2><span>03</span>玩家黃牌與手牌</h2>
-      <div style="overflow-x:auto;">
-        <table>
-          <thead>
-            <tr><th>玩家</th><th>黃牌</th><th>準備</th><th>手牌</th><th>操作</th></tr>
-          </thead>
-          <tbody id="player-table"></tbody>
-        </table>
-      </div>
-      <div style="display:flex;gap:.8rem;flex-wrap:wrap;">
-        <button id="btn-next-round" class="ghost">下一局（保留玩家，清除黃牌與手牌）</button>
-        <button id="btn-reset-room" class="ghost">重設房間（重洗題目＋詞語）</button>
-      </div>
-    </section>
-
-    <section id="judge-panel" class="hidden">
-      <h2><span>04</span>裁判控制（僅裁判可操作）</h2>
-      <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:center;">
-        <button id="btn-draw-topic">抽題目卡</button>
-        <button id="btn-reset-topics" class="ghost">重洗題目卡</button>
-        <span class="pill" id="topic-remaining">剩餘題目：--</span>
-      </div>
-      <div class="room-card" style="background:rgba(254,240,138,.55);">
-        <h3>目前題目</h3>
-        <p id="topic-display" style="margin:0;line-height:1.6;">尚未抽題目</p>
-      </div>
-      <div>
-        <h3>提交結果（匿名）</h3>
-        <div id="submissions" style="display:grid;gap:.6rem;"></div>
-      </div>
-    </section>
-
-    <section id="player-submit-panel" class="hidden">
-      <h2><span>05</span>提交我的答案</h2>
-      <form id="submit-form" style="display:grid;gap:.8rem;max-width:640px;">
-        <label for="hand-select">選擇要填入題目空格的手牌</label>
-        <select id="hand-select"></select>
-        <div class="room-card" style="background:rgba(222,230,255,.55);">
-          <h3>預覽句子</h3>
-          <p id="preview-text" style="margin:0;line-height:1.6;">題目尚未抽出</p>
-        </div>
-        <button type="submit">確認送出</button>
-      </form>
-    </section>
-
-    <footer>
-      <p>遊戲結束時，累積黃牌滿 3 張的玩家接受懲罰，其他人可分享創意回答。｜<a href="index.html">返回遊戲選擇</a></p>
-    </footer>
+  <main class="panel">
+    <h1>黃牌遊戲</h1>
+    <p>黃牌遊戲頁面規劃中。你可以先從這裡回到遊戲選單，或在這裡增加新的黃牌遊戲內容。</p>
+    <a href="index.html">返回遊戲選擇</a>
   </main>
-  <script type="module" src="yellow-card.js"></script>
 </body>
 </html>
-'@"]}
