@@ -216,7 +216,7 @@ const winnerBannerEl = document.getElementById('winner-banner');
 const toggleReadyBtn = document.getElementById('toggle-ready');
 const startGameBtn = document.getElementById('start-game');
 const resetGameBtn = document.getElementById('reset-game');
-const leaveRoomBtn = document.getElementById('leave-room');
+const leaveRoomBtn = document.getElementById('leave-room');\nconst lobbyResetBtn = document.getElementById('reset-all-rooms');
 
 // -------------------- Rendering helpers --------------------
 function getCurrentPlayer() {
@@ -276,23 +276,28 @@ function renderRoomDetail() {
   }
   roomStatusEl.textContent = statusText;
 
+  const currentPlayer = getCurrentPlayer();
+  const isOwner = currentPlayer && room.ownerId === currentPlayer.id;
+
   const list = state.players.map(player => {
     const badges = [];
     if (player.id === room.ownerId) badges.push('<span class="badge owner">房主</span>');
     if (player.team) badges.push(`<span class="badge team-${player.team}">${player.team === 'red' ? '紅隊' : '藍隊'}</span>`);
     if (player.isCaptain) badges.push('<span class="badge captain">隊長</span>');
     badges.push(`<span class="badge ${player.ready ? 'ready' : 'waiting'}">${player.ready ? '已準備' : '等待中'}</span>`);
+    const canKick = isOwner && player.id !== room.ownerId;
+    const kickButton = canKick ? `<button class="kick-btn" data-player-id="${player.id}">踢出</button>` : '';
     return `
       <div class="player-console">
         <div class="top-line">
           <span class="name">${player.name || '隊友'}</span>
+          ${kickButton}
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:.4rem;">${badges.join('')}</div>
       </div>`;
   }).join('');
   playerListEl.innerHTML = list || '<div class="empty-state">尚未有人加入，歡迎成為第一位成員！</div>';
 
-  const currentPlayer = getCurrentPlayer();
   if (currentPlayer) {
     toggleReadyBtn.textContent = currentPlayer.ready ? '取消準備' : '我準備好了';
     toggleReadyBtn.disabled = room.status !== 'lobby';
@@ -302,7 +307,6 @@ function renderRoomDetail() {
   }
 
   const everyoneReady = room.status === 'lobby' && state.players.length >= 2 && state.players.every(player => player.ready);
-  const isOwner = currentPlayer && room.ownerId === currentPlayer.id;
   startGameBtn.disabled = !(room.status === 'lobby' && isOwner && everyoneReady);
   resetGameBtn.disabled = !(isOwner && room.status !== 'lobby');
 
@@ -518,6 +522,52 @@ async function fetchCardRefs(roomId) {
 }
 
 // -------------------- Room flows --------------------
+async function resetAllRooms() {
+  const confirmed = confirm('確認要重置所有房間嗎？');
+  if (!confirmed) return;
+  try {
+    await Promise.all(defaultRoomConfigs.map(async ({ id }) => {
+      const safeRoomId = normalizeRoomId(id);
+      const playersSnap = await getDocs(roomCollection(safeRoomId, 'players'));
+      const cardsSnap = await getDocs(roomCollection(safeRoomId, 'cards'));
+      await runTransaction(db, async transaction => {
+        const roomRef = doc(db, 'rooms', safeRoomId);
+        const roomSnap = await transaction.get(roomRef);
+        if (!roomSnap.exists()) return;
+        playersSnap.forEach(docSnap => transaction.delete(docSnap.ref));
+        cardsSnap.forEach(docSnap => transaction.delete(docSnap.ref));
+        transaction.set(roomRef, {
+          status: 'lobby',
+          ownerId: null,
+          ownerName: '',
+          startingTeam: 'red',
+          currentTurn: null,
+          guessesRemaining: null,
+          extraGuessAvailable: null,
+          winner: null,
+          playerCount: 0,
+          remainingRed: null,
+          remainingBlue: null
+        }, { merge: true });
+      });
+    }));
+    playerStore = {};
+    persistPlayerStore(playerStore);
+    clearLastRoom();
+    cleanupRoomSubscriptions();
+    state.currentRoomId = null;
+    state.currentPlayerId = null;
+    state.roomData = null;
+    state.players = [];
+    state.cards = [];
+    updateViews();
+    renderRoomList();
+    renderRoomDetail();
+  } catch (error) {
+    logAndAlert('重置房間失敗', error);
+  }
+}
+
 async function attemptResume() {
   const lastRoom = getLastRoom();
   if (!lastRoom) return;
@@ -832,6 +882,75 @@ async function revealCard(index) {
   }
 }
 
+async function kickPlayer(targetId) {
+  const roomId = state.currentRoomId;
+  const currentPlayer = getCurrentPlayer();
+  if (!roomId || !currentPlayer) return;
+  const room = state.roomData;
+  if (!room || room.ownerId !== currentPlayer.id) {
+    logAndAlert('只有房主可以踢人');
+    return;
+  }
+  if (!targetId || targetId === room.ownerId) {
+    logAndAlert('不可踢出房主');
+    return;
+  }
+  if (targetId === currentPlayer.id) {
+    logAndAlert('不可踢出自己');
+    return;
+  }
+
+  const safeRoomId = normalizeRoomId(roomId);
+  const remainingSnapshot = state.players.filter(player => player.id !== targetId);
+  const cardRefs = !remainingSnapshot.length ? await fetchCardRefs(safeRoomId) : [];
+
+  try {
+    await runTransaction(db, async transaction => {
+      const roomRef = doc(db, 'rooms', safeRoomId);
+      const roomSnap = await transaction.get(roomRef);
+      if (!roomSnap.exists()) throw new Error('房間不存在');
+
+      const targetRef = doc(db, 'rooms', safeRoomId, 'players', targetId);
+      const targetSnap = await transaction.get(targetRef);
+      if (!targetSnap.exists()) return;
+      if (targetSnap.id === roomSnap.data().ownerId) throw new Error('不可踢出房主');
+
+      transaction.delete(targetRef);
+
+      const roomData = roomSnap.data();
+      const updates = {};
+      const remainingCount = Math.max(0, (roomData.playerCount || state.players.length) - 1);
+      updates.playerCount = remainingCount;
+
+      if (roomData.ownerId === targetId) {
+        if (remainingSnapshot.length) {
+          updates.ownerId = remainingSnapshot[0].id;
+          updates.ownerName = remainingSnapshot[0].name || '';
+        } else {
+          updates.ownerId = null;
+          updates.ownerName = '';
+        }
+      }
+
+      if (!remainingSnapshot.length) {
+        updates.status = 'lobby';
+        updates.winner = null;
+        updates.startingTeam = 'red';
+        updates.currentTurn = null;
+        updates.guessesRemaining = null;
+        updates.extraGuessAvailable = null;
+        updates.remainingRed = null;
+        updates.remainingBlue = null;
+        cardRefs.forEach(ref => transaction.delete(ref));
+      }
+
+      transaction.set(roomRef, updates, { merge: true });
+    });
+  } catch (error) {
+    logAndAlert(error.message || '踢出玩家失敗', error);
+  }
+}
+
 async function leaveRoom() {
   const roomId = state.currentRoomId;
   const playerId = state.currentPlayerId;
@@ -907,6 +1026,19 @@ roomListEl.addEventListener('click', event => {
   handleJoinRoom(target.dataset.room);
 });
 
+if (lobbyResetBtn) {
+  lobbyResetBtn.addEventListener('click', () => {
+    resetAllRooms();
+  });
+}
+
+playerListEl.addEventListener('click', event => {
+  const button = event.target.closest('.kick-btn');
+  if (!button) return;
+  const playerId = button.dataset.playerId;
+  if (playerId) kickPlayer(playerId);
+});
+
 toggleReadyBtn.addEventListener('click', toggleReady);
 startGameBtn.addEventListener('click', startGame);
 resetGameBtn.addEventListener('click', resetGame);
@@ -933,3 +1065,4 @@ async function init() {
 }
 
 init();
+
