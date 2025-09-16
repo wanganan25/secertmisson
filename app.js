@@ -491,7 +491,7 @@ async function joinRoomTransaction(roomId, name) {
     if (room.status === 'in-progress') throw new Error('遊戲進行中，請稍候加入');
     const playersSnap = await transaction.get(playersQuery);
     if (playersSnap.size >= (room.capacity || 8)) throw new Error('房間人數已滿');
-    transaction.set(doc(roomRef, 'players', playerId), {
+    transaction.set(doc(collection(roomRef, 'players'), playerId), {
       name,
       ready: false,
       team: null,
@@ -544,11 +544,11 @@ async function startGame() {
       const cardsSnap = await transaction.get(collection(roomRef, 'cards'));
       cardsSnap.forEach(docSnap => transaction.delete(docSnap.ref));
       cards.forEach(card => {
-        transaction.set(doc(roomRef, 'cards', String(card.index)), card);
+        transaction.set(doc(collection(roomRef, 'cards'), String(card.index)), card);
       });
       randomized.forEach((member, index) => {
         const team = index < midpoint ? 'red' : 'blue';
-        transaction.set(doc(roomRef, 'players', member.id), {
+        transaction.set(doc(collection(roomRef, 'players'), member.id), {
           ready: false,
           team,
           isCaptain: member.id === captain.id
@@ -600,8 +600,8 @@ async function revealCard(index) {
   try {
     await runTransaction(db, async transaction => {
       const roomRef = doc(db, 'rooms', roomId);
-      const cardRef = doc(roomRef, 'cards', String(index));
-      const playerRef = doc(roomRef, 'players', player.id);
+      const cardRef = doc(collection(roomRef, 'cards'), String(index));
+      const playerRef = doc(collection(roomRef, 'players'), player.id);
       const roomSnap = await transaction.get(roomRef);
       if (!roomSnap.exists()) throw new Error('房間不存在');
       const room = roomSnap.data();
@@ -647,7 +647,7 @@ async function leaveRoom() {
   try {
     await runTransaction(db, async transaction => {
       const roomRef = doc(db, 'rooms', roomId);
-      const playerRef = doc(roomRef, 'players', playerId);
+      const playerRef = doc(collection(roomRef, 'players'), playerId);
       const roomSnap = await transaction.get(roomRef);
       if (!roomSnap.exists()) return;
       const playersQuery = query(collection(roomRef, 'players'), orderBy('joinedAt', 'asc'));
