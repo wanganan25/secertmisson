@@ -1,4 +1,4 @@
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js';
+﻿import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js';
 import {
   getFirestore,
   doc,
@@ -15,6 +15,7 @@ import {
   getDocs
 } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js';
 
+// -------------------- Firebase bootstrap --------------------
 const firebaseConfig = {
   apiKey: 'AIzaSyADGfYlLyMB-W5A2JM6uF8VqTiF3LL9lEI',
   authDomain: 'secertmisson-19e11.firebaseapp.com',
@@ -27,6 +28,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// -------------------- Constants --------------------
 const wordPool = [
   'adventure','analysis','balance','beacon','bridge','canvas','celebration','challenge','clarity','compass','confidence','connection','courage','creative','dawn','discovery','dream','energy','focus','friend','future','galaxy','harmony','idea','insight','journey','knowledge','legend','light','logic','memory','mission','momentum','mystery','network','ocean','origin','pioneer','puzzle','quest','rhythm','rocket','science','signal','spirit','story','strategy','sunrise','teamwork','victory','vision','voice','whisper','wisdom','wonder','勇氣','陪伴','舞台','突破','信任','導航','熱血','制服','課本','筆記','系辦','宿舍','迎新','笑聲','夥伴','挑戰','咖啡','創意','默契','藍圖','熱舞','報到','掌聲','合照','社團','系學會','冒險','新生','學長','學姐','教室','操場','期初','夜唱','旅行','海邊','燈塔','星空','火花','羅盤','影子','記憶','步伐','弧光','勇者','信號','驚喜','高歌','電光','火箭','能量','節奏'
 ];
@@ -41,6 +43,64 @@ const defaultRoomConfigs = [
 const localPlayerKey = 'codenamePlayerStore-v1';
 const lastRoomKey = 'codenameLastRoomId';
 
+// -------------------- Helpers --------------------
+function normalizeRoomId(roomId) {
+  const value = typeof roomId === 'string' ? roomId.trim() : '';
+  if (!value) throw new Error('房間代碼無效，請重新選擇房間');
+  return value;
+}
+
+function roomDoc(roomId, ...segments) {
+  const safeId = normalizeRoomId(roomId);
+  return doc(db, 'rooms', safeId, ...segments);
+}
+
+function roomCollection(roomId, ...segments) {
+  const safeId = normalizeRoomId(roomId);
+  return collection(db, 'rooms', safeId, ...segments);
+}
+
+function logAndAlert(message, error) {
+  console.error(message, error || '');
+  alert(message);
+}
+
+function shuffle(arr) {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+function generateBoard(startingTeam) {
+  const boardWords = shuffle(wordPool).slice(0, 25);
+  const otherTeam = startingTeam === 'red' ? 'blue' : 'red';
+  const roles = [
+    ...Array(9).fill(startingTeam),
+    ...Array(8).fill(otherTeam),
+    ...Array(7).fill('neutral'),
+    'assassin'
+  ];
+  const shuffledRoles = shuffle(roles);
+  return boardWords.map((word, index) => ({
+    index,
+    word,
+    role: shuffledRoles[index],
+    revealed: false
+  }));
+}
+
+function getJoinedAtValue(data) {
+  const ts = data.joinedAt;
+  if (ts && typeof ts.seconds === 'number') {
+    return ts.seconds + (ts.nanoseconds || 0) / 1_000_000_000;
+  }
+  return 0;
+}
+
+// -------------------- localStorage utilities --------------------
 function loadPlayerStore() {
   if (!('localStorage' in window)) return {};
   try {
@@ -62,6 +122,67 @@ function persistPlayerStore(store) {
 }
 
 let playerStore = loadPlayerStore();
+
+function setStoredPlayer(roomId, playerId) {
+  try {
+    const safeId = normalizeRoomId(roomId);
+    playerStore[safeId] = { playerId };
+    persistPlayerStore(playerStore);
+  } catch (error) {
+    console.warn(error.message);
+  }
+}
+
+function removeStoredPlayer(roomId) {
+  try {
+    const safeId = normalizeRoomId(roomId);
+    if (playerStore[safeId]) {
+      delete playerStore[safeId];
+      persistPlayerStore(playerStore);
+    }
+  } catch (error) {
+    console.warn(error.message);
+  }
+}
+
+function getStoredPlayer(roomId) {
+  try {
+    const safeId = normalizeRoomId(roomId);
+    return playerStore[safeId];
+  } catch {
+    return undefined;
+  }
+}
+
+function setLastRoom(roomId) {
+  if (!('localStorage' in window)) return;
+  try {
+    const safeId = normalizeRoomId(roomId);
+    localStorage.setItem(lastRoomKey, safeId);
+  } catch (error) {
+    console.warn('儲存最後房間失敗', error);
+  }
+}
+
+function clearLastRoom() {
+  if (!('localStorage' in window)) return;
+  try {
+    localStorage.removeItem(lastRoomKey);
+  } catch (error) {
+    console.warn('清除最後房間失敗', error);
+  }
+}
+
+function getLastRoom() {
+  if (!('localStorage' in window)) return null;
+  try {
+    return localStorage.getItem(lastRoomKey);
+  } catch {
+    return null;
+  }
+}
+
+// -------------------- Global state --------------------
 const state = {
   rooms: new Map(),
   roomData: null,
@@ -91,86 +212,12 @@ const startGameBtn = document.getElementById('start-game');
 const resetGameBtn = document.getElementById('reset-game');
 const leaveRoomBtn = document.getElementById('leave-room');
 
-function setStoredPlayer(roomId, playerId) {
-  playerStore[roomId] = { playerId };
-  persistPlayerStore(playerStore);
-}
-function removeStoredPlayer(roomId) {
-  if (playerStore[roomId]) {
-    delete playerStore[roomId];
-    persistPlayerStore(playerStore);
-  }
-}
-function getStoredPlayer(roomId) {
-  return playerStore[roomId];
-}
-function setLastRoom(roomId) {
-  if (!('localStorage' in window)) return;
-  try {
-    localStorage.setItem(lastRoomKey, roomId);
-  } catch (error) {
-    console.warn('儲存最後房間失敗', error);
-  }
-}
-function clearLastRoom() {
-  if (!('localStorage' in window)) return;
-  try {
-    localStorage.removeItem(lastRoomKey);
-  } catch (error) {
-    console.warn('清除最後房間失敗', error);
-  }
-}
-function getLastRoom() {
-  if (!('localStorage' in window)) return null;
-  try {
-    return localStorage.getItem(lastRoomKey);
-  } catch {
-    return null;
-  }
-}
-
-function showError(message, error) {
-  console.error(message, error || '');
-  alert(message);
-}
-function shuffle(arr) {
-  const copy = [...arr];
-  for (let i = copy.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
-}
-function generateBoard(startingTeam) {
-  const boardWords = shuffle(wordPool).slice(0, 25);
-  const otherTeam = startingTeam === 'red' ? 'blue' : 'red';
-  const roles = [
-    ...Array(9).fill(startingTeam),
-    ...Array(8).fill(otherTeam),
-    ...Array(7).fill('neutral'),
-    'assassin'
-  ];
-  const shuffledRoles = shuffle(roles);
-  return boardWords.map((word, index) => ({
-    index,
-    word,
-    role: shuffledRoles[index],
-    revealed: false
-  }));
-}
-
-function getJoinedAtValue(data) {
-  const ts = data.joinedAt;
-  if (ts && typeof ts.seconds === 'number') {
-    return ts.seconds + (ts.nanoseconds || 0) / 1_000_000_000;
-  }
-  return 0;
-}
-
+// -------------------- Rendering helpers --------------------
 function getCurrentPlayer() {
   if (!state.currentPlayerId) return null;
   return state.players.find(player => player.id === state.currentPlayerId) || null;
 }
+
 function updateViews() {
   const inRoom = Boolean(state.currentRoomId);
   lobbyView.classList.toggle('active', !inRoom);
@@ -213,6 +260,7 @@ function renderRoomDetail() {
     winnerBannerEl.style.display = 'none';
     return;
   }
+
   roomTitleEl.textContent = room.name;
   const ownerLabel = room.ownerName || '尚未指定';
   roomMetaEl.textContent = `房主：${ownerLabel}｜玩家 ${room.playerCount || 0}/${room.capacity}`;
@@ -226,7 +274,7 @@ function renderRoomDetail() {
     if (player.isCaptain) badges.push('<span class="badge captain">隊長</span>');
     badges.push(`<span class="badge ${player.ready ? 'ready' : 'waiting'}">${player.ready ? '已準備' : '等待中'}</span>`);
     return `
-      <div class="player-card">
+      <div class="player-console">
         <div class="top-line">
           <span class="name">${player.name || '隊友'}</span>
         </div>
@@ -263,6 +311,7 @@ function renderBoard() {
     winnerBannerEl.style.display = 'none';
     return;
   }
+
   const currentPlayer = getCurrentPlayer();
   boardGridEl.classList.toggle('captain-view', Boolean(currentPlayer && currentPlayer.isCaptain));
   boardGridEl.classList.toggle('disabled', room.status !== 'in-progress');
@@ -270,6 +319,7 @@ function renderBoard() {
     const revealedClass = card.revealed ? ' revealed' : '';
     return `<div class="card role-${card.role}${revealedClass}" data-index="${card.index}"><span class="label">${card.word}</span></div>`;
   }).join('');
+
   updateScoreboard();
   if (room.status === 'finished' && room.winner) {
     winnerBannerEl.textContent = room.winner === 'red' ? '紅隊勝利！' : '藍隊勝利！';
@@ -317,6 +367,7 @@ function updateViewIndicator() {
   }
 }
 
+// -------------------- Firestore listeners --------------------
 function cleanupRoomSubscriptions() {
   if (state.unsubRoom) { state.unsubRoom(); state.unsubRoom = null; }
   if (state.unsubPlayers) { state.unsubPlayers(); state.unsubPlayers = null; }
@@ -342,14 +393,24 @@ function subscribeToRoom(roomId) {
   state.roomData = null;
   state.players = [];
   state.cards = [];
+
   if (!roomId) {
     renderRoomDetail();
     return;
   }
-  const roomRef = doc(db, 'rooms', roomId);
+
+  let safeRoomId;
+  try {
+    safeRoomId = normalizeRoomId(roomId);
+  } catch (error) {
+    logAndAlert(error.message);
+    return;
+  }
+
+  const roomRef = doc(db, 'rooms', safeRoomId);
   state.unsubRoom = onSnapshot(roomRef, snapshot => {
     if (!snapshot.exists()) {
-      showError('房間已不存在，將返回大廳');
+      logAndAlert('房間已不存在，將返回大廳');
       state.currentRoomId = null;
       state.currentPlayerId = null;
       clearLastRoom();
@@ -362,18 +423,18 @@ function subscribeToRoom(roomId) {
     renderRoomDetail();
   });
 
-  const playersQuery = query(collection(roomRef, 'players'), orderBy('joinedAt', 'asc'));
+  const playersQuery = query(roomCollection(roomId, 'players'), orderBy('joinedAt', 'asc'));
   state.unsubPlayers = onSnapshot(playersQuery, snapshot => {
     state.players = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
     const stored = getStoredPlayer(roomId);
     if (stored && !state.players.some(player => player.id === stored.playerId)) {
-      removeStoredPlayer(safeRoomId);
+      removeStoredPlayer(roomId);
       state.currentPlayerId = null;
     }
     renderRoomDetail();
   });
 
-  state.unsubCards = onSnapshot(collection(roomRef, 'cards'), snapshot => {
+  state.unsubCards = onSnapshot(roomCollection(roomId, 'cards'), snapshot => {
     state.cards = snapshot.docs.map(docSnap => {
       const data = docSnap.data();
       return {
@@ -386,6 +447,7 @@ function subscribeToRoom(roomId) {
   });
 }
 
+// -------------------- Firestore utilities --------------------
 async function ensureDefaultRooms() {
   await Promise.all(defaultRoomConfigs.map(async config => {
     const roomRef = doc(db, 'rooms', config.id);
@@ -417,6 +479,29 @@ async function ensureDefaultRooms() {
   }));
 }
 
+async function fetchPlayerRefs(roomId) {
+  try {
+    const refs = await getDocs(roomCollection(roomId, 'players'));
+    return refs.docs
+      .map(docSnap => ({ ref: docSnap.ref, id: docSnap.id, data: docSnap.data() }))
+      .sort((a, b) => getJoinedAtValue(a.data) - getJoinedAtValue(b.data));
+  } catch (error) {
+    console.warn('讀取玩家列表失敗', error);
+    return [];
+  }
+}
+
+async function fetchCardRefs(roomId) {
+  try {
+    const refs = await getDocs(roomCollection(roomId, 'cards'));
+    return refs.docs.map(docSnap => docSnap.ref);
+  } catch (error) {
+    console.warn('讀取卡片列表失敗', error);
+    return [];
+  }
+}
+
+// -------------------- Room flows --------------------
 async function attemptResume() {
   const lastRoom = getLastRoom();
   if (!lastRoom) return;
@@ -440,48 +525,52 @@ async function attemptResume() {
 
 async function handleJoinRoom(roomId) {
   if (!roomId) return;
-  const room = state.rooms.get(roomId);
+  const trimmed = roomId.trim();
+  if (!trimmed) return;
+  const room = state.rooms.get(trimmed);
   if (room && room.status === 'in-progress') {
-    showError('遊戲進行中，請稍候再加入');
+    logAndAlert('遊戲進行中，請稍候再加入');
     return;
   }
-  const stored = getStoredPlayer(roomId);
+
+  const stored = getStoredPlayer(trimmed);
   if (stored) {
     try {
-      const playerSnap = await getDoc(doc(db, 'rooms', roomId, 'players', stored.playerId));
+      const playerSnap = await getDoc(doc(db, 'rooms', trimmed, 'players', stored.playerId));
       if (playerSnap.exists()) {
-        state.currentRoomId = roomId;
+        state.currentRoomId = trimmed;
         state.currentPlayerId = stored.playerId;
-        setLastRoom(roomId);
-        subscribeToRoom(roomId);
+        setLastRoom(trimmed);
+        subscribeToRoom(trimmed);
         updateViews();
         return;
       }
-      removeStoredPlayer(safeRoomId);
+      removeStoredPlayer(trimmed);
     } catch (error) {
       console.warn('檢查已登入玩家失敗', error);
     }
   }
+
   const nickname = prompt('輸入你的暱稱');
   if (!nickname) return;
-  const trimmed = nickname.trim();
-  if (!trimmed) return;
+  const safeName = nickname.trim();
+  if (!safeName) return;
+
   try {
-    const playerId = await joinRoomTransaction(roomId, trimmed.slice(0, 16));
-    state.currentRoomId = roomId;
+    const playerId = await joinRoomTransaction(trimmed, safeName.slice(0, 16));
+    state.currentRoomId = trimmed;
     state.currentPlayerId = playerId;
-    setStoredPlayer(roomId, playerId);
-    setLastRoom(roomId);
-    subscribeToRoom(roomId);
+    setStoredPlayer(trimmed, playerId);
+    setLastRoom(trimmed);
+    subscribeToRoom(trimmed);
     updateViews();
   } catch (error) {
-    showError(error.message || '加入房間失敗', error);
+    logAndAlert(error.message || '加入房間失敗', error);
   }
 }
 
 async function joinRoomTransaction(roomId, name) {
-  const safeRoomId = typeof roomId === 'string' ? roomId.trim() : '';
-  if (!safeRoomId) throw new Error('無效房間編號');
+  const safeRoomId = normalizeRoomId(roomId);
   const playerId = crypto.randomUUID();
   await runTransaction(db, async transaction => {
     const roomRef = doc(db, 'rooms', safeRoomId);
@@ -510,30 +599,14 @@ async function joinRoomTransaction(roomId, name) {
   return playerId;
 }
 
-async function fetchPlayerRefs(roomId) {
-  const safeRoomId = typeof roomId === 'string' ? roomId.trim() : '';
-  if (!safeRoomId) return [];
-  const snapshot = await getDocs(collection(db, 'rooms', safeRoomId, 'players'));
-  return snapshot.docs
-    .map(docSnap => ({ ref: docSnap.ref, id: docSnap.id, data: docSnap.data() }))
-    .sort((a, b) => getJoinedAtValue(a.data) - getJoinedAtValue(b.data));
-}
-
-async function fetchCardRefs(roomId) {
-  const safeRoomId = typeof roomId === 'string' ? roomId.trim() : '';
-  if (!safeRoomId) return [];
-  const snapshot = await getDocs(collection(db, 'rooms', safeRoomId, 'cards'));
-  return snapshot.docs.map(docSnap => docSnap.ref);
-}
-
 async function toggleReady() {
   const roomId = state.currentRoomId;
   const player = getCurrentPlayer();
   if (!roomId || !player) return;
   try {
-    await updateDoc(doc(db, 'rooms', roomId, 'players', player.id), { ready: !player.ready });
+    await updateDoc(doc(db, 'rooms', normalizeRoomId(roomId), 'players', player.id), { ready: !player.ready });
   } catch (error) {
-    showError('更新準備狀態失敗', error);
+    logAndAlert('更新準備狀態失敗', error);
   }
 }
 
@@ -541,8 +614,7 @@ async function startGame() {
   const roomId = state.currentRoomId;
   const player = getCurrentPlayer();
   if (!roomId || !player) return;
-  const safeRoomId = typeof roomId === 'string' ? roomId.trim() : '';
-  if (!safeRoomId) return;
+  const safeRoomId = normalizeRoomId(roomId);
   const playerRefs = await fetchPlayerRefs(safeRoomId);
   const cardRefs = await fetchCardRefs(safeRoomId);
 
@@ -558,9 +630,7 @@ async function startGame() {
       const players = [];
       for (const item of playerRefs) {
         const snap = await transaction.get(item.ref);
-        if (snap.exists()) {
-          players.push({ id: snap.id, ...snap.data() });
-        }
+        if (snap.exists()) players.push({ id: snap.id, ...snap.data() });
       }
       if (players.length < 2) throw new Error('至少需要兩位玩家');
       if (!players.every(p => p.ready)) throw new Error('仍有人未按準備');
@@ -596,7 +666,7 @@ async function startGame() {
       }, { merge: true });
     });
   } catch (error) {
-    showError(error.message || '開始遊戲失敗', error);
+    logAndAlert(error.message || '開始遊戲失敗', error);
   }
 }
 
@@ -604,10 +674,10 @@ async function resetGame() {
   const roomId = state.currentRoomId;
   const player = getCurrentPlayer();
   if (!roomId || !player) return;
-  const safeRoomId = typeof roomId === 'string' ? roomId.trim() : '';
-  if (!safeRoomId) return;
+  const safeRoomId = normalizeRoomId(roomId);
   const playerRefs = await fetchPlayerRefs(safeRoomId);
   const cardRefs = await fetchCardRefs(safeRoomId);
+
   try {
     await runTransaction(db, async transaction => {
       const roomRef = doc(db, 'rooms', safeRoomId);
@@ -629,7 +699,7 @@ async function resetGame() {
       }, { merge: true });
     });
   } catch (error) {
-    showError(error.message || '重設遊戲失敗', error);
+    logAndAlert(error.message || '重設遊戲失敗', error);
   }
 }
 
@@ -637,19 +707,20 @@ async function revealCard(index) {
   const roomId = state.currentRoomId;
   const player = getCurrentPlayer();
   if (!roomId || !player) return;
-  const safeRoomId = typeof roomId === 'string' ? roomId.trim() : '';
-  if (!safeRoomId) return;
+  const safeRoomId = normalizeRoomId(roomId);
+
   try {
     await runTransaction(db, async transaction => {
       const roomRef = doc(db, 'rooms', safeRoomId);
-      const cardRef = doc(db, 'rooms', roomId, 'cards', String(index));
-      const playerRef = doc(db, 'rooms', roomId, 'players', player.id);
+      const cardRef = doc(db, 'rooms', safeRoomId, 'cards', String(index));
+      const playerRef = doc(db, 'rooms', safeRoomId, 'players', player.id);
 
       const [roomSnap, playerSnap, cardSnap] = await Promise.all([
         transaction.get(roomRef),
         transaction.get(playerRef),
         transaction.get(cardRef)
       ]);
+
       if (!roomSnap.exists()) throw new Error('房間不存在');
       const room = roomSnap.data();
       if (room.status !== 'in-progress') return;
@@ -682,7 +753,7 @@ async function revealCard(index) {
       if (Object.keys(updates).length) transaction.update(roomRef, updates);
     });
   } catch (error) {
-    showError('翻牌失敗', error);
+    logAndAlert('翻牌失敗', error);
   }
 }
 
@@ -690,8 +761,7 @@ async function leaveRoom() {
   const roomId = state.currentRoomId;
   const playerId = state.currentPlayerId;
   if (!roomId || !playerId) return;
-  const safeRoomId = typeof roomId === 'string' ? roomId.trim() : '';
-  if (!safeRoomId) return;
+  const safeRoomId = normalizeRoomId(roomId);
   const playerRefs = await fetchPlayerRefs(safeRoomId);
   const cardRefs = await fetchCardRefs(safeRoomId);
 
@@ -704,15 +774,16 @@ async function leaveRoom() {
       const players = [];
       for (const item of playerRefs) {
         const snap = await transaction.get(item.ref);
-        if (snap.exists()) {
-          players.push({ id: snap.id, ...snap.data() });
-        }
+        if (snap.exists()) players.push({ id: snap.id, ...snap.data() });
       }
       if (!players.some(p => p.id === playerId)) return;
 
       transaction.delete(doc(db, 'rooms', safeRoomId, 'players', playerId));
+
       const remaining = players.filter(p => p.id !== playerId);
-      const updates = { playerCount: Math.max(0, (roomSnap.data().playerCount || players.length) - 1) };
+      const updates = {
+        playerCount: Math.max(0, (roomSnap.data().playerCount || players.length) - 1)
+      };
 
       if (roomSnap.data().ownerId === playerId) {
         if (remaining.length) {
@@ -736,7 +807,7 @@ async function leaveRoom() {
       transaction.set(roomRef, updates, { merge: true });
     });
   } catch (error) {
-    showError('離開房間失敗', error);
+    logAndAlert('離開房間失敗', error);
   } finally {
     removeStoredPlayer(safeRoomId);
     clearLastRoom();
@@ -751,15 +822,18 @@ async function leaveRoom() {
   }
 }
 
+// -------------------- Event bindings --------------------
 roomListEl.addEventListener('click', event => {
   const target = event.target.closest('.join-room');
   if (!target) return;
   handleJoinRoom(target.dataset.room);
 });
+
 toggleReadyBtn.addEventListener('click', toggleReady);
 startGameBtn.addEventListener('click', startGame);
 resetGameBtn.addEventListener('click', resetGame);
 leaveRoomBtn.addEventListener('click', leaveRoom);
+
 boardGridEl.addEventListener('click', event => {
   const cardEl = event.target.closest('.card');
   if (!cardEl) return;
@@ -767,6 +841,7 @@ boardGridEl.addEventListener('click', event => {
   if (!Number.isNaN(index)) revealCard(index);
 });
 
+// -------------------- Init --------------------
 async function init() {
   try {
     await ensureDefaultRooms();
@@ -775,7 +850,7 @@ async function init() {
     updateViews();
     await attemptResume();
   } catch (error) {
-    showError('初始化 Firebase 失敗', error);
+    logAndAlert('初始化 Firebase 失敗', error);
   }
 }
 
