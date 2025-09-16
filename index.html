@@ -421,30 +421,20 @@
   <main>
     <section id="lobby-view" class="view active">
       <div class="panel">
-        <h2><span>01</span>建立或加入房間</h2>
+        <h2><span>01</span>選擇遊戲房間</h2>
         <div class="lobby-grid">
           <div>
-            <h3 style="margin-top:0;">我要開新房</h3>
-            <p class="helper-text">設定房間名稱與最大人數，並留下你的暱稱當房主。</p>
-            <form id="create-room-form">
-              <div>
-                <label for="create-room-name">房間名稱</label>
-                <input id="create-room-name" required maxlength="30" placeholder="例如：資管迎新 A 場">
-              </div>
-              <div>
-                <label for="create-room-capacity">最大人數 (2-12)</label>
-                <input id="create-room-capacity" type="number" min="2" max="12" value="8" required>
-              </div>
-              <div>
-                <label for="create-room-nickname">你的暱稱</label>
-                <input id="create-room-nickname" required maxlength="16" placeholder="輸入暱稱">
-              </div>
-              <button type="submit">建立房間</button>
-            </form>
+            <h3 style="margin-top:0;">迎新活動準備區</h3>
+            <p class="helper-text">已預先建立四間房間，方便 30 位成員分組；首位進入的玩家會自動成為房主，負責開啟遊戲。</p>
+            <ul class="helper-text" style="padding-left:1.2rem;margin-top:.8rem;line-height:1.6;">
+              <li>紅藍比賽雙場同步進行，建議每房 6-8 人。</li>
+              <li>離開房間時會釋出名額，下一位加入者即可接任房主。</li>
+              <li>房主在所有成員按下「準備」後即可開始遊戲。</li>
+            </ul>
           </div>
           <div>
-            <h3 style="margin-top:0;">加入現有房間</h3>
-            <p class="helper-text">選擇列表中的房間並輸入暱稱即可加入。房間滿或已開始遊戲時不能加入。</p>
+            <h3 style="margin-top:0;">房間列表</h3>
+            <p class="helper-text">點選要進入的房間並輸入暱稱。若顯示「遊戲進行中」，請等待該局結束。</p>
             <div id="room-list" class="room-list"></div>
           </div>
         </div>
@@ -506,24 +496,61 @@
 
     const STORAGE_KEY = 'codenameRooms-v1';
 
+    const defaultRoomConfigs = [
+      { id: 'room-alpha', name: '迎新戰場 A', capacity: 8 },
+      { id: 'room-bravo', name: '迎新戰場 B', capacity: 8 },
+      { id: 'room-charlie', name: '默契挑戰 C', capacity: 8 },
+      { id: 'room-delta', name: '默契挑戰 D', capacity: 8 }
+    ];
+
+    function createRoomFromConfig(config, stored) {
+      const base = stored && typeof stored === 'object' ? stored : {};
+      const players = Array.isArray(base.players) ? base.players.map(player => ({
+        id: player.id || uuid(),
+        name: typeof player.name === 'string' && player.name.trim() ? player.name : '玩家',
+        ready: Boolean(player.ready),
+        team: player.team === 'red' || player.team === 'blue' ? player.team : null,
+        isCaptain: Boolean(player.isCaptain)
+      })) : [];
+      const cards = base.state && Array.isArray(base.state.cards) ? base.state.cards.map(card => ({
+        word: typeof card.word === 'string' ? card.word : '',
+        role: ['red','blue','neutral','assassin'].includes(card.role) ? card.role : 'neutral',
+        revealed: Boolean(card.revealed)
+      })) : [];
+      const startingTeam = base.state && base.state.startingTeam === 'blue' ? 'blue' : 'red';
+      return {
+        id: config.id,
+        name: config.name,
+        capacity: Number.isFinite(Number(base.capacity)) ? Math.max(2, Math.min(12, Number(base.capacity))) : config.capacity,
+        ownerId: base.ownerId && players.some(p => p.id === base.ownerId) ? base.ownerId : (players[0]?.id ?? null),
+        ownerName: typeof base.ownerName === 'string' && base.ownerName.trim() ? base.ownerName : (players[0]?.name ?? ''),
+        status: base.status === 'in-progress' || base.status === 'finished' ? base.status : 'lobby',
+        players,
+        state: {
+          cards,
+          winner: base.state && (base.state.winner === 'red' || base.state.winner === 'blue') ? base.state.winner : null,
+          startingTeam
+        }
+      };
+    }
+
+    function createDefaultRooms() {
+      return defaultRoomConfigs.map(config => createRoomFromConfig(config));
+    }
+
     function loadRoomsFromStorage() {
-      if (!('localStorage' in window)) return [];
+      if (!('localStorage' in window)) return createDefaultRooms();
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return [];
-        const parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed)) return [];
-        return parsed.map(room => ({
-          ...room,
-          players: Array.isArray(room.players) ? room.players.map(player => ({ ...player })) : [],
-          state: room.state ? {
-            ...room.state,
-            cards: Array.isArray(room.state.cards) ? room.state.cards.map(card => ({ ...card })) : []
-          } : { cards: [], winner: null, startingTeam: 'red' }
-        }));
+        const parsed = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(parsed)) return createDefaultRooms();
+        return defaultRoomConfigs.map(config => {
+          const storedRoom = parsed.find(room => room && room.id === config.id);
+          return createRoomFromConfig(config, storedRoom);
+        });
       } catch (error) {
         console.warn('讀取房間資料失敗', error);
-        return [];
+        return createDefaultRooms();
       }
     }
 
@@ -594,13 +621,14 @@
         const isFull = occupied >= room.capacity;
         const status = room.status === 'lobby' ? '等待開始' : room.status === 'in-progress' ? '遊戲進行中' : '已結束';
         const disabled = isFull || room.status === 'in-progress';
+        const ownerLabel = room.ownerName ? room.ownerName : '尚未指定';
         return `<div class="room-card">
           <div style="display:flex;justify-content:space-between;gap:.6rem;align-items:flex-start;">
             <h3>${room.name}</h3>
             <span class="room-status">${status}</span>
           </div>
           <div class="room-meta">
-            <span>房主：${room.ownerName}</span>
+            <span>房主：${ownerLabel}</span>
             <span>人數：${occupied}/${room.capacity}</span>
           </div>
           <button data-room="${room.id}" class="join-room" ${disabled ? 'disabled' : ''}>加入房間</button>
@@ -618,7 +646,8 @@
         return;
       }
       roomTitleEl.textContent = room.name;
-      roomMetaEl.textContent = `房主：${room.ownerName}｜玩家 ${room.players.length}/${room.capacity}`;
+      const ownerLabel = room.ownerName ? room.ownerName : '尚未指定';
+      roomMetaEl.textContent = `房主：${ownerLabel}｜玩家 ${room.players.length}/${room.capacity}`;
       const statusText = room.status === 'lobby' ? '等待準備中' : room.status === 'in-progress' ? '遊戲進行中' : '本局結束';
       roomStatusEl.textContent = statusText;
 
@@ -768,70 +797,45 @@
       const idx = room.players.findIndex(p => p.id === playerId);
       if (idx >= 0) room.players.splice(idx, 1);
       if (room.ownerId === playerId) {
-        room.ownerId = room.players[0]?.id ?? null;
-        room.ownerName = room.players[0]?.name ?? room.ownerName;
+        if (room.players.length) {
+          room.ownerId = room.players[0].id;
+          room.ownerName = room.players[0].name;
+        } else {
+          room.ownerId = null;
+          room.ownerName = '';
+        }
       }
       if (!room.players.length) {
-        state.rooms = state.rooms.filter(r => r.id !== room.id);
+        room.status = 'lobby';
+        room.state.cards = [];
+        room.state.winner = null;
       }
     }
 
-    document.getElementById('create-room-form').addEventListener('submit', event => {
-      event.preventDefault();
-      const name = document.getElementById('create-room-name').value.trim();
-      const capacity = Number(document.getElementById('create-room-capacity').value);
-      const nickname = document.getElementById('create-room-nickname').value.trim();
-      if (!name || !nickname) return;
-      if (capacity < 2 || capacity > 12) return;
-      const roomId = uuid();
-      const playerId = uuid();
-      const player = {
-        id: playerId,
-        name: nickname,
-        ready: false,
-        team: null,
-        isCaptain: false
-      };
-      const room = {
-        id: roomId,
-        name,
-        capacity,
-        ownerId: playerId,
-        ownerName: nickname,
-        status: 'lobby',
-        players: [player],
-        state: {
-          cards: [],
-          winner: null,
-          startingTeam: 'red'
-        }
-      };
-      state.rooms.push(room);
-      state.currentRoomId = roomId;
-      state.currentPlayerId = playerId;
-      saveRoomsToStorage();
-      updateViews();
-      event.target.reset();
-    });
 
     roomListEl.addEventListener('click', event => {
       const target = event.target.closest('.join-room');
       if (!target) return;
       const roomId = target.dataset.room;
       const room = state.rooms.find(r => r.id === roomId);
-      if (!room || room.players.length >= room.capacity || room.status !== 'lobby') return;
+      if (!room || room.players.length >= room.capacity || room.status === 'in-progress') return;
       const nickname = prompt('輸入你的暱稱');
       if (!nickname) return;
       const trimmed = nickname.trim();
       if (!trimmed) return;
+      const displayName = trimmed.slice(0, 16);
       const playerId = uuid();
       room.players.push({
         id: playerId,
-        name: trimmed.slice(0, 16),
+        name: displayName,
         ready: false,
         team: null,
         isCaptain: false
       });
+      if (!room.ownerId || !room.players.some(p => p.id === room.ownerId)) {
+        room.ownerId = playerId;
+        room.ownerName = displayName;
+      }
       state.currentRoomId = roomId;
       state.currentPlayerId = playerId;
       saveRoomsToStorage();
@@ -914,6 +918,7 @@
     });
 
     state.rooms = loadRoomsFromStorage();
+    saveRoomsToStorage();
     updateViews();
   </script>
 </body>
