@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>我的網站</title>
+  <style>
+    body{font-family:system-ui,Arial,sans-serif;max-width:720px;margin:40px auto;line-height:1.6}
+    header{border-bottom:1px solid #ddd;margin-bottom:20px}
+    a{color:#0645ad;text-decoration:none}
+    a:hover{text-decoration:underline}
+    button{padding:.6rem 1rem;border:1px solid #333;background:#fff;cursor:pointer}
+  </style>
+</head>
+<body>
+  <header><h1>你好，我的網站</h1></header>
+  <main>
+    <p>這是我用 GitHub Pages 做的第一個網站。</p>
+    <p><a href="about.html">關於我</a></p>
+    <button id="btn">點我</button>
+  </main>
+  <script>
+    document.getElementById('btn').onclick = () => alert('網站就緒');
+  </script>
+</body>
+</html>
