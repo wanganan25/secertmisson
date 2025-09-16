@@ -41,6 +41,8 @@ const defaultRoomConfigs = [
 ];
 
 const localPlayerKey = 'codenamePlayerStore-v1';
+const BASE_GUESSES = 1;
+
 const lastRoomKey = 'codenameLastRoomId';
 
 // -------------------- Helpers --------------------
@@ -72,6 +74,10 @@ function shuffle(arr) {
     [copy[i], copy[j]] = [copy[j], copy[i]];
   }
   return copy;
+}
+
+function otherTeam(team) {
+  return team === 'red' ? 'blue' : 'red';
 }
 
 function generateBoard(startingTeam) {
@@ -469,6 +475,8 @@ async function ensureDefaultRooms() {
         remainingRed: null,
         remainingBlue: null,
         currentTurn: null,
+        guessesRemaining: null,
+        extraGuessAvailable: null,
         createdAt: serverTimestamp()
       });
     } else {
@@ -480,6 +488,8 @@ async function ensureDefaultRooms() {
       if (!('remainingRed' in data)) updates.remainingRed = null;
       if (!('remainingBlue' in data)) updates.remainingBlue = null;
       if (!('currentTurn' in data)) updates.currentTurn = null;
+      if (!('guessesRemaining' in data)) updates.guessesRemaining = null;
+      if (!('extraGuessAvailable' in data)) updates.extraGuessAvailable = null;
       if (Object.keys(updates).length) await updateDoc(roomRef, updates);
     }
   }));
@@ -672,6 +682,8 @@ async function startGame() {
         status: 'in-progress',
         startingTeam,
         currentTurn: startingTeam,
+        guessesRemaining: BASE_GUESSES,
+        extraGuessAvailable: true,
         winner: null,
         remainingRed,
         remainingBlue
@@ -706,6 +718,9 @@ async function resetGame() {
         status: 'lobby',
         winner: null,
         startingTeam: 'red',
+        currentTurn: null,
+        guessesRemaining: null,
+        extraGuessAvailable: null,
         remainingRed: null,
         remainingBlue: null
       }, { merge: true });
@@ -739,18 +754,29 @@ async function revealCard(index) {
       if (!playerSnap.exists()) throw new Error('找不到玩家資料');
       if (!cardSnap.exists()) throw new Error('卡片不存在');
       const playerData = playerSnap.data();
+      if (playerData.isCaptain) throw new Error('隊長不能翻牌');
       if (!playerData.team) throw new Error('觀戰者無法翻牌');
       if (room.currentTurn && playerData.team !== room.currentTurn) throw new Error('尚未輪到你的隊伍');
       const card = cardSnap.data();
       if (card.revealed) return;
+      if (room.guessesRemaining !== null && room.guessesRemaining <= 0 && room.extraGuessAvailable === false) {
+        throw new Error('本回合猜測次數已用完');
+      }
 
       transaction.update(cardRef, { revealed: true });
 
+      const team = playerData.team;
       let winner = null;
       const updates = {};
+      let guessesRemaining = typeof room.guessesRemaining === 'number' ? room.guessesRemaining : BASE_GUESSES;
+      let extraGuessAvailable = typeof room.extraGuessAvailable === 'boolean' ? room.extraGuessAvailable : true;
+      let nextTurn = room.currentTurn || team;
+      let turnChanged = false;
+
       if (card.role === 'assassin') {
-        const team = playerSnap.data().team;
-        winner = team === 'red' ? 'blue' : 'red';
+        winner = otherTeam(team);
+        turnChanged = true;
+        nextTurn = null;
       } else if (card.role === 'red') {
         const next = Math.max(0, (room.remainingRed ?? 0) - 1);
         updates.remainingRed = next;
@@ -761,21 +787,48 @@ async function revealCard(index) {
         if (next === 0) winner = 'blue';
       }
 
+      const correctGuess = card.role === team;
+      const wrongGuess = card.role !== team && card.role !== 'assassin';
+
+      if (!winner) {
+        if (correctGuess) {
+          if (guessesRemaining > 0) {
+            guessesRemaining -= 1;
+          } else if (extraGuessAvailable) {
+            extraGuessAvailable = false;
+          } else {
+            turnChanged = true;
+            nextTurn = otherTeam(team);
+            guessesRemaining = BASE_GUESSES;
+            extraGuessAvailable = true;
+          }
+        } else if (wrongGuess) {
+          turnChanged = true;
+          nextTurn = otherTeam(team);
+          guessesRemaining = BASE_GUESSES;
+          extraGuessAvailable = true;
+        }
+      }
+
       if (winner) {
         updates.status = 'finished';
         updates.winner = winner;
-      }
-      if (card.role === 'assassin') {
         updates.currentTurn = null;
-      } else if (!winner) {
-        updates.currentTurn = room.currentTurn === 'red' ? 'blue' : 'red';
+        updates.guessesRemaining = null;
+        updates.extraGuessAvailable = null;
+      } else if (turnChanged) {
+        updates.currentTurn = nextTurn;
+        updates.guessesRemaining = guessesRemaining;
+        updates.extraGuessAvailable = extraGuessAvailable;
       } else {
-        updates.currentTurn = null;
+        updates.guessesRemaining = guessesRemaining;
+        updates.extraGuessAvailable = extraGuessAvailable;
       }
+
       if (Object.keys(updates).length) transaction.update(roomRef, updates);
     });
   } catch (error) {
-    logAndAlert('翻牌失敗', error);
+    logAndAlert(error.message || '翻牌失敗', error);
   }
 }
 
@@ -821,6 +874,9 @@ async function leaveRoom() {
         updates.status = 'lobby';
         updates.winner = null;
         updates.startingTeam = 'red';
+        updates.currentTurn = null;
+        updates.guessesRemaining = null;
+        updates.extraGuessAvailable = null;
         updates.remainingRed = null;
         updates.remainingBlue = null;
         cardRefs.forEach(ref => transaction.delete(ref));
