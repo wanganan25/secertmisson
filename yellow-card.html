@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>黃牌大挑戰｜互動工具</title>
+  <title>黃牌大挑戰｜多人同步</title>
   <style>
     :root {
       font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
@@ -34,8 +34,8 @@
       gap: 2rem;
     }
     header h1 {
-      margin: 0 0 .5rem;
-      font-size: clamp(2rem, 4vw, 2.7rem);
+      margin: 0 0 .6rem;
+      font-size: clamp(2rem, 4vw, 2.8rem);
       letter-spacing: .08em;
     }
     header p {
@@ -44,7 +44,7 @@
       color: #374151;
     }
     section {
-      background: rgba(255,255,255,.82);
+      background: rgba(255,255,255,.85);
       border: 1px solid rgba(249, 158, 47, .35);
       border-radius: 22px;
       padding: clamp(1.4rem, 3vw, 2rem);
@@ -70,17 +70,16 @@
       font-weight: 700;
     }
     label { font-weight: 600; }
-    input, button, textarea, select {
+    input {
       font: inherit;
-    }
-    input, textarea, select {
       width: 100%;
       padding: .65rem 1rem;
       border-radius: 14px;
       border: 1px solid rgba(15,23,42,.1);
-      background: rgba(255, 255, 255, .9);
+      background: rgba(255,255,255,.95);
     }
     button {
+      font: inherit;
       border: none;
       border-radius: 999px;
       padding: .7rem 1.4rem;
@@ -97,57 +96,28 @@
     }
     button:hover { transform: translateY(-2px); box-shadow: 0 18px 32px rgba(249,115,22,.4); }
     button:active { transform: translateY(1px); }
+    button[disabled] { opacity: .55; cursor: not-allowed; transform: none; box-shadow: none; }
     .ghost { background: rgba(15,23,42,.08); box-shadow: none; }
-    .grid-two { display: grid; gap: 1.4rem; }
-    @media(min-width: 900px) { .grid-two { grid-template-columns: 1.1fr 1fr; } }
-    table {
-      width: 100%;
-      border-collapse: collapse;
+    .grid-two { display: grid; gap: 1.2rem; }
+    @media(min-width: 860px) { .grid-two { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+    .hint { margin: .4rem 0 0; font-size: .9rem; color: #64748b; }
+    .room-grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     }
-    th, td {
-      padding: .65rem .75rem;
-      border-bottom: 1px solid rgba(15,23,42,.08);
-      text-align: left;
-    }
-    tbody tr.player-eliminated { background: rgba(248, 113, 113, .18); }
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: .2rem .6rem;
-      border-radius: 999px;
-      font-size: .78rem;
-      font-weight: 600;
-      background: rgba(15,23,42,.08);
-      color: #111827;
-    }
-    .hand {
+    .room-card {
+      border-radius: 18px;
+      border: 1px solid rgba(249, 158, 47, .35);
+      background: rgba(255,255,255,.92);
+      padding: 1rem 1.2rem;
       display: grid;
       gap: .6rem;
-      max-height: 220px;
-      overflow-y: auto;
-      background: rgba(254, 243, 199, .4);
-      border-radius: 16px;
-      padding: .8rem 1rem;
+      box-shadow: 0 10px 24px rgba(249,115,22,.25);
     }
-    .hand span {
-      display: inline-flex;
-      padding: .35rem .6rem;
-      margin: .2rem;
-      border-radius: 12px;
-      background: rgba(15,23,42,.08);
-    }
-    .topic-card {
-      font-size: 1.2rem;
-      background: rgba(254, 240, 138, .6);
-      border: 1px dashed rgba(234, 179, 8, .4);
-      border-radius: 18px;
-      padding: 1rem 1.2rem;
-      min-height: 80px;
-      display: grid;
-      align-content: center;
-      text-align: center;
-    }
+    .room-card.active { border: 2px solid var(--accent-dark); box-shadow: 0 14px 30px rgba(249,115,22,.35); }
+    .room-card h3 { margin: 0; font-size: 1.2rem; }
+    .badges { display: flex; gap: .5rem; flex-wrap: wrap; font-size: .85rem; color: #475569; }
     .pill {
       display: inline-flex;
       align-items: center;
@@ -155,287 +125,86 @@
       border-radius: 999px;
       background: rgba(15,23,42,.1);
       font-size: .85rem;
-      margin-right: .5rem;
     }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: .65rem .75rem; border-bottom: 1px solid rgba(15,23,42,.08); text-align: left; }
+    tbody tr.current-player { background: rgba(56,189,248,.15); }
+    tbody tr.player-eliminated { background: rgba(248, 113, 113, .2); }
+    .hand { display: flex; flex-wrap: wrap; gap: .4rem; }
+    .hand span { background: rgba(15,23,42,.08); border-radius: 12px; padding: .3rem .6rem; }
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
   <main>
     <header>
-      <h1>瘋狂黃牌大挑戰 · 互動工具</h1>
-      <p>快速管理玩家、題目卡與詞語卡，現場帶領黃牌桌遊更省力！請先輸入玩家，再按下發牌與抽題目按鈕即可開始。</p>
+      <h1>瘋狂黃牌大挑戰 · 多人同步版</h1>
+      <p>選擇房間、輸入暱稱即可與全體玩家同步管理黃牌、題目卡與詞語卡。</p>
     </header>
 
-    <section>
-      <h2><span>01</span>玩家管理</h2>
+    <section id="room-selection">
+      <h2><span>01</span>選擇房間與暱稱</h2>
       <div class="grid-two">
         <div>
-          <label for="player-input">輸入玩家（每行一位，建議 8-12 人）</label>
-          <textarea id="player-input" rows="6" placeholder="範例：\n小明\n小美\n阿成"></textarea>
-          <div style="display:flex;gap:.8rem;flex-wrap:wrap;margin-top:.8rem;">
-            <button id="btn-add-players">加入玩家</button>
-            <button id="btn-fill-demo" class="ghost">填入示範名單</button>
-            <button id="btn-clear-players" class="ghost">清空所有玩家</button>
+          <label for="nickname">我的暱稱</label>
+          <input id="nickname" type="text" placeholder="輸入暱稱">
+          <p class="hint">加入任一房間後，所有操作會自動同步至 Firestore。</p>
+        </div>
+        <div id="current-room-box" class="hidden">
+          <strong id="current-room-name">目前未加入房間</strong>
+          <p class="hint" id="current-room-count">—</p>
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.6rem;">
+            <button id="leave-room-btn" class="ghost">離開房間</button>
           </div>
         </div>
-        <div>
-          <article style="background:rgba(255,255,255,.7);border-radius:18px;padding:1rem 1.2rem;border:1px dashed rgba(249,158,47,.35);">
-            <h3 style="margin:0 0 .35rem;">使用提示</h3>
-            <ul style="margin:0;padding-left:1.2rem;line-height:1.7;">
-              <li>玩家加入後可直接在列表中調整黃牌數。</li>
-              <li>黃牌累積到 3 張會自動標示淘汰。</li>
-              <li>可按「下一局」重設黃牌與手牌。</li>
-            </ul>
-          </article>
-        </div>
       </div>
+      <div id="room-cards" class="room-grid"></div>
+    </section>
+
+    <section id="players-panel" class="hidden">
+      <h2><span>02</span>玩家黃牌＆手牌</h2>
+      <p class="hint">平均 3 張黃牌遊戲就會結束，可透過表格快速調整或補牌。</p>
       <div style="overflow-x:auto;">
         <table>
           <thead>
-            <tr><th>玩家</th><th>黃牌</th><th>操作</th><th>手牌（可補牌）</th></tr>
+            <tr><th>玩家</th><th>黃牌</th><th>操作</th><th>手牌</th></tr>
           </thead>
           <tbody id="player-table"></tbody>
         </table>
       </div>
       <div style="display:flex;gap:.8rem;flex-wrap:wrap;">
-        <button id="btn-next-round" class="ghost">下一局：保留玩家資料但將黃牌清零</button>
-        <button id="btn-reset-game" class="ghost">重設遊戲（清除所有資料）</button>
+        <button id="btn-next-round" class="ghost">下一局：清除黃牌與手牌</button>
+        <button id="btn-reset-game" class="ghost">重設房間（重新洗牌）</button>
       </div>
     </section>
 
-    <section>
-      <h2><span>02</span>題目卡控制</h2>
+    <section id="topics-panel" class="hidden">
+      <h2><span>03</span>題目卡控制</h2>
       <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:center;">
         <button id="btn-draw-topic">抽題目卡</button>
         <button id="btn-reset-topics" class="ghost">重洗題目卡</button>
         <span class="pill" id="topic-remaining">剩餘題目：--</span>
       </div>
-      <div class="topic-card" id="topic-display">按下「抽題目卡」開始</div>
+      <div class="room-card" style="background:rgba(254,240,138,.55);">
+        <h3>目前題目</h3>
+        <p id="topic-display" style="margin:0;line-height:1.5;">尚未抽題目</p>
+      </div>
     </section>
 
-    <section>
-      <h2><span>03</span>詞語卡管理</h2>
+    <section id="words-panel" class="hidden">
+      <h2><span>04</span>詞語卡牌庫</h2>
       <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:center;">
         <button id="btn-deal-cards">為所有玩家發 13 張詞語卡</button>
-        <button id="btn-reset-deck" class="ghost">重洗詞語卡牌庫</button>
+        <button id="btn-reset-deck" class="ghost">重洗詞語牌庫</button>
         <span class="pill" id="word-remaining">牌庫剩餘：--</span>
       </div>
-      <p style="margin:0;line-height:1.6;color:#4b5563;">玩家每回合打出一張詞語卡後，可在表格中按「補一張」取得新牌。</p>
+      <p class="hint">玩家若打出詞語卡，可於手牌欄按「補一張」。</p>
     </section>
 
     <footer>
-      <p>遊戲結束後，請統計所有玩家的黃牌數，最少者獲勝。祝活動順利！｜<a href="index.html">返回遊戲選擇</a></p>
+      <p>遊戲結束後，比較黃牌最少者即為贏家。祝活動順利！｜<a href="index.html">返回遊戲選擇</a></p>
     </footer>
   </main>
-
-  <script>
-    const topicSource = [
-      '今天最想逃離\u7684\u662f\uFF1A_____?','如果學長姐突然出現在你\u5bb6\u7684\u6d17\u6fa1\u623f\uFF0C\u70ba\u4ec0\u9ebc\uff1f _____','假設\u4f60\u7684\u4eba\u751f\u662f\u4e00\u5927\u7897\u62c9\u9eb5\uFF0C\u7f3a\u4e86_____','\u6bcf\u500b\u8ab0\u90fd\u61c9\u8a72\u64c1\u6709\u4e00\u5f35_____\u7684\u7167\u7247','\u6700\u9069\u5408\u4e0a\u4ed6/\u5979\u7684\u9ad8\u4e2d\u540d\u984d\u662f_____','\u5b78\u6821\u6700\u9700\u8981\u5347\u7d1a\u7684\u662f_____','\u4eca\u591c\u7684\u842c\u8056\u7bc0\u8eab\u88dd\uFF0C\u6211\u9078_____','\u4f60\u8f15\u8f15\u4e00\u63e1\uFF0C_____\u76f4\u63a5\u7206\u7206','\u7b2c\u4e00\u6b21\u898b\u4f60\u7684\u5fc3\u60c5\uFF0C\u5c31\u50cf_____','\u6240\u6709\u4eba\u90fd\u5728\u6f14\u6232\uFF0C\u6211\u53ea\u6709_____','\u5b78\u6821wifi\u7684\u5bc6\u78bc\u5176\u5be6\u662f_____','\u5982\u679c\u9023\u6551\u63f4\u8a13\u7df4\u90fd\u8aa4\u904e\uFF0C\u4e00\u5b9a\u662f_____\u5728\u62d6\u7d66','\u6211\u5011\u7684\u5408\u5531\u9ad8\u6f6e\uFF0C\u7e3d\u662f_____','\u9ad8\u4e2d\u7559\u7d00\u53ea\u5269_____','\u4f60\u4e00\u500b\u4eba\u9650\u5b9a_____\u5c31\u80fd\u64cb\u6b7b\u5168\u73ed\u7684\u8001\u5e2b','\u4ea4\u63db\u5fc3\u610f\u79ae\u7269\uFF1A_____','\u6700\u4f69\u670d\u7684\u4eba\u4f7f\u7528_____\u62ef\u6551\u5168\u73ed','\u8001\u5e2b\u7684\u96fb\u8166\u88c1\u9732\uFF0C\u4e0a\u9762\u5e95\u7ad9_____','\u7576\u6211\u807d\u5230\u9f13\u8072\uFF0C\u6211\u9084\u60f3_____','\u73ed\u5b50\u65c1\u908a\u5c45\u7136\u7184\u706b\uff0c\u662f_____','\u6688\u5012\u5f8c\u9192\u4f86\u5148\u770b\u5230_____','\u5b78\u6821\u7684\u79ae\u5f0f\u611f\uFF0C\u5316\u70ba\u4e00\u53e3_____','\u53f0\u4e0a\u7684\u9810\u5099\u7b54\u6848\u662f_____\u7684\u624b\u7b46','\u9ad8\u4e2d\u5fc5\u5099\u7684\u771f\u611f\u8a18\u9304\uFF1A_____','\u82b1\u540d\u5f8c\u9762\u85cf\u8457_____'
-    ];
-
-    const wordSourceBase = [...wordSets.flat(), ...wordPool];\n    const wordSource = (() => {\n      const pool = [];\n      while (pool.length < 500) {\n        pool.push(...shuffleArray(wordSourceBase));\n      }\n      return pool.slice(0, 500);\n    })();
-
-    const state = {
-      players: [],
-      topicDeck: [],
-      usedTopics: [],
-      wordDeck: [],
-      playerHands: new Map()
-    };
-
-    const playerTableBody = document.getElementById('player-table');
-    const topicDisplay = document.getElementById('topic-display');
-    const topicRemainingEl = document.getElementById('topic-remaining');
-    const wordRemainingEl = document.getElementById('word-remaining');
-    const playerInput = document.getElementById('player-input');
-
-    function shuffleArray(arr) {
-      const copy = [...arr];
-      for (let i = copy.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [copy[i], copy[j]] = [copy[j], copy[i]];
-      }
-      return copy;
-    }
-
-    function resetTopics() {
-      state.topicDeck = shuffleArray(topicSource);
-      state.usedTopics = [];
-      topicRemainingEl.textContent = `剩餘題目：${state.topicDeck.length}`;
-      topicDisplay.textContent = '題目卡已重洗，準備抽出新的題目。';
-    }
-
-    function resetWordDeck() {
-      state.wordDeck = shuffleArray(wordSource);
-      wordRemainingEl.textContent = `牌庫剩餘：${state.wordDeck.length}`;
-      state.playerHands.forEach((_, key) => state.playerHands.set(key, []));
-    }
-
-    function renderPlayers() {
-      playerTableBody.innerHTML = '';
-      state.players.forEach((player, index) => {
-        const tr = document.createElement('tr');
-        if (player.yellow >= 3) tr.classList.add('player-eliminated');
-        const tdName = document.createElement('td');
-        tdName.textContent = player.name;
-        const tdYellow = document.createElement('td');
-        tdYellow.innerHTML = `<span class="badge">${player.yellow}</span>`;
-        const tdActions = document.createElement('td');
-        const addBtn = document.createElement('button');
-        addBtn.textContent = '+ 黃牌';
-        addBtn.className = 'ghost';
-        addBtn.onclick = () => addYellow(index);
-        const minusBtn = document.createElement('button');
-        minusBtn.textContent = ' - '; minusBtn.className = 'ghost';
-        minusBtn.style.marginLeft = '.4rem';
-        minusBtn.onclick = () => removeYellow(index);
-        tdActions.append(addBtn, minusBtn);
-
-        const tdHand = document.createElement('td');
-        const hand = state.playerHands.get(player.id) || [];
-        const handContainer = document.createElement('div');
-        handContainer.className = 'hand';
-        if (!hand.length) {
-          const empty = document.createElement('span');
-          empty.textContent = '尚未發牌';
-          handContainer.appendChild(empty);
-        } else {
-          hand.forEach((word, idx) => {
-            const label = document.createElement('span');
-            label.textContent = `${idx + 1}. ${word}`;
-            handContainer.appendChild(label);
-          });
-        }
-        const refillBtn = document.createElement('button');
-        refillBtn.textContent = '補一張';
-        refillBtn.className = 'ghost';
-        refillBtn.style.alignSelf = 'flex-start';
-        refillBtn.onclick = () => drawWordForPlayer(player.id);
-        tdHand.append(handContainer, refillBtn);
-
-        tr.append(tdName, tdYellow, tdActions, tdHand);
-        playerTableBody.appendChild(tr);
-      });
-    }
-
-    function addPlayers(names) {
-      const sanitized = names.split(/\n|,/).map(n => n.trim()).filter(Boolean);
-      sanitized.forEach(name => {
-        if (state.players.some(p => p.name === name)) return;
-        const id = crypto.randomUUID();
-        state.players.push({ id, name, yellow: 0 });
-        state.playerHands.set(id, []);
-      });
-      renderPlayers();
-    }
-
-    function addYellow(index) {
-      const player = state.players[index];
-      if (!player) return;
-      player.yellow += 1;
-      if (player.yellow >= 3) {
-        alert(`${player.name} 已累積 3 張黃牌！`);
-      }
-      renderPlayers();
-    }
-
-    function removeYellow(index) {
-      const player = state.players[index];
-      if (!player) return;
-      player.yellow = Math.max(0, player.yellow - 1);
-      renderPlayers();
-    }
-
-    function clearPlayers() {
-      if (!state.players.length) return;
-      if (!confirm('確定要清空所有玩家嗎？')) return;
-      state.players = [];
-      state.playerHands.clear();
-      renderPlayers();
-    }
-
-    function nextRound() {
-      state.players.forEach(p => p.yellow = 0);
-      state.playerHands.forEach((_, key) => state.playerHands.set(key, []));
-      renderPlayers();
-    }
-
-    function resetGame() {
-      if (!confirm('將清空玩家、黃牌與牌庫，確定要重設嗎？')) return;
-      state.players = [];
-      state.playerHands.clear();
-      playerInput.value = '';
-      resetTopics();
-      resetWordDeck();
-      renderPlayers();
-    }
-
-    function dealCards() {
-      if (!state.players.length) {
-        alert('請先加入玩家');
-        return;
-      }
-      if (state.players.length * 13 > state.wordDeck.length) {
-        resetWordDeck();
-        alert('詞語卡不足，自動重新洗牌。');
-      }
-      state.playerHands.forEach((_, key) => state.playerHands.set(key, []));
-      state.players.forEach(player => {
-        const hand = [];
-        for (let i = 0; i < 13; i++) {
-          if (!state.wordDeck.length) break;
-          hand.push(state.wordDeck.pop());
-        }
-        state.playerHands.set(player.id, hand);
-      });
-      wordRemainingEl.textContent = `牌庫剩餘：${state.wordDeck.length}`;
-      renderPlayers();
-    }
-
-    function drawWordForPlayer(playerId) {
-      if (!state.wordDeck.length) {
-        resetWordDeck();
-        alert('詞語牌庫已重洗');
-      }
-      const hand = state.playerHands.get(playerId) || [];
-      hand.push(state.wordDeck.pop());
-      state.playerHands.set(playerId, hand);
-      wordRemainingEl.textContent = `牌庫剩餘：${state.wordDeck.length}`;
-      renderPlayers();
-    }
-
-    function drawTopic() {
-      if (!state.topicDeck.length) {
-        resetTopics();
-        alert('題目卡已用完，重新洗牌。');
-      }
-      const topic = state.topicDeck.pop();
-      state.usedTopics.push(topic);
-      topicDisplay.textContent = topic;
-      topicRemainingEl.textContent = `剩餘題目：${state.topicDeck.length}`;
-    }
-
-    document.getElementById('btn-add-players').addEventListener('click', () => {
-      addPlayers(playerInput.value);
-      playerInput.value = '';
-    });
-    document.getElementById('btn-fill-demo').addEventListener('click', () => {
-      playerInput.value = '小明\n小美\n阿成\n小星\n阿寶\n阿綠\n艾莉\n西打\n大仁\n子瑜';
-    });
-    document.getElementById('btn-clear-players').addEventListener('click', clearPlayers);
-    document.getElementById('btn-next-round').addEventListener('click', nextRound);
-    document.getElementById('btn-reset-game').addEventListener('click', resetGame);
-    document.getElementById('btn-draw-topic').addEventListener('click', drawTopic);
-    document.getElementById('btn-reset-topics').addEventListener('click', resetTopics);
-    document.getElementById('btn-deal-cards').addEventListener('click', dealCards);
-    document.getElementById('btn-reset-deck').addEventListener('click', () => {
-      resetWordDeck();
-      renderPlayers();
-    });
-
-    resetTopics();
-    resetWordDeck();
-  </script>
+  <script type="module" src="yellow-card.js"></script>
 </body>
 </html>
-
