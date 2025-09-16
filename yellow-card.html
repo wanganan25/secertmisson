@@ -3,42 +3,225 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>黃牌遊戲</title>
+  <title>黃牌大挑戰｜迎新破冰企劃</title>
   <style>
     :root {
       font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
       color-scheme: light dark;
+      --bg: #fef3c7;
+      --panel: rgba(255,255,255,.92);
+      --accent: #facc15;
+      --accent-dark: #f97316;
+      --ink: #1f2937;
     }
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       min-height: 100vh;
-      display: grid;
-      place-items: center;
-      background: radial-gradient(circle at top, #fde68a, #f97316 70%);
-      color: #1f2933;
-      padding: 2rem;
+      background: radial-gradient(circle at top, #fde68a, #f59e0b 65%);
+      color: var(--ink);
+      padding: clamp(1.5rem, 4vw, 3rem);
+      display: flex;
+      justify-content: center;
     }
-    .panel {
-      background: rgba(255, 255, 255, 0.86);
-      border-radius: 24px;
-      box-shadow: 0 24px 60px rgba(249, 115, 22, .35);
-      width: min(680px, 100%);
-      padding: clamp(2rem, 6vw, 3rem);
+    main {
+      width: min(960px, 100%);
+      background: var(--panel);
+      border-radius: 28px;
+      box-shadow: 0 26px 60px rgba(249,115,22,.35);
+      padding: clamp(2rem, 5vw, 3.2rem);
       display: grid;
-      gap: 1.6rem;
+      gap: 2.2rem;
+    }
+    header h1 {
+      margin: 0 0 .6rem;
+      font-size: clamp(2rem, 5vw, 2.8rem);
+      letter-spacing: .08em;
+    }
+    header p {
+      margin: 0;
+      line-height: 1.7;
+      color: #374151;
+    }
+    section {
+      background: rgba(254, 243, 199, .6);
+      border: 1px solid rgba(251, 191, 36, .4);
+      border-radius: 20px;
+      padding: clamp(1.4rem, 3vw, 2rem);
+      display: grid;
+      gap: 1rem;
+    }
+    section h2 {
+      margin: 0;
+      font-size: clamp(1.3rem, 3vw, 1.7rem);
+      display: flex;
+      align-items: center;
+      gap: .8rem;
+    }
+    section h2 span {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.2rem;
+      height: 2.2rem;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      color: #fffde7;
+      font-weight: 700;
+    }
+    ul, ol {
+      margin: 0;
+      padding-left: 1.4rem;
+      line-height: 1.7;
+    }
+    .grid-two {
+      display: grid;
+      gap: 1.2rem;
+    }
+    @media(min-width: 768px) {
+      .grid-two { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+    .card-list {
+      display: grid;
+      gap: .75rem;
+    }
+    .card {
+      border-radius: 16px;
+      padding: 1rem 1.2rem;
+      background: rgba(253, 230, 138, .55);
+      border: 1px dashed rgba(245, 158, 11, .5);
+    }
+    .timeline {
+      display: grid;
+      gap: 1rem;
+    }
+    .timeline-item {
+      border-left: 4px solid var(--accent-dark);
+      padding-left: 1rem;
+    }
+    .timeline-item h3 {
+      margin: 0 0 .35rem;
+      font-size: 1.1rem;
+    }
+    .rule-steps {
+      display: grid;
+      gap: 1rem;
+    }
+    .rule-steps article {
+      border-radius: 18px;
+      border: 1px solid rgba(248, 180, 0, .35);
+      padding: 1rem 1.2rem;
+      background: rgba(255, 255, 255, .6);
+    }
+    footer {
       text-align: center;
+      font-size: .95rem;
+      color: #4b5563;
     }
-    h1 { margin: 0; font-size: clamp(2rem, 5vw, 2.8rem); letter-spacing: .1em; }
-    p { margin: 0; line-height: 1.7; color: #374151; }
-    a { align-self: center; padding: .8rem 1.4rem; border-radius: 999px; text-decoration: none; background: #1f2937; color: #f9fafb; font-weight: 600; transition: transform .2s ease; }
-    a:hover { transform: translateY(-2px); }
+    footer a {
+      color: #111827;
+      text-decoration: none;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
-  <main class="panel">
-    <h1>黃牌遊戲</h1>
-    <p>黃牌遊戲頁面規劃中。你可以先從這裡回到遊戲選單，或在這裡增加新的黃牌遊戲內容。</p>
-    <a href="index.html">返回遊戲選擇</a>
+  <main>
+    <header>
+      <h1>瘋狂黃牌大挑戰</h1>
+      <p>專為高中迎新打造的破冰遊戲，透過黃牌桌遊的笑點與互動，讓新生與學長姐迅速拉近距離。</p>
+    </header>
+
+    <section>
+      <h2><span>01</span>活動目的＆參與對象</h2>
+      <p>讓迎新活動在歡笑中展開，打破新生與學長姐最初的尷尬，建立起互相認識、互相支持的氛圍。</p>
+      <div class="grid-two">
+        <div>
+          <h3>活動亮點</h3>
+          <ul>
+            <li>趣味競賽：透過瘋狂的題目與回答，製造滿滿笑點。</li>
+            <li>快速破冰：輪流擔任裁判與出牌，讓每個人都能被看見。</li>
+            <li>團隊合作：分組輪替與重新編組，迅速認識不同同學。</li>
+          </ul>
+        </div>
+        <div>
+          <h3>適用對象</h3>
+          <ul>
+            <li>高一新生與學長姐</li>
+            <li>總人數：約 30 人</li>
+            <li>建議分組：每組 10 人，含學長姐擔任組長</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2><span>02</span>準備材料</h2>
+      <div class="card-list">
+        <div class="card"><strong>題目卡（紫卡）：</strong> 約 25 張，題目可提前準備，也可輪流補充。</div>
+        <div class="card"><strong>詞語卡（黃卡）：</strong> 約 500 張，越荒誕越好，建議事先洗牌。</div>
+        <div class="card"><strong>黃牌紀錄卡：</strong> 每位玩家一張，用來畫記累積的黃牌（建議格狀設計）。</div>
+        <div class="card"><strong>筆：</strong> 30 枝，方便紀錄黃牌線條。</div>
+      </div>
+    </section>
+
+    <section>
+      <h2><span>03</span>活動流程（60 分鐘）</h2>
+      <div class="timeline">
+        <div class="timeline-item">
+          <h3>第一階段｜原分組對戰（約 20 分鐘）</h3>
+          <p>三組同時進行黃牌遊戲，熟悉玩法與彼此節奏。</p>
+        </div>
+        <div class="timeline-item">
+          <h3>第二階段｜分組大風吹（約 20 分鐘）</h3>
+          <p>由組長引導成員互換位置，例如每組 1 號、2 號移至下一組，確保每個人都認識到不同朋友。</p>
+        </div>
+        <div class="timeline-item">
+          <h3>第三階段｜新分組再開局（約 20 分鐘）</h3>
+          <p>使用相同規則進行第二輪，觀察不同組合的創意火花。</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2><span>04</span>黃牌遊戲規則</h2>
+      <div class="rule-steps">
+        <article>
+          <h3>發牌與裁判</h3>
+          <ol>
+            <li>每位玩家發 13 張詞語卡作為手牌。</li>
+            <li>每回合需有一名裁判：第一輪由組長擔任，之後則由上一回合領黃牌的玩家接棒。</li>
+          </ol>
+        </article>
+        <article>
+          <h3>出題與出牌</h3>
+          <ol>
+            <li>裁判抽 1 張題目卡並大聲念出句子。</li>
+            <li>其他玩家各自挑選最精彩或最荒唐的詞語卡，牌面朝下交給裁判。</li>
+            <li>玩家補牌至 13 張。</li>
+          </ol>
+        </article>
+        <article>
+          <h3>裁判評分</h3>
+          <ol>
+            <li>裁判將所有卡片洗勻，依序填入題目並念出完整句子。</li>
+            <li>裁判選出最荒謬、最不合邏輯、或最能逗笑全場的答案。</li>
+            <li>該答案的擁有者得到 1 張黃牌，於紀錄卡上畫一撇。</li>
+          </ol>
+        </article>
+        <article>
+          <h3>結束與勝利</h3>
+          <ul>
+            <li>只要有人累積 3 張黃牌，該輪立即結束。</li>
+            <li>攤開所有紀錄卡，黃牌最少者即是贏家（多人同少可並列）。</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <footer>
+      <p>準備好笑聲與創意，讓「瘋狂黃牌大挑戰」成為迎新最難忘的回憶！｜<a href="index.html">回到遊戲選擇</a></p>
+    </footer>
   </main>
 </body>
 </html>
