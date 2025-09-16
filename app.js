@@ -367,7 +367,7 @@ function subscribeToRoom(roomId) {
     state.players = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
     const stored = getStoredPlayer(roomId);
     if (stored && !state.players.some(player => player.id === stored.playerId)) {
-      removeStoredPlayer(roomId);
+      removeStoredPlayer(safeRoomId);
       state.currentPlayerId = null;
     }
     renderRoomDetail();
@@ -457,7 +457,7 @@ async function handleJoinRoom(roomId) {
         updateViews();
         return;
       }
-      removeStoredPlayer(roomId);
+      removeStoredPlayer(safeRoomId);
     } catch (error) {
       console.warn('檢查已登入玩家失敗', error);
     }
@@ -480,10 +480,11 @@ async function handleJoinRoom(roomId) {
 }
 
 async function joinRoomTransaction(roomId, name) {
-  if (!roomId) throw new Error('無效房間編號');
+  const safeRoomId = typeof roomId === 'string' ? roomId.trim() : '';
+  if (!safeRoomId) throw new Error('無效房間編號');
   const playerId = crypto.randomUUID();
   await runTransaction(db, async transaction => {
-    const roomRef = doc(db, 'rooms', roomId);
+    const roomRef = doc(db, 'rooms', safeRoomId);
     const roomSnap = await transaction.get(roomRef);
     if (!roomSnap.exists()) throw new Error('房間不存在');
     const room = roomSnap.data();
@@ -491,7 +492,7 @@ async function joinRoomTransaction(roomId, name) {
     const currentCount = room.playerCount || 0;
     if (currentCount >= (room.capacity || 8)) throw new Error('房間人數已滿');
 
-    transaction.set(doc(db, 'rooms', roomId, 'players', playerId), {
+    transaction.set(doc(db, 'rooms', safeRoomId, 'players', playerId), {
       name,
       ready: false,
       team: null,
@@ -510,14 +511,18 @@ async function joinRoomTransaction(roomId, name) {
 }
 
 async function fetchPlayerRefs(roomId) {
-  const snapshot = await getDocs(collection(db, 'rooms', roomId, 'players'));
+  const safeRoomId = typeof roomId === 'string' ? roomId.trim() : '';
+  if (!safeRoomId) return [];
+  const snapshot = await getDocs(collection(db, 'rooms', safeRoomId, 'players'));
   return snapshot.docs
     .map(docSnap => ({ ref: docSnap.ref, id: docSnap.id, data: docSnap.data() }))
     .sort((a, b) => getJoinedAtValue(a.data) - getJoinedAtValue(b.data));
 }
 
 async function fetchCardRefs(roomId) {
-  const snapshot = await getDocs(collection(db, 'rooms', roomId, 'cards'));
+  const safeRoomId = typeof roomId === 'string' ? roomId.trim() : '';
+  if (!safeRoomId) return [];
+  const snapshot = await getDocs(collection(db, 'rooms', safeRoomId, 'cards'));
   return snapshot.docs.map(docSnap => docSnap.ref);
 }
 
@@ -536,12 +541,14 @@ async function startGame() {
   const roomId = state.currentRoomId;
   const player = getCurrentPlayer();
   if (!roomId || !player) return;
-  const playerRefs = await fetchPlayerRefs(roomId);
-  const cardRefs = await fetchCardRefs(roomId);
+  const safeRoomId = typeof roomId === 'string' ? roomId.trim() : '';
+  if (!safeRoomId) return;
+  const playerRefs = await fetchPlayerRefs(safeRoomId);
+  const cardRefs = await fetchCardRefs(safeRoomId);
 
   try {
     await runTransaction(db, async transaction => {
-      const roomRef = doc(db, 'rooms', roomId);
+      const roomRef = doc(db, 'rooms', safeRoomId);
       const roomSnap = await transaction.get(roomRef);
       if (!roomSnap.exists()) throw new Error('房間不存在');
       const room = roomSnap.data();
@@ -568,12 +575,12 @@ async function startGame() {
 
       cardRefs.forEach(ref => transaction.delete(ref));
       cards.forEach(card => {
-        transaction.set(doc(db, 'rooms', roomId, 'cards', String(card.index)), card);
+        transaction.set(doc(db, 'rooms', safeRoomId, 'cards', String(card.index)), card);
       });
 
       randomized.forEach((member, index) => {
         const team = index < midpoint ? 'red' : 'blue';
-        transaction.set(doc(db, 'rooms', roomId, 'players', member.id), {
+        transaction.set(doc(db, 'rooms', safeRoomId, 'players', member.id), {
           ready: false,
           team,
           isCaptain: member.id === captain.id
@@ -597,17 +604,19 @@ async function resetGame() {
   const roomId = state.currentRoomId;
   const player = getCurrentPlayer();
   if (!roomId || !player) return;
-  const playerRefs = await fetchPlayerRefs(roomId);
-  const cardRefs = await fetchCardRefs(roomId);
+  const safeRoomId = typeof roomId === 'string' ? roomId.trim() : '';
+  if (!safeRoomId) return;
+  const playerRefs = await fetchPlayerRefs(safeRoomId);
+  const cardRefs = await fetchCardRefs(safeRoomId);
   try {
     await runTransaction(db, async transaction => {
-      const roomRef = doc(db, 'rooms', roomId);
+      const roomRef = doc(db, 'rooms', safeRoomId);
       const roomSnap = await transaction.get(roomRef);
       if (!roomSnap.exists()) throw new Error('房間不存在');
       if (roomSnap.data().ownerId !== player.id) throw new Error('只有房主可以重設');
 
       for (const item of playerRefs) {
-        const ref = doc(db, 'rooms', roomId, 'players', item.id);
+        const ref = doc(db, 'rooms', safeRoomId, 'players', item.id);
         transaction.set(ref, { ready: false, team: null, isCaptain: false }, { merge: true });
       }
       cardRefs.forEach(ref => transaction.delete(ref));
@@ -628,9 +637,11 @@ async function revealCard(index) {
   const roomId = state.currentRoomId;
   const player = getCurrentPlayer();
   if (!roomId || !player) return;
+  const safeRoomId = typeof roomId === 'string' ? roomId.trim() : '';
+  if (!safeRoomId) return;
   try {
     await runTransaction(db, async transaction => {
-      const roomRef = doc(db, 'rooms', roomId);
+      const roomRef = doc(db, 'rooms', safeRoomId);
       const cardRef = doc(db, 'rooms', roomId, 'cards', String(index));
       const playerRef = doc(db, 'rooms', roomId, 'players', player.id);
 
@@ -679,12 +690,14 @@ async function leaveRoom() {
   const roomId = state.currentRoomId;
   const playerId = state.currentPlayerId;
   if (!roomId || !playerId) return;
-  const playerRefs = await fetchPlayerRefs(roomId);
-  const cardRefs = await fetchCardRefs(roomId);
+  const safeRoomId = typeof roomId === 'string' ? roomId.trim() : '';
+  if (!safeRoomId) return;
+  const playerRefs = await fetchPlayerRefs(safeRoomId);
+  const cardRefs = await fetchCardRefs(safeRoomId);
 
   try {
     await runTransaction(db, async transaction => {
-      const roomRef = doc(db, 'rooms', roomId);
+      const roomRef = doc(db, 'rooms', safeRoomId);
       const roomSnap = await transaction.get(roomRef);
       if (!roomSnap.exists()) return;
 
@@ -697,7 +710,7 @@ async function leaveRoom() {
       }
       if (!players.some(p => p.id === playerId)) return;
 
-      transaction.delete(doc(db, 'rooms', roomId, 'players', playerId));
+      transaction.delete(doc(db, 'rooms', safeRoomId, 'players', playerId));
       const remaining = players.filter(p => p.id !== playerId);
       const updates = { playerCount: Math.max(0, (roomSnap.data().playerCount || players.length) - 1) };
 
@@ -725,7 +738,7 @@ async function leaveRoom() {
   } catch (error) {
     showError('離開房間失敗', error);
   } finally {
-    removeStoredPlayer(roomId);
+    removeStoredPlayer(safeRoomId);
     clearLastRoom();
     cleanupRoomSubscriptions();
     state.currentRoomId = null;
