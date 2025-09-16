@@ -264,7 +264,10 @@ function renderRoomDetail() {
   roomTitleEl.textContent = room.name;
   const ownerLabel = room.ownerName || '尚未指定';
   roomMetaEl.textContent = `房主：${ownerLabel}｜玩家 ${room.playerCount || 0}/${room.capacity}`;
-  const statusText = room.status === 'lobby' ? '等待準備中' : room.status === 'in-progress' ? '遊戲進行中' : '本局結束';
+  let statusText = room.status === 'lobby' ? '等待準備中' : room.status === 'in-progress' ? '遊戲進行中' : '本局結束';
+  if (room.status === 'in-progress' && room.currentTurn) {
+    statusText += room.currentTurn === 'red' ? '｜輪到紅隊' : '｜輪到藍隊';
+  }
   roomStatusEl.textContent = statusText;
 
   const list = state.players.map(player => {
@@ -355,10 +358,11 @@ function updateViewIndicator() {
   if (room.status === 'lobby') {
     viewIndicatorEl.textContent = '尚未開始';
   } else if (room.status === 'in-progress') {
+    const turnInfo = room.currentTurn ? (room.currentTurn === 'red' ? '輪到紅隊' : '輪到藍隊') : '輪到誰等待更新';
     if (currentPlayer.isCaptain) {
-      viewIndicatorEl.textContent = '你是隊長，可查看全部顏色';
+      viewIndicatorEl.textContent = `你是隊長，可查看全部顏色｜${turnInfo}`;
     } else if (currentPlayer.team) {
-      viewIndicatorEl.textContent = `你是${currentPlayer.team === 'red' ? '紅隊' : '藍隊'}成員，只能看到已翻開的卡片`;
+      viewIndicatorEl.textContent = `你是${currentPlayer.team === 'red' ? '紅隊' : '藍隊'}成員，只能看到已翻開的卡片｜${turnInfo}`;
     } else {
       viewIndicatorEl.textContent = '你目前為觀戰者，只能看到公開資訊';
     }
@@ -464,6 +468,7 @@ async function ensureDefaultRooms() {
         playerCount: 0,
         remainingRed: null,
         remainingBlue: null,
+        currentTurn: null,
         createdAt: serverTimestamp()
       });
     } else {
@@ -474,6 +479,7 @@ async function ensureDefaultRooms() {
       if (typeof data.playerCount !== 'number') updates.playerCount = data.playerCount || 0;
       if (!('remainingRed' in data)) updates.remainingRed = null;
       if (!('remainingBlue' in data)) updates.remainingBlue = null;
+      if (!('currentTurn' in data)) updates.currentTurn = null;
       if (Object.keys(updates).length) await updateDoc(roomRef, updates);
     }
   }));
@@ -637,7 +643,11 @@ async function startGame() {
 
       const randomized = shuffle(players);
       const midpoint = Math.ceil(randomized.length / 2);
-      const captain = randomized[Math.floor(Math.random() * randomized.length)];
+      const redTeam = randomized.slice(0, midpoint);
+      const blueTeam = randomized.slice(midpoint);
+      if (!redTeam.length || !blueTeam.length) throw new Error('需要保證兩隊都有成員');
+      const redCaptain = redTeam[Math.floor(Math.random() * redTeam.length)];
+      const blueCaptain = blueTeam[Math.floor(Math.random() * blueTeam.length)];
       const startingTeam = Math.random() < 0.5 ? 'red' : 'blue';
       const cards = generateBoard(startingTeam);
       const remainingRed = cards.filter(card => card.role === 'red').length;
@@ -650,16 +660,18 @@ async function startGame() {
 
       randomized.forEach((member, index) => {
         const team = index < midpoint ? 'red' : 'blue';
+        const isCaptain = (team === 'red' && member.id === redCaptain.id) || (team === 'blue' && member.id === blueCaptain.id);
         transaction.set(doc(db, 'rooms', safeRoomId, 'players', member.id), {
           ready: false,
           team,
-          isCaptain: member.id === captain.id
+          isCaptain
         }, { merge: true });
       });
 
       transaction.set(roomRef, {
         status: 'in-progress',
         startingTeam,
+        currentTurn: startingTeam,
         winner: null,
         remainingRed,
         remainingBlue
@@ -726,6 +738,9 @@ async function revealCard(index) {
       if (room.status !== 'in-progress') return;
       if (!playerSnap.exists()) throw new Error('找不到玩家資料');
       if (!cardSnap.exists()) throw new Error('卡片不存在');
+      const playerData = playerSnap.data();
+      if (!playerData.team) throw new Error('觀戰者無法翻牌');
+      if (room.currentTurn && playerData.team !== room.currentTurn) throw new Error('尚未輪到你的隊伍');
       const card = cardSnap.data();
       if (card.revealed) return;
 
@@ -749,6 +764,13 @@ async function revealCard(index) {
       if (winner) {
         updates.status = 'finished';
         updates.winner = winner;
+      }
+      if (card.role === 'assassin') {
+        updates.currentTurn = null;
+      } else if (!winner) {
+        updates.currentTurn = room.currentTurn === 'red' ? 'blue' : 'red';
+      } else {
+        updates.currentTurn = null;
       }
       if (Object.keys(updates).length) transaction.update(roomRef, updates);
     });
