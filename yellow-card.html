@@ -28,24 +28,16 @@
       width: min(1120px, 100%);
       background: var(--panel);
       border-radius: 28px;
-      box-shadow: 0 30px 70px rgba(249, 115, 22, .35);
+      box-shadow: 0 30px 70px rgba(249,115,22,.35);
       padding: clamp(2rem, 4vw, 3rem);
       display: grid;
       gap: 2rem;
     }
-    header h1 {
-      margin: 0 0 .6rem;
-      font-size: clamp(2rem, 4vw, 2.8rem);
-      letter-spacing: .08em;
-    }
-    header p {
-      margin: 0;
-      line-height: 1.7;
-      color: #374151;
-    }
+    header h1 { margin:0 0 .6rem; font-size: clamp(2rem,4vw,2.8rem); letter-spacing:.08em; }
+    header p  { margin:0; line-height:1.7; color:#374151; }
     section {
-      background: rgba(255,255,255,.88);
-      border: 1px solid rgba(249, 158, 47, .28);
+      background: rgba(255,255,255,.9);
+      border: 1px solid rgba(249,158,47,.28);
       border-radius: 22px;
       padding: clamp(1.3rem,3vw,2rem);
       display: grid;
@@ -54,20 +46,13 @@
     section h2 {
       margin:0;
       font-size: clamp(1.3rem,3vw,1.7rem);
-      display:flex;
-      align-items:center;
-      gap:.8rem;
+      display:flex; align-items:center; gap:.8rem;
     }
     section h2 span {
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      width:2.2rem;
-      height:2.2rem;
-      border-radius:50%;
+      display:inline-flex; align-items:center; justify-content:center;
+      width:2.2rem; height:2.2rem; border-radius:50%;
       background:linear-gradient(135deg,var(--accent),var(--accent-dark));
-      color:#1f2937;
-      font-weight:700;
+      color:#1f2937; font-weight:700;
     }
     input, button, select { font: inherit; }
     input {
@@ -78,15 +63,9 @@
       background: rgba(255,255,255,.96);
     }
     button {
-      border:none;
-      border-radius:999px;
-      padding:.7rem 1.4rem;
-      font-weight:600;
-      cursor:pointer;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:.4rem;
+      border:none; border-radius:999px;
+      padding:.7rem 1.4rem; font-weight:600; cursor:pointer;
+      display:inline-flex; align-items:center; justify-content:center; gap:.4rem;
       background:linear-gradient(135deg,var(--accent),var(--accent-dark));
       color:#1f2937;
       box-shadow:0 14px 24px rgba(249,115,22,.3);
@@ -96,34 +75,26 @@
     button:active { transform:translateY(1px); }
     button[disabled] { opacity:.55; cursor:not-allowed; transform:none; box-shadow:none; }
     .ghost { background:rgba(15,23,42,.08); box-shadow:none; }
-    .room-grid {
-      display:grid;
-      gap:1rem;
-      grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-    }
+    .room-grid { display:grid; gap:1rem; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); }
     .room-card {
       border-radius:18px;
       border:1px solid rgba(249,158,47,.35);
       background:rgba(255,255,255,.94);
       padding:1rem 1.2rem;
-      display:grid;
-      gap:.6rem;
+      display:grid; gap:.6rem;
       box-shadow:0 10px 24px rgba(249,115,22,.25);
     }
-    .room-card.active {
-      border:2px solid var(--accent-dark);
-      box-shadow:0 14px 30px rgba(249,115,22,.35);
-    }
+    .room-card.active { border:2px solid var(--accent-dark); box-shadow:0 14px 30px rgba(249,115,22,.35); }
     .badges { display:flex; gap:.5rem; flex-wrap:wrap; font-size:.85rem; color:#475569; }
-    .pill   { display:inline-flex; align-items:center; padding:.3rem .7rem; border-radius:999px; background:rgba(15,23,42,.1); font-size:.85rem; }
-    table   { width:100%; border-collapse:collapse; color:#1f2937; }
-    th,td   { padding:.65rem .75rem; border-bottom:1px solid rgba(148,163,184,.16); text-align:left; }
+    .pill { display:inline-flex; align-items:center; padding:.3rem .7rem; border-radius:999px; background:rgba(15,23,42,.1); font-size:.85rem; }
+    table { width:100%; border-collapse:collapse; color:#1f2937; }
+    th,td { padding:.65rem .75rem; border-bottom:1px solid rgba(148,163,184,.16); text-align:left; }
     tbody tr.current-player { background:rgba(56,189,248,.15); }
-    tbody tr.eliminated     { background:rgba(248,113,113,.22); }
-    .hand   { display:flex; flex-wrap:wrap; gap:.4rem; }
+    tbody tr.eliminated    { background:rgba(248,113,113,.22); }
+    .hand { display:flex; flex-wrap:wrap; gap:.4rem; }
     .hand span { background:rgba(148,163,184,.2); border-radius:12px; padding:.3rem .6rem; }
     .hidden { display:none!important; }
-    footer  { text-align:center; font-size:.95rem; color:#4b5563; }
+    footer { text-align:center; font-size:.95rem; color:#4b5563; }
     footer a { color:#1f2937; text-decoration:none; font-weight:600; }
   </style>
 </head>
@@ -131,12 +102,12 @@
   <main>
     <header>
       <h1>瘋狂黃牌大挑戰 · 多人同步版</h1>
-      <p>請先選擇房間，再輸入暱稱並加入。房主可控制開始／重設遊戲，也可踢出玩家。</p>
+      <p>請先選擇房間，再輸入暱稱並加入。全部玩家按下「我準備好了」之後，房主才能開始遊戲。</p>
     </header>
 
     <section id="room-selection">
       <h2><span>01</span>選擇房間與暱稱</h2>
-      <p style="margin:0;color:#475569;">步驟：先按「加入房間」，再輸入暱稱。所有玩家按下「我準備好了」後，房主才能開始遊戲。</p>
+      <p style="margin:0;color:#475569;">先從下方房間卡片選擇「加入房間」，再輸入暱稱；房主可重設房間與踢出玩家。</p>
 
       <div id="room-cards" class="room-grid"></div>
 
@@ -165,7 +136,7 @@
     </section>
 
     <section id="players-panel" class="hidden">
-      <h2><span>03</span>玩家黃牌與手牌</h2>
+      <h2><span>03</span>玩家管理</h2>
       <div style="overflow-x:auto;">
         <table>
           <thead>
