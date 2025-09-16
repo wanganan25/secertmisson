@@ -1,4 +1,4 @@
-﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js';
 import {
   getFirestore,
   doc,
@@ -11,34 +11,35 @@ import {
   orderBy,
   onSnapshot,
   runTransaction,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+  serverTimestamp,
+  getDocs
+} from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyADGfYlLyMB-W5A2JM6uF8VqTiF3LL9lEI",
-  authDomain: "secertmisson-19e11.firebaseapp.com",
-  projectId: "secertmisson-19e11",
-  storageBucket: "secertmisson-19e11.firebasestorage.app",
-  messagingSenderId: "730645471093",
-  appId: "1:730645471093:web:dacceb7a79256deb06fd3c"
+  apiKey: 'AIzaSyADGfYlLyMB-W5A2JM6uF8VqTiF3LL9lEI',
+  authDomain: 'secertmisson-19e11.firebaseapp.com',
+  projectId: 'secertmisson-19e11',
+  storageBucket: 'secertmisson-19e11.firebasestorage.app',
+  messagingSenderId: '730645471093',
+  appId: '1:730645471093:web:dacceb7a79256deb06fd3c'
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 const wordPool = [
-  "adventure","analysis","balance","beacon","bridge","canvas","celebration","challenge","clarity","compass","confidence","connection","courage","creative","dawn","discovery","dream","energy","focus","friend","future","galaxy","harmony","idea","insight","journey","knowledge","legend","light","logic","memory","mission","momentum","mystery","network","ocean","origin","pioneer","puzzle","quest","rhythm","rocket","science","signal","spirit","story","strategy","sunrise","teamwork","victory","vision","voice","whisper","wisdom","wonder","勇氣","陪伴","舞台","突破","信任","導航","熱血","制服","課本","筆記","系辦","宿舍","迎新","笑聲","夥伴","挑戰","咖啡","創意","默契","藍圖","熱舞","報到","掌聲","合照","社團","系學會","冒險","新生","學長","學姐","教室","操場","期初","夜唱","旅行","海邊","燈塔","星空","火花","羅盤","影子","記憶","步伐","弧光","勇者","信號","驚喜","高歌","電光","火箭","能量","節奏"
+  'adventure','analysis','balance','beacon','bridge','canvas','celebration','challenge','clarity','compass','confidence','connection','courage','creative','dawn','discovery','dream','energy','focus','friend','future','galaxy','harmony','idea','insight','journey','knowledge','legend','light','logic','memory','mission','momentum','mystery','network','ocean','origin','pioneer','puzzle','quest','rhythm','rocket','science','signal','spirit','story','strategy','sunrise','teamwork','victory','vision','voice','whisper','wisdom','wonder','勇氣','陪伴','舞台','突破','信任','導航','熱血','制服','課本','筆記','系辦','宿舍','迎新','笑聲','夥伴','挑戰','咖啡','創意','默契','藍圖','熱舞','報到','掌聲','合照','社團','系學會','冒險','新生','學長','學姐','教室','操場','期初','夜唱','旅行','海邊','燈塔','星空','火花','羅盤','影子','記憶','步伐','弧光','勇者','信號','驚喜','高歌','電光','火箭','能量','節奏'
 ];
 
 const defaultRoomConfigs = [
-  { id: "room-alpha", name: "迎新戰場 A", capacity: 8 },
-  { id: "room-bravo", name: "迎新戰場 B", capacity: 8 },
-  { id: "room-charlie", name: "默契挑戰 C", capacity: 8 },
-  { id: "room-delta", name: "默契挑戰 D", capacity: 8 }
+  { id: 'room-alpha', name: '迎新戰場 A', capacity: 8 },
+  { id: 'room-bravo', name: '迎新戰場 B', capacity: 8 },
+  { id: 'room-charlie', name: '默契挑戰 C', capacity: 8 },
+  { id: 'room-delta', name: '默契挑戰 D', capacity: 8 }
 ];
 
-const localPlayerKey = "codenamePlayerStore-v1";
-const lastRoomKey = "codenameLastRoomId";
+const localPlayerKey = 'codenamePlayerStore-v1';
+const lastRoomKey = 'codenameLastRoomId';
 
 function loadPlayerStore() {
   if (!('localStorage' in window)) return {};
@@ -141,7 +142,7 @@ function showError(message, error) {
 
 function shuffle(arr) {
   const copy = [...arr];
-  for (let i = copy.length - 1; i > 0; i--) {
+  for (let i = copy.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
     [copy[i], copy[j]] = [copy[j], copy[i]];
   }
@@ -166,6 +167,14 @@ function generateBoard(startingTeam) {
   }));
 }
 
+function getJoinedAtValue(data) {
+  const ts = data.joinedAt;
+  if (ts && typeof ts.seconds === 'number') {
+    return ts.seconds + (ts.nanoseconds || 0) / 1_000_000_000;
+  }
+  return 0;
+}
+
 function getCurrentPlayer() {
   if (!state.currentPlayerId) return null;
   return state.players.find(player => player.id === state.currentPlayerId) || null;
@@ -178,10 +187,6 @@ function updateViews() {
 }
 
 function renderRoomList() {
-  if (!state.rooms.size) {
-    roomListEl.innerHTML = '<div class="empty-state">房間準備中，請稍候...</div>';
-    return;
-  }
   const items = defaultRoomConfigs.map(config => {
     const room = state.rooms.get(config.id);
     const name = room?.name || config.name;
@@ -189,19 +194,20 @@ function renderRoomList() {
     const occupied = room?.playerCount || 0;
     const status = room?.status || 'lobby';
     const owner = room?.ownerName || '尚未指定';
-    const disabled = status === 'in-progress' || occupied >= capacity;
     const statusLabel = status === 'lobby' ? '等待開始' : status === 'in-progress' ? '遊戲進行中' : '已結束';
-    return `<div class="room-card">
-      <div style="display:flex;justify-content:space-between;gap:.6rem;align-items:flex-start;">
-        <h3>${name}</h3>
-        <span class="room-status">${statusLabel}</span>
-      </div>
-      <div class="room-meta">
-        <span>房主：${owner}</span>
-        <span>人數：${occupied}/${capacity}</span>
-      </div>
-      <button data-room="${config.id}" class="join-room" ${disabled ? 'disabled' : ''}>加入房間</button>
-    </div>`;
+    const disabled = status === 'in-progress' || occupied >= capacity;
+    return `
+      <div class="room-card">
+        <div style="display:flex;justify-content:space-between;gap:.6rem;align-items:flex-start;">
+          <h3>${name}</h3>
+          <span class="room-status">${statusLabel}</span>
+        </div>
+        <div class="room-meta">
+          <span>房主：${owner}</span>
+          <span>人數：${occupied}/${capacity}</span>
+        </div>
+        <button data-room="${config.id}" class="join-room" ${disabled ? 'disabled' : ''}>加入房間</button>
+      </div>`;
   }).join('');
   roomListEl.innerHTML = items;
 }
@@ -228,19 +234,19 @@ function renderRoomDetail() {
     if (player.team) badges.push(`<span class="badge team-${player.team}">${player.team === 'red' ? '紅隊' : '藍隊'}</span>`);
     if (player.isCaptain) badges.push('<span class="badge captain">隊長</span>');
     badges.push(`<span class="badge ${player.ready ? 'ready' : 'waiting'}">${player.ready ? '已準備' : '等待中'}</span>`);
-    return `<div class="player-card">
-      <div class="top-line">
-        <span class="name">${player.name || '隊友'}</span>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:.4rem;">${badges.join('')}</div>
-    </div>`;
+    return `
+      <div class="player-card">
+        <div class="top-line">
+          <span class="name">${player.name || '隊友'}</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:.4rem;">${badges.join('')}</div>
+      </div>`;
   }).join('');
   playerListEl.innerHTML = list || '<div class="empty-state">尚未有人加入，歡迎成為第一位成員！</div>';
 
   const currentPlayer = getCurrentPlayer();
   if (currentPlayer) {
-    const readyLabel = currentPlayer.ready ? '取消準備' : '我準備好了';
-    toggleReadyBtn.textContent = readyLabel;
+    toggleReadyBtn.textContent = currentPlayer.ready ? '取消準備' : '我準備好了';
     toggleReadyBtn.disabled = room.status !== 'lobby';
   } else {
     toggleReadyBtn.textContent = '我準備好了';
@@ -289,16 +295,13 @@ function updateScoreboard() {
   }
   const counts = { red: 0, blue: 0, neutral: 0, assassin: 0 };
   state.cards.forEach(card => {
-    if (!card.revealed) {
-      counts[card.role] = (counts[card.role] || 0) + 1;
-    }
+    if (!card.revealed) counts[card.role] = (counts[card.role] || 0) + 1;
   });
   boardScoreEl.innerHTML = `
     <span class="score"><span class="dot" style="background:#ef4444"></span>紅隊剩 ${counts.red}</span>
     <span class="score"><span class="dot" style="background:#2563eb"></span>藍隊剩 ${counts.blue}</span>
     <span class="score"><span class="dot" style="background:#94a3b8"></span>中立 ${counts.neutral}</span>
-    <span class="score"><span class="dot" style="background:#0f172a"></span>刺客 ${counts.assassin}</span>
-  `;
+    <span class="score"><span class="dot" style="background:#0f172a"></span>刺客 ${counts.assassin}</span>`;
 }
 
 function updateViewIndicator() {
@@ -367,6 +370,7 @@ function subscribeToRoom(roomId) {
     state.roomData = { id: snapshot.id, ...snapshot.data() };
     renderRoomDetail();
   });
+
   const playersQuery = query(collection(roomRef, 'players'), orderBy('joinedAt', 'asc'));
   state.unsubPlayers = onSnapshot(playersQuery, snapshot => {
     state.players = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
@@ -377,6 +381,7 @@ function subscribeToRoom(roomId) {
     }
     renderRoomDetail();
   });
+
   state.unsubCards = onSnapshot(collection(roomRef, 'cards'), snapshot => {
     state.cards = snapshot.docs.map(docSnap => {
       const data = docSnap.data();
@@ -404,6 +409,8 @@ async function ensureDefaultRooms() {
         startingTeam: 'red',
         winner: null,
         playerCount: 0,
+        remainingRed: null,
+        remainingBlue: null,
         createdAt: serverTimestamp()
       });
     } else {
@@ -412,9 +419,9 @@ async function ensureDefaultRooms() {
       if (data.name !== config.name) updates.name = config.name;
       if (data.capacity !== config.capacity) updates.capacity = config.capacity;
       if (typeof data.playerCount !== 'number') updates.playerCount = data.playerCount || 0;
-      if (Object.keys(updates).length) {
-        await updateDoc(roomRef, updates);
-      }
+      if (!('remainingRed' in data)) updates.remainingRed = null;
+      if (!('remainingBlue' in data)) updates.remainingBlue = null;
+      if (Object.keys(updates).length) await updateDoc(roomRef, updates);
     }
   }));
 }
@@ -441,6 +448,7 @@ async function attemptResume() {
 }
 
 async function handleJoinRoom(roomId) {
+  if (!roomId) return;
   const room = state.rooms.get(roomId);
   if (room && room.status === 'in-progress') {
     showError('遊戲進行中，請稍候再加入');
@@ -481,24 +489,26 @@ async function handleJoinRoom(roomId) {
 }
 
 async function joinRoomTransaction(roomId, name) {
+  if (!roomId) throw new Error('無效房間編號');
   const playerId = crypto.randomUUID();
-  const roomRef = doc(db, 'rooms', roomId);
-  const playersQuery = query(collection(roomRef, 'players'), orderBy('joinedAt', 'asc'));
   await runTransaction(db, async transaction => {
+    const roomRef = doc(db, 'rooms', roomId);
     const roomSnap = await transaction.get(roomRef);
     if (!roomSnap.exists()) throw new Error('房間不存在');
     const room = roomSnap.data();
     if (room.status === 'in-progress') throw new Error('遊戲進行中，請稍候加入');
-    const playersSnap = await transaction.get(playersQuery);
-    if (playersSnap.size >= (room.capacity || 8)) throw new Error('房間人數已滿');
-    transaction.set(doc(collection(roomRef, 'players'), playerId), {
+    const currentCount = room.playerCount || 0;
+    if (currentCount >= (room.capacity || 8)) throw new Error('房間人數已滿');
+
+    transaction.set(doc(db, 'rooms', roomId, 'players', playerId), {
       name,
       ready: false,
       team: null,
       isCaptain: false,
       joinedAt: serverTimestamp()
     });
-    const updates = { playerCount: playersSnap.size + 1 };
+
+    const updates = { playerCount: currentCount + 1 };
     if (!room.ownerId) {
       updates.ownerId = playerId;
       updates.ownerName = name;
@@ -506,6 +516,18 @@ async function joinRoomTransaction(roomId, name) {
     transaction.set(roomRef, updates, { merge: true });
   });
   return playerId;
+}
+
+async function fetchPlayerRefs(roomId) {
+  const snapshot = await getDocs(collection(db, 'rooms', roomId, 'players'));
+  return snapshot.docs
+    .map(docSnap => ({ ref: docSnap.ref, id: docSnap.id, data: docSnap.data() }))
+    .sort((a, b) => getJoinedAtValue(a.data) - getJoinedAtValue(b.data));
+}
+
+async function fetchCardRefs(roomId) {
+  const snapshot = await getDocs(collection(db, 'rooms', roomId, 'cards'));
+  return snapshot.docs.map(docSnap => docSnap.ref);
 }
 
 async function toggleReady() {
@@ -523,6 +545,9 @@ async function startGame() {
   const roomId = state.currentRoomId;
   const player = getCurrentPlayer();
   if (!roomId || !player) return;
+  const playerRefs = await fetchPlayerRefs(roomId);
+  const cardRefs = await fetchCardRefs(roomId);
+
   try {
     await runTransaction(db, async transaction => {
       const roomRef = doc(db, 'rooms', roomId);
@@ -531,33 +556,45 @@ async function startGame() {
       const room = roomSnap.data();
       if (room.ownerId !== player.id) throw new Error('只有房主可以開始遊戲');
       if (room.status !== 'lobby') throw new Error('遊戲狀態不允許開始');
-      const playersQuery = query(collection(roomRef, 'players'), orderBy('joinedAt', 'asc'));
-      const playersSnap = await transaction.get(playersQuery);
-      const players = playersSnap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+
+      const players = [];
+      for (const item of playerRefs) {
+        const snap = await transaction.get(item.ref);
+        if (snap.exists()) {
+          players.push({ id: snap.id, ...snap.data() });
+        }
+      }
       if (players.length < 2) throw new Error('至少需要兩位玩家');
-      if (!players.every(item => item.ready)) throw new Error('仍有人未按準備');
+      if (!players.every(p => p.ready)) throw new Error('仍有人未按準備');
+
       const randomized = shuffle(players);
       const midpoint = Math.ceil(randomized.length / 2);
       const captain = randomized[Math.floor(Math.random() * randomized.length)];
       const startingTeam = Math.random() < 0.5 ? 'red' : 'blue';
       const cards = generateBoard(startingTeam);
-      const cardsSnap = await transaction.get(collection(roomRef, 'cards'));
-      cardsSnap.forEach(docSnap => transaction.delete(docSnap.ref));
+      const remainingRed = cards.filter(card => card.role === 'red').length;
+      const remainingBlue = cards.filter(card => card.role === 'blue').length;
+
+      cardRefs.forEach(ref => transaction.delete(ref));
       cards.forEach(card => {
-        transaction.set(doc(collection(roomRef, 'cards'), String(card.index)), card);
+        transaction.set(doc(db, 'rooms', roomId, 'cards', String(card.index)), card);
       });
+
       randomized.forEach((member, index) => {
         const team = index < midpoint ? 'red' : 'blue';
-        transaction.set(doc(collection(roomRef, 'players'), member.id), {
+        transaction.set(doc(db, 'rooms', roomId, 'players', member.id), {
           ready: false,
           team,
           isCaptain: member.id === captain.id
         }, { merge: true });
       });
+
       transaction.set(roomRef, {
         status: 'in-progress',
         startingTeam,
-        winner: null
+        winner: null,
+        remainingRed,
+        remainingBlue
       }, { merge: true });
     });
   } catch (error) {
@@ -569,23 +606,26 @@ async function resetGame() {
   const roomId = state.currentRoomId;
   const player = getCurrentPlayer();
   if (!roomId || !player) return;
+  const playerRefs = await fetchPlayerRefs(roomId);
+  const cardRefs = await fetchCardRefs(roomId);
   try {
     await runTransaction(db, async transaction => {
       const roomRef = doc(db, 'rooms', roomId);
       const roomSnap = await transaction.get(roomRef);
       if (!roomSnap.exists()) throw new Error('房間不存在');
-      const room = roomSnap.data();
-      if (room.ownerId !== player.id) throw new Error('只有房主可以重設');
-      const playersSnap = await transaction.get(collection(roomRef, 'players'));
-      playersSnap.forEach(docSnap => {
-        transaction.set(docSnap.ref, { ready: false, team: null, isCaptain: false }, { merge: true });
-      });
-      const cardsSnap = await transaction.get(collection(roomRef, 'cards'));
-      cardsSnap.forEach(docSnap => transaction.delete(docSnap.ref));
+      if (roomSnap.data().ownerId !== player.id) throw new Error('只有房主可以重設');
+
+      for (const item of playerRefs) {
+        const ref = doc(db, 'rooms', roomId, 'players', item.id);
+        transaction.set(ref, { ready: false, team: null, isCaptain: false }, { merge: true });
+      }
+      cardRefs.forEach(ref => transaction.delete(ref));
       transaction.set(roomRef, {
         status: 'lobby',
         winner: null,
-        startingTeam: 'red'
+        startingTeam: 'red',
+        remainingRed: null,
+        remainingBlue: null
       }, { merge: true });
     });
   } catch (error) {
@@ -600,40 +640,44 @@ async function revealCard(index) {
   try {
     await runTransaction(db, async transaction => {
       const roomRef = doc(db, 'rooms', roomId);
-      const cardRef = doc(collection(roomRef, 'cards'), String(index));
-      const playerRef = doc(collection(roomRef, 'players'), player.id);
-      const roomSnap = await transaction.get(roomRef);
+      const cardRef = doc(db, 'rooms', roomId, 'cards', String(index));
+      const playerRef = doc(db, 'rooms', roomId, 'players', player.id);
+
+      const [roomSnap, playerSnap, cardSnap] = await Promise.all([
+        transaction.get(roomRef),
+        transaction.get(playerRef),
+        transaction.get(cardRef)
+      ]);
       if (!roomSnap.exists()) throw new Error('房間不存在');
       const room = roomSnap.data();
       if (room.status !== 'in-progress') return;
-      const playerSnap = await transaction.get(playerRef);
       if (!playerSnap.exists()) throw new Error('找不到玩家資料');
-      const cardSnap = await transaction.get(cardRef);
       if (!cardSnap.exists()) throw new Error('卡片不存在');
       const card = cardSnap.data();
       if (card.revealed) return;
+
       transaction.update(cardRef, { revealed: true });
+
       let winner = null;
+      const updates = {};
       if (card.role === 'assassin') {
         const team = playerSnap.data().team;
         winner = team === 'red' ? 'blue' : 'red';
-      } else {
-        const cardsSnap = await transaction.get(collection(roomRef, 'cards'));
-        let redRemaining = 0;
-        let blueRemaining = 0;
-        cardsSnap.forEach(docSnap => {
-          const data = docSnap.id === String(index) ? { ...docSnap.data(), revealed: true } : docSnap.data();
-          if (!data.revealed) {
-            if (data.role === 'red') redRemaining++;
-            if (data.role === 'blue') blueRemaining++;
-          }
-        });
-        if (redRemaining === 0) winner = 'red';
-        if (blueRemaining === 0) winner = 'blue';
+      } else if (card.role === 'red') {
+        const next = Math.max(0, (room.remainingRed ?? 0) - 1);
+        updates.remainingRed = next;
+        if (next === 0) winner = 'red';
+      } else if (card.role === 'blue') {
+        const next = Math.max(0, (room.remainingBlue ?? 0) - 1);
+        updates.remainingBlue = next;
+        if (next === 0) winner = 'blue';
       }
+
       if (winner) {
-        transaction.update(roomRef, { status: 'finished', winner });
+        updates.status = 'finished';
+        updates.winner = winner;
       }
+      if (Object.keys(updates).length) transaction.update(roomRef, updates);
     });
   } catch (error) {
     showError('翻牌失敗', error);
@@ -644,19 +688,28 @@ async function leaveRoom() {
   const roomId = state.currentRoomId;
   const playerId = state.currentPlayerId;
   if (!roomId || !playerId) return;
+  const playerRefs = await fetchPlayerRefs(roomId);
+  const cardRefs = await fetchCardRefs(roomId);
+
   try {
     await runTransaction(db, async transaction => {
       const roomRef = doc(db, 'rooms', roomId);
-      const playerRef = doc(collection(roomRef, 'players'), playerId);
       const roomSnap = await transaction.get(roomRef);
       if (!roomSnap.exists()) return;
-      const playersQuery = query(collection(roomRef, 'players'), orderBy('joinedAt', 'asc'));
-      const playersSnap = await transaction.get(playersQuery);
-      const players = playersSnap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
-      if (!players.some(item => item.id === playerId)) return;
-      transaction.delete(playerRef);
-      const remaining = players.filter(item => item.id !== playerId);
-      const updates = { playerCount: remaining.length };
+
+      const players = [];
+      for (const item of playerRefs) {
+        const snap = await transaction.get(item.ref);
+        if (snap.exists()) {
+          players.push({ id: snap.id, ...snap.data() });
+        }
+      }
+      if (!players.some(p => p.id === playerId)) return;
+
+      transaction.delete(doc(db, 'rooms', roomId, 'players', playerId));
+      const remaining = players.filter(p => p.id !== playerId);
+      const updates = { playerCount: Math.max(0, (roomSnap.data().playerCount || players.length) - 1) };
+
       if (roomSnap.data().ownerId === playerId) {
         if (remaining.length) {
           updates.ownerId = remaining[0].id;
@@ -666,13 +719,16 @@ async function leaveRoom() {
           updates.ownerName = '';
         }
       }
+
       if (!remaining.length) {
         updates.status = 'lobby';
         updates.winner = null;
         updates.startingTeam = 'red';
-        const cardsSnap = await transaction.get(collection(roomRef, 'cards'));
-        cardsSnap.forEach(docSnap => transaction.delete(docSnap.ref));
+        updates.remainingRed = null;
+        updates.remainingBlue = null;
+        cardRefs.forEach(ref => transaction.delete(ref));
       }
+
       transaction.set(roomRef, updates, { merge: true });
     });
   } catch (error) {
@@ -694,32 +750,19 @@ async function leaveRoom() {
 roomListEl.addEventListener('click', event => {
   const target = event.target.closest('.join-room');
   if (!target) return;
-  const roomId = target.dataset.room;
-  handleJoinRoom(roomId);
+  handleJoinRoom(target.dataset.room);
 });
 
-toggleReadyBtn.addEventListener('click', () => {
-  toggleReady();
-});
-
-startGameBtn.addEventListener('click', () => {
-  startGame();
-});
-
-resetGameBtn.addEventListener('click', () => {
-  resetGame();
-});
-
-leaveRoomBtn.addEventListener('click', () => {
-  leaveRoom();
-});
+toggleReadyBtn.addEventListener('click', toggleReady);
+startGameBtn.addEventListener('click', startGame);
+resetGameBtn.addEventListener('click', resetGame);
+leaveRoomBtn.addEventListener('click', leaveRoom);
 
 boardGridEl.addEventListener('click', event => {
   const cardEl = event.target.closest('.card');
   if (!cardEl) return;
   const index = Number(cardEl.dataset.index);
-  if (Number.isNaN(index)) return;
-  revealCard(index);
+  if (!Number.isNaN(index)) revealCard(index);
 });
 
 async function init() {
