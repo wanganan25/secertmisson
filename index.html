@@ -1,26 +1,711 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>我的網站</title>
+  <title>機密代號：默契考驗</title>
   <style>
-    body{font-family:system-ui,Arial,sans-serif;max-width:720px;margin:40px auto;line-height:1.6}
-    header{border-bottom:1px solid #ddd;margin-bottom:20px}
-    a{color:#0645ad;text-decoration:none}
-    a:hover{text-decoration:underline}
-    button{padding:.6rem 1rem;border:1px solid #333;background:#fff;cursor:pointer}
+    :root {
+      color-scheme: light dark;
+      --bg: #f5f6fa;
+      --surface: #ffffff;
+      --ink: #1f2933;
+      --accent: #4f46e5;
+      --neutral: #d4d4d8;
+      --card-shadow: 0 8px 18px rgba(31,41,51,.12);
+      --radius: 14px;
+      --duration: .25s;
+      font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+    }
+
+    header {
+      background: radial-gradient(circle at top left,#6366f1,#4338ca);
+      color: #fff;
+      padding: clamp(3rem,5vw,5rem) clamp(1.5rem,6vw,5rem);
+      border-bottom-left-radius: 36px;
+      border-bottom-right-radius: 36px;
+      box-shadow: 0 12px 32px rgba(79,70,229,.35);
+    }
+
+    header h1 {
+      margin: 0 0 .75rem;
+      font-size: clamp(2.4rem,4vw,3.4rem);
+      letter-spacing: .06em;
+    }
+
+    header p {
+      margin: 0;
+      max-width: 560px;
+      font-size: 1.05rem;
+      line-height: 1.6;
+    }
+
+    main {
+      margin: -40px auto 60px;
+      padding: 0 clamp(1.25rem,5vw,3rem) 4rem;
+      max-width: 1200px;
+    }
+
+    section {
+      background: var(--surface);
+      padding: clamp(1.8rem,4vw,2.8rem);
+      margin-top: clamp(2.4rem,5vw,3.6rem);
+      border-radius: var(--radius);
+      box-shadow: var(--card-shadow);
+    }
+
+    section h2 {
+      margin-top: 0;
+      font-size: clamp(1.6rem,3vw,2.1rem);
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+    }
+
+    section h2 span {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.1rem;
+      height: 2.1rem;
+      border-radius: 50%;
+      background: rgba(79,70,229,.15);
+      color: #4338ca;
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .grid-two {
+      display: grid;
+      gap: clamp(1.4rem,2vw,2rem);
+    }
+
+    @media (min-width: 960px) {
+      .grid-two { grid-template-columns: 2fr 1fr; align-items: start; }
+    }
+
+    ul, ol { padding-left: 1.3rem; }
+    li + li { margin-top: .35rem; }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      padding: .35rem .8rem;
+      border-radius: 999px;
+      background: rgba(15,118,110,.12);
+      color: #0f766e;
+      font-size: .85rem;
+      margin-right: .4rem;
+    }
+
+    .tools {
+      display: grid;
+      gap: clamp(1.5rem,2.5vw,2.4rem);
+    }
+
+    .tool-card h3 {
+      margin: 0 0 .75rem;
+      font-size: 1.25rem;
+    }
+
+    .tool-card p {
+      margin-top: 0;
+      margin-bottom: .75rem;
+      color: #4b5563;
+    }
+
+    textarea, input, button, select {
+      font: inherit;
+    }
+
+    textarea, input {
+      width: 100%;
+      padding: .75rem 1rem;
+      border-radius: 10px;
+      border: 1px solid #cbd5f5;
+      background: #f8fafc;
+      transition: border-color var(--duration), box-shadow var(--duration);
+    }
+
+    textarea:focus, input:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99,102,241,.18);
+      outline: none;
+    }
+
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: .65rem 1.4rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform var(--duration), box-shadow var(--duration), background var(--duration);
+      background: linear-gradient(135deg,#6366f1,#4338ca);
+      color: #fff;
+      box-shadow: 0 12px 24px rgba(67,56,202,.32);
+    }
+
+    button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 16px 28px rgba(67,56,202,.35); }
+    button:active:not(:disabled) { transform: translateY(0); box-shadow: 0 10px 18px rgba(67,56,202,.25); }
+    button:disabled { cursor: not-allowed; opacity: .65; box-shadow: none; }
+
+    .team-output {
+      display: grid;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .team-card {
+      border: 1px solid rgba(15,23,42,.1);
+      border-radius: 14px;
+      padding: 1rem 1.2rem;
+      background: #fefefe;
+    }
+
+    .team-card h4 {
+      margin: 0 0 .6rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      font-size: 1.1rem;
+    }
+
+    .team-card ul {
+      margin: 0;
+      padding-left: 1.2rem;
+    }
+
+    .board-wrapper {
+      margin-top: 1.4rem;
+      border-radius: var(--radius);
+      background: #f9fafb;
+      padding: clamp(1.2rem,2.4vw,1.8rem);
+      box-shadow: inset 0 0 0 1px rgba(15,23,42,.05);
+    }
+
+    .board-header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .75rem;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .board-header h3 {
+      margin: 0;
+      font-size: 1.35rem;
+    }
+
+    .board-header .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .6rem;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(5,minmax(0,1fr));
+      gap: .65rem;
+      transition: filter var(--duration);
+    }
+
+    .card {
+      position: relative;
+      padding: clamp(.65rem,1.4vw,.9rem);
+      border-radius: 12px;
+      min-height: 78px;
+      background: linear-gradient(145deg,#f8fafc,#e5e7eb);
+      color: #1f2933;
+      box-shadow: 0 10px 20px rgba(148,163,184,.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-weight: 600;
+      text-transform: capitalize;
+      cursor: pointer;
+      overflow: hidden;
+      transition: transform var(--duration), box-shadow var(--duration), filter var(--duration);
+    }
+
+    .card:hover { transform: translateY(-2px); box-shadow: 0 14px 26px rgba(100,116,139,.35); }
+
+    .card.revealed {
+      color: #fff;
+      box-shadow: none;
+    }
+
+    .card.revealed::after,
+    .board.show-map .card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      opacity: .88;
+      transition: opacity var(--duration);
+    }
+
+    .board.show-map .card::after { opacity: .25; pointer-events: none; }
+
+    .card.role-red.revealed::after,
+    .board.show-map .card.role-red::after { background: linear-gradient(160deg,#f87171,#ef4444); }
+    .card.role-blue.revealed::after,
+    .board.show-map .card.role-blue::after { background: linear-gradient(160deg,#60a5fa,#2563eb); }
+    .card.role-yellow.revealed::after,
+    .board.show-map .card.role-yellow::after { background: linear-gradient(160deg,#facc15,#f59e0b); }
+    .card.role-green.revealed::after,
+    .board.show-map .card.role-green::after { background: linear-gradient(160deg,#34d399,#059669); }
+    .card.role-neutral.revealed::after,
+    .board.show-map .card.role-neutral::after { background: linear-gradient(160deg,#e5e7eb,#cbd5f5); }
+    .card.role-assassin.revealed::after,
+    .board.show-map .card.role-assassin::after { background: linear-gradient(160deg,#1f2937,#111827); }
+
+    .card.revealed.role-neutral { color: #1e293b; }
+
+    .board:not(.show-map) .card:not(.revealed) { filter: saturate(.9); }
+
+    .board.show-map .card { filter: saturate(1.1); }
+
+    .card .label {
+      position: relative;
+      z-index: 1;
+      font-size: clamp(.9rem,1.2vw,1.05rem);
+      line-height: 1.2;
+    }
+
+    .scoreboard {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .6rem;
+    }
+
+    .score {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      padding: .4rem .9rem;
+      border-radius: 999px;
+      font-weight: 600;
+      background: rgba(15,23,42,.06);
+      color: #111827;
+    }
+
+    .score .dot {
+      width: .7rem;
+      height: .7rem;
+      border-radius: 50%;
+    }
+
+    .timer {
+      display: grid;
+      place-items: center;
+      background: #111827;
+      color: #f9fafb;
+      border-radius: var(--radius);
+      padding: 1.6rem 1.2rem;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.07), 0 12px 32px rgba(17,24,39,.2);
+      text-align: center;
+    }
+
+    .timer-display {
+      font-size: clamp(2.4rem,6vw,3.3rem);
+      letter-spacing: .12em;
+      margin-bottom: 1rem;
+    }
+
+    .timer-controls {
+      display: flex;
+      gap: .75rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .timer-controls button {
+      background: rgba(255,255,255,.14);
+      box-shadow: none;
+      padding: .55rem 1.2rem;
+    }
+
+    .timer-controls button:hover { background: rgba(255,255,255,.26); }
+
+    .materials {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .materials li {
+      list-style: none;
+      padding: .9rem 1.1rem;
+      border-radius: 12px;
+      background: rgba(99,102,241,.08);
+      border: 1px dashed rgba(99,102,241,.4);
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem 1rem 3rem;
+      color: #475569;
+    }
   </style>
 </head>
 <body>
-  <header><h1>你好，我的網站</h1></header>
+  <header>
+    <h1>機密代號：默契考驗</h1>
+    <p>歡迎來到迎新最佳破冰活動！透過隊長給予單字+數字線索，挑戰 5x5 單字地圖，考驗每一組的聯想力、默契與溝通技巧。</p>
+  </header>
   <main>
-    <p>這是我用 GitHub Pages 做的第一個網站。</p>
-    <p><a href="about.html">關於我</a></p>
-    <button id="btn">點我</button>
+    <section>
+      <h2><span>01</span>活動目的與亮點</h2>
+      <p>這個設計靈感來自經典桌遊「機密代號」，特別調整為迎新版本，讓 30 位新生與學長姐在最短時間內打破尷尬、建立默契。</p>
+      <div class="pill">快速破冰</div>
+      <div class="pill">溝通合作</div>
+      <div class="pill">雙場同步</div>
+      <div class="pill">輕鬆競賽</div>
+      <div class="grid-two" style="margin-top:1.4rem;">
+        <div>
+          <h3>核心目標</h3>
+          <ul>
+            <li>讓新成員彼此認識、觀察彼此的聯想與表達方式。</li>
+            <li>考驗團隊合作，在限時內完成任務並保持溝通效率。</li>
+            <li>營造活潑氛圍，協助迎新活動順利升溫。</li>
+          </ul>
+        </div>
+        <div>
+          <h3>活動結構</h3>
+          <ol>
+            <li>15 分鐘分組與準備。</li>
+            <li>20-30 分鐘雙場競賽：紅 vs 藍、黃 vs 綠。</li>
+            <li>分享隊長線索的思路，回顧活動亮點。</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2><span>02</span>流程懶人包</h2>
+      <ol>
+        <li><strong>分組與準備：</strong> 30 人分成 4 隊，挑出隊長，準備單字卡、遊戲地圖與計時器。</li>
+        <li><strong>雙場對決：</strong> 兩組比賽同時開打，隊長輪流給「線索單字 + 數字」，隊員猜卡片。</li>
+        <li><strong>翻牌結果：</strong> 猜中自己顏色可繼續，直到猜錯或用完次數；翻到刺客即失敗。</li>
+        <li><strong>勝利與分享：</strong> 最快翻完自己顏色的隊伍奪冠，最後由隊長分享破解的策略。</li>
+      </ol>
+      <p style="margin-top:1rem; color:#475569;">提示：隊長只能給一次線索，不得以肢體或表情暗示；每回合討論時間 90 秒。</p>
+    </section>
+
+    <section>
+      <h2><span>03</span>互動工具箱</h2>
+      <div class="tools">
+        <div class="tool-card">
+          <h3>分組助手</h3>
+          <p>貼上所有參與者姓名（每行一人），按一下就能自動分成四隊，確保紅、藍、黃、綠平均分配。</p>
+          <textarea id="name-input" rows="8" placeholder="範例：\n新生 1\n新生 2\n學長 1\n學姐 1"></textarea>
+          <div style="margin-top:.8rem; display:flex; gap:.75rem; flex-wrap:wrap;">
+            <button id="fill-default">填入 30 人範例</button>
+            <button id="shuffle-teams">立即分組</button>
+          </div>
+          <div id="team-output" class="team-output" aria-live="polite"></div>
+        </div>
+
+        <div class="tool-card">
+          <h3>90 秒回合計時器</h3>
+          <p>按下開始即可倒數，隨時暫停或重設。需要更改時長時，直接輸入想要的秒數。</p>
+          <div class="timer">
+            <div class="timer-display" id="timer-display">01:30</div>
+            <div style="margin-bottom:1rem;">
+              <label for="timer-seconds" style="display:block;margin-bottom:.5rem;font-size:.9rem;opacity:.8;">自訂秒數</label>
+              <input id="timer-seconds" type="number" min="10" max="600" value="90">
+            </div>
+            <div class="timer-controls">
+              <button id="timer-start">開始</button>
+              <button id="timer-pause">暫停</button>
+              <button id="timer-reset">重設</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2><span>04</span>雙場遊戲控制中心</h2>
+      <p>每個區域都是一場 5x5 單字戰場。點擊卡片即可翻牌，若需要換新局或只給隊長看顏色，使用上方按鈕就好。</p>
+
+      <div class="board-wrapper" data-arena="arenaA">
+        <div class="board-header">
+          <div>
+            <h3>區域一：紅隊 vs 藍隊</h3>
+            <div class="scoreboard" id="score-arenaA"></div>
+          </div>
+          <div class="actions">
+            <button data-action="toggle-map">切換隊長視角</button>
+            <button data-action="reset-board">換新局</button>
+          </div>
+        </div>
+        <div class="board" id="board-arenaA"></div>
+      </div>
+
+      <div class="board-wrapper" data-arena="arenaB">
+        <div class="board-header">
+          <div>
+            <h3>區域二：黃隊 vs 綠隊</h3>
+            <div class="scoreboard" id="score-arenaB"></div>
+          </div>
+          <div class="actions">
+            <button data-action="toggle-map">切換隊長視角</button>
+            <button data-action="reset-board">換新局</button>
+          </div>
+        </div>
+        <div class="board" id="board-arenaB"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2><span>05</span>準備物清單</h2>
+      <ul class="materials">
+        <li>🎴 2 組 25 張單字卡：活動前先設計並印製好，保持字體清晰、字卡耐用。</li>
+        <li>🗺️ 2 組遊戲地圖：僅提供給隊長，顏色配置需與單字卡相符。</li>
+        <li>⏱️ 計時器或手機：可使用本頁的線上倒數當備用。</li>
+        <li>🎁 小獎品：飲料、零食或文具皆可，增加競賽動力。</li>
+      </ul>
+    </section>
   </main>
+  <footer>
+    祝活動順利！讓大家透過默契考驗更熟悉彼此。
+  </footer>
   <script>
-    document.getElementById('btn').onclick = () => alert('網站就緒');
+    const wordPool = [
+      "adventure","analysis","balance","beacon","bridge","canvas","celebration","challenge","clarity","compass","confidence","connection","courage","creative","dawn","discovery","dream","energy","focus","friend","future","galaxy","harmony","idea","insight","journey","knowledge","legend","light","logic","memory","mission","momentum","mystery","network","ocean","origin","pioneer","puzzle","quest","rhythm","rocket","science","signal","spirit","story","strategy","sunrise","teamwork","victory","vision","voice","whisper","wisdom","wonder","勇氣","陪伴","舞台","突破","信任","導航","熱血","制服","課本","筆記","系辦","宿舍","迎新","笑聲","夥伴","挑戰","咖啡","創意","默契","藍圖","熱舞","報到","掌聲","合照","社團","系學會","冒險","新生","學長","學姐","教室","操場","期初","夜唱","旅行","海邊","燈塔","星空","火花","羅盤","影子","記憶","步伐","弧光","勇者","信號","驚喜","高歌","電光","火箭","能量","節奏"
+    ];
+
+    const teamPresets = [
+      "新生 1","新生 2","新生 3","新生 4","新生 5","新生 6","新生 7","新生 8","新生 9","新生 10",
+      "新生 11","新生 12","新生 13","新生 14","新生 15","新生 16","新生 17","新生 18","新生 19","新生 20",
+      "學長 1","學長 2","學長 3","學長 4","學長 5","學姐 1","學姐 2","學姐 3","學姐 4","學姐 5"
+    ];
+
+    const arenas = {
+      arenaA: {
+        elementId: "board-arenaA",
+        scoreId: "score-arenaA",
+        teams: [
+          { name: "紅隊", role: "red", color: "#ef4444" },
+          { name: "藍隊", role: "blue", color: "#2563eb" }
+        ],
+        neutralLabel: "中立",
+        assassinLabel: "刺客",
+        state: {}
+      },
+      arenaB: {
+        elementId: "board-arenaB",
+        scoreId: "score-arenaB",
+        teams: [
+          { name: "黃隊", role: "yellow", color: "#f59e0b" },
+          { name: "綠隊", role: "green", color: "#059669" }
+        ],
+        neutralLabel: "中立",
+        assassinLabel: "刺客",
+        state: {}
+      }
+    };
+
+    function shuffle(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function formatTime(seconds) {
+      const m = String(Math.floor(seconds / 60)).padStart(2, "0");
+      const s = String(seconds % 60).padStart(2, "0");
+      return `${m}:${s}`;
+    }
+
+    // Team randomizer
+    const nameInput = document.getElementById("name-input");
+    const teamOutput = document.getElementById("team-output");
+    document.getElementById("fill-default").addEventListener("click", () => {
+      nameInput.value = teamPresets.join("\n");
+    });
+
+    document.getElementById("shuffle-teams").addEventListener("click", () => {
+      const names = nameInput.value.split(/\n|,/).map(v => v.trim()).filter(Boolean);
+      if (names.length < 4) {
+        teamOutput.innerHTML = "<p>請至少輸入 4 位成員姓名。</p>";
+        return;
+      }
+      const randomized = shuffle(names);
+      const teams = ["紅隊","藍隊","黃隊","綠隊"].map(label => ({ label, members: [] }));
+      randomized.forEach((name, idx) => {
+        teams[idx % teams.length].members.push(name);
+      });
+      teamOutput.innerHTML = teams.map(team => {
+        const list = team.members.map(member => `<li>${member}</li>`).join("");
+        return `<div class="team-card"><h4>${team.label}</h4><ul>${list}</ul></div>`;
+      }).join("");
+    });
+
+    // Timer logic
+    const timerDisplay = document.getElementById("timer-display");
+    const timerSecondsInput = document.getElementById("timer-seconds");
+    const startBtn = document.getElementById("timer-start");
+    const pauseBtn = document.getElementById("timer-pause");
+    const resetBtn = document.getElementById("timer-reset");
+
+    let timerInterval = null;
+    let remaining = 90;
+
+    function updateTimerDisplay() {
+      timerDisplay.textContent = formatTime(remaining);
+    }
+
+    function setTimer(seconds) {
+      remaining = Math.max(10, Math.min(600, Math.floor(seconds)));
+      updateTimerDisplay();
+    }
+
+    timerSecondsInput.addEventListener("change", () => {
+      setTimer(Number(timerSecondsInput.value || 90));
+    });
+
+    startBtn.addEventListener("click", () => {
+      if (timerInterval) return;
+      timerInterval = setInterval(() => {
+        remaining -= 1;
+        if (remaining <= 0) {
+          remaining = 0;
+          clearInterval(timerInterval);
+          timerInterval = null;
+          timerDisplay.animate([{ transform: "scale(1)" }, { transform: "scale(1.08)" }, { transform: "scale(1)" }], { duration: 600, iterations: 3 });
+        }
+        updateTimerDisplay();
+      }, 1000);
+    });
+
+    pauseBtn.addEventListener("click", () => {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+    });
+
+    resetBtn.addEventListener("click", () => {
+      clearInterval(timerInterval);
+      timerInterval = null;
+      setTimer(Number(timerSecondsInput.value || 90));
+    });
+
+    setTimer(90);
+
+    function generateBoardConfig(arena) {
+      const boardWords = shuffle(wordPool).slice(0, 25);
+      const roles = [];
+      const neutralCount = 7;
+      const assassinCount = 1;
+      const baseTeamCount = 8;
+      const startingTeamIndex = Math.floor(Math.random() * arena.teams.length);
+      arena.teams.forEach((team, idx) => {
+        const count = baseTeamCount + (idx === startingTeamIndex ? 1 : 0);
+        for (let i = 0; i < count; i++) roles.push(team.role);
+      });
+      for (let i = 0; i < neutralCount; i++) roles.push("neutral");
+      for (let i = 0; i < assassinCount; i++) roles.push("assassin");
+      const shuffledRoles = shuffle(roles);
+      return boardWords.map((word, idx) => ({
+        word,
+        role: shuffledRoles[idx],
+        revealed: false
+      }));
+    }
+
+    function renderScore(arenaKey) {
+      const arena = arenas[arenaKey];
+      const counts = {};
+      arena.teams.forEach(team => { counts[team.role] = 0; });
+      counts.neutral = 0;
+      counts.assassin = 0;
+      arena.state.cards.forEach(card => {
+        if (!card.revealed) {
+          counts[card.role] = (counts[card.role] || 0) + 1;
+        }
+      });
+      const scoreBoard = document.getElementById(arena.scoreId);
+      scoreBoard.innerHTML = arena.teams.map(team => {
+        const remaining = counts[team.role] ?? 0;
+        return `<span class="score"><span class="dot" style="background:${team.color}"></span>${team.name} 剩 ${remaining}</span>`;
+      }).join("") + `<span class="score"><span class="dot" style="background:#64748b"></span>${arena.neutralLabel} ${counts.neutral ?? 0}</span>` + `<span class="score"><span class="dot" style="background:#0f172a"></span>${arena.assassinLabel} ${counts.assassin ?? 0}</span>`;
+    }
+
+    function renderBoard(arenaKey) {
+      const arena = arenas[arenaKey];
+      const boardEl = document.getElementById(arena.elementId);
+      boardEl.innerHTML = arena.state.cards.map((card, idx) => {
+        const revealedClass = card.revealed ? " revealed" : "";
+        return `<div class="card role-${card.role}${revealedClass}" data-index="${idx}" tabindex="0"><span class="label">${card.word}</span></div>`;
+      }).join("");
+      boardEl.classList.toggle("show-map", Boolean(arena.state.showMap));
+    }
+
+    function attachBoardEvents(arenaKey) {
+      const arena = arenas[arenaKey];
+      const boardEl = document.getElementById(arena.elementId);
+      boardEl.addEventListener("click", event => {
+        const cardEl = event.target.closest(".card");
+        if (!cardEl) return;
+        const index = Number(cardEl.dataset.index);
+        const card = arena.state.cards[index];
+        if (card.revealed) return;
+        card.revealed = true;
+        if (card.role === "assassin") {
+          boardEl.animate([{ filter: "none" }, { filter: "grayscale(1)" }, { filter: "none" }], { duration: 800 });
+        }
+        renderBoard(arenaKey);
+        renderScore(arenaKey);
+      });
+    }
+
+    function initializeArena(arenaKey) {
+      const arena = arenas[arenaKey];
+      arena.state.cards = generateBoardConfig(arena);
+      arena.state.showMap = false;
+      renderBoard(arenaKey);
+      renderScore(arenaKey);
+      attachBoardEvents(arenaKey);
+    }
+
+    Object.keys(arenas).forEach(initializeArena);
+
+    document.querySelectorAll(".board-wrapper").forEach(wrapper => {
+      const arenaKey = wrapper.dataset.arena;
+      wrapper.querySelectorAll("button").forEach(btn => {
+        const action = btn.dataset.action;
+        if (action === "toggle-map") {
+          btn.addEventListener("click", () => {
+            arenas[arenaKey].state.showMap = !arenas[arenaKey].state.showMap;
+            const boardEl = document.getElementById(arenas[arenaKey].elementId);
+            boardEl.classList.toggle("show-map", arenas[arenaKey].state.showMap);
+          });
+        }
+        if (action === "reset-board") {
+          btn.addEventListener("click", () => {
+            arenas[arenaKey].state.cards = generateBoardConfig(arenas[arenaKey]);
+            arenas[arenaKey].state.showMap = false;
+            renderBoard(arenaKey);
+            renderScore(arenaKey);
+          });
+        }
+      });
+    });
   </script>
 </body>
 </html>
