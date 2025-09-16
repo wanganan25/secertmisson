@@ -216,7 +216,7 @@ const winnerBannerEl = document.getElementById('winner-banner');
 const toggleReadyBtn = document.getElementById('toggle-ready');
 const startGameBtn = document.getElementById('start-game');
 const resetGameBtn = document.getElementById('reset-game');
-const leaveRoomBtn = document.getElementById('leave-room');\nconst lobbyResetBtn = document.getElementById('reset-all-rooms');
+const leaveRoomBtn = document.getElementById('leave-room');
 
 // -------------------- Rendering helpers --------------------
 function getCurrentPlayer() {
@@ -250,7 +250,10 @@ function renderRoomList() {
           <span>房主：${owner}</span>
           <span>人數：${occupied}/${capacity}</span>
         </div>
-        <button data-room="${config.id}" class="join-room" ${disabled ? 'disabled' : ''}>加入房間</button>
+        <div class="room-actions" style="display:flex;gap:.5rem;flex-wrap:wrap;">
+          <button data-room="${config.id}" class="join-room" ${disabled ? 'disabled' : ''}>加入房間</button>
+          <button data-room="${config.id}" class="ghost danger reset-room" type="button">重置房間</button>
+        </div>
       </div>`;
   }).join('');
   roomListEl.innerHTML = items;
@@ -522,47 +525,51 @@ async function fetchCardRefs(roomId) {
 }
 
 // -------------------- Room flows --------------------
-async function resetAllRooms() {
-  const confirmed = confirm('確認要重置所有房間嗎？');
+async function resetRoom(roomId) {
+  const safeRoomId = normalizeRoomId(roomId);
+  const confirmed = confirm(`確認要重置 ${roomId} 嗎？`);
   if (!confirmed) return;
   try {
-    await Promise.all(defaultRoomConfigs.map(async ({ id }) => {
-      const safeRoomId = normalizeRoomId(id);
-      const playersSnap = await getDocs(roomCollection(safeRoomId, 'players'));
-      const cardsSnap = await getDocs(roomCollection(safeRoomId, 'cards'));
-      await runTransaction(db, async transaction => {
-        const roomRef = doc(db, 'rooms', safeRoomId);
-        const roomSnap = await transaction.get(roomRef);
-        if (!roomSnap.exists()) return;
-        playersSnap.forEach(docSnap => transaction.delete(docSnap.ref));
-        cardsSnap.forEach(docSnap => transaction.delete(docSnap.ref));
-        transaction.set(roomRef, {
-          status: 'lobby',
-          ownerId: null,
-          ownerName: '',
-          startingTeam: 'red',
-          currentTurn: null,
-          guessesRemaining: null,
-          extraGuessAvailable: null,
-          winner: null,
-          playerCount: 0,
-          remainingRed: null,
-          remainingBlue: null
-        }, { merge: true });
-      });
-    }));
-    playerStore = {};
-    persistPlayerStore(playerStore);
-    clearLastRoom();
-    cleanupRoomSubscriptions();
-    state.currentRoomId = null;
-    state.currentPlayerId = null;
-    state.roomData = null;
-    state.players = [];
-    state.cards = [];
-    updateViews();
+    const playersSnap = await getDocs(roomCollection(safeRoomId, 'players'));
+    const cardsSnap = await getDocs(roomCollection(safeRoomId, 'cards'));
+    await runTransaction(db, async transaction => {
+      const roomRef = doc(db, 'rooms', safeRoomId);
+      const roomSnap = await transaction.get(roomRef);
+      if (!roomSnap.exists()) return;
+      playersSnap.forEach(docSnap => transaction.delete(docSnap.ref));
+      cardsSnap.forEach(docSnap => transaction.delete(docSnap.ref));
+      transaction.set(roomRef, {
+        status: 'lobby',
+        ownerId: null,
+        ownerName: '',
+        startingTeam: 'red',
+        currentTurn: null,
+        guessesRemaining: null,
+        extraGuessAvailable: null,
+        winner: null,
+        playerCount: 0,
+        remainingRed: null,
+        remainingBlue: null
+      }, { merge: true });
+    });
+    if (playerStore[safeRoomId]) {
+      delete playerStore[safeRoomId];
+      persistPlayerStore(playerStore);
+    }
+    if (state.currentRoomId === roomId) {
+      clearLastRoom();
+      cleanupRoomSubscriptions();
+      state.currentRoomId = null;
+      state.currentPlayerId = null;
+      state.roomData = null;
+      state.players = [];
+      state.cards = [];
+      updateViews();
+      renderRoomDetail();
+    } else {
+      renderRoomDetail();
+    }
     renderRoomList();
-    renderRoomDetail();
   } catch (error) {
     logAndAlert('重置房間失敗', error);
   }
@@ -1025,16 +1032,15 @@ async function leaveRoom() {
 
 // -------------------- Event bindings --------------------
 roomListEl.addEventListener('click', event => {
-  const target = event.target.closest('.join-room');
-  if (!target) return;
-  handleJoinRoom(target.dataset.room);
+  const resetBtn = event.target.closest('.reset-room');
+  if (resetBtn) {
+    resetRoom(resetBtn.dataset.room);
+    return;
+  }
+  const joinBtn = event.target.closest('.join-room');
+  if (!joinBtn) return;
+  handleJoinRoom(joinBtn.dataset.room);
 });
-
-if (lobbyResetBtn) {
-  lobbyResetBtn.addEventListener('click', () => {
-    resetAllRooms();
-  });
-}
 
 playerListEl.addEventListener('click', event => {
   const button = event.target.closest('.kick-btn');
