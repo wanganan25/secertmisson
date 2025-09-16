@@ -1,4 +1,4 @@
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js';
+﻿import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js';
 import {
   getFirestore,
   doc,
@@ -41,10 +41,12 @@ const wordSets = [
   ['愛','夢想','勇氣','希望','未來','自由','歡樂','熱情','和平','正義','時間','記憶','藝術','歷史','科學','奇蹟','信念','生命','命運','靈魂','黑暗','恐懼','聲音','沉默','死亡']
 ];
 const defaultRoomConfigs = [
-  { id: 'room-alpha', name: '機密代號 A', capacity: 10 },
-  { id: 'room-bravo', name: '機密代號 B', capacity: 10 },
-  { id: 'room-charlie', name: '機密代號 C', capacity: 10 },
-  { id: 'room-delta', name: '機密代號 D', capacity: 10 }
+  { id: 'room-alpha', name: '機密代號 A', capacity: 7 },
+  { id: 'room-bravo', name: '機密代號 B', capacity: 7 },
+  { id: 'room-charlie', name: '機密代號 C', capacity: 7 },
+  { id: 'room-delta', name: '機密代號 D', capacity: 7 },
+  { id: 'room-echo', name: '機密代號 E', capacity: 7 },
+  { id: 'room-foxtrot', name: '機密代號 F', capacity: 7 }
 ];
 
 const localPlayerKey = 'codenamePlayerStore-v1';
@@ -659,7 +661,7 @@ async function joinRoomTransaction(roomId, name) {
     const room = roomSnap.data();
     if (room.status === 'in-progress') throw new Error('遊戲進行中，請稍候加入');
     const currentCount = room.playerCount || 0;
-    if (currentCount >= (room.capacity || 8)) throw new Error('房間人數已滿');
+    if (currentCount >= (room.capacity || 7)) throw new Error('房間人數已滿');
 
     transaction.set(doc(db, 'rooms', safeRoomId, 'players', playerId), {
       name,
@@ -1083,4 +1085,5 @@ async function init() {
 }
 
 init();
+
 
