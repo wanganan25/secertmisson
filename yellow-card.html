@@ -89,16 +89,16 @@
       box-shadow:0 10px 24px rgba(249,115,22,.25);
     }
     .room-card.active { border:2px solid var(--accent-dark); box-shadow:0 14px 30px rgba(249,115,22,.35); }
-
     .badges { display:flex; gap:.5rem; flex-wrap:wrap; font-size:.85rem; color:#475569; }
     .pill { display:inline-flex; align-items:center; padding:.3rem .7rem; border-radius:999px; background:rgba(15,23,42,.1); font-size:.85rem; }
-    table { width:100%; border-collapse:collapse; }
-    th,td { padding:.65rem .75rem; border-bottom:1px solid rgba(15,23,42,.08); text-align:left; }
+
+    table { width:100%; border-collapse:collapse; color:#1f2937; }
+    th,td { padding:.65rem .75rem; border-bottom:1px solid rgba(148,163,184,.16); text-align:left; }
     tbody tr.current-player { background:rgba(56,189,248,.15); }
-    tbody tr.eliminated    { background:rgba(248,113,113,.2); }
+    tbody tr.eliminated    { background:rgba(248,113,113,.22); }
 
     .hand { display:flex; flex-wrap:wrap; gap:.4rem; }
-    .hand span { background:rgba(15,23,42,.1); border-radius:12px; padding:.3rem .6rem; }
+    .hand span { background:rgba(148,163,184,.2); border-radius:12px; padding:.3rem .6rem; }
 
     .hidden { display:none!important; }
     footer { text-align:center; font-size:.95rem; color:#4b5563; }
@@ -109,12 +109,12 @@
   <main>
     <header>
       <h1>瘋狂黃牌大挑戰 · 多人同步版</h1>
-      <p>請先選擇要加入的黃牌房間，再輸入暱稱並加入。所有人按下「我準備好了」，房主才能開始遊戲。</p>
+      <p>請先從下方選擇房間，再輸入暱稱並加入。房主可控制遊戲開始 / 重設，並可踢出玩家。</p>
     </header>
 
     <section id="room-selection">
       <h2><span>01</span>選擇房間與暱稱</h2>
-      <p style="margin:0;color:#475569;">步驟：先按「加入房間」，再輸入暱稱。房主可重置房間或踢出玩家。</p>
+      <p style="margin:0;color:#475569;">步驟：先按「加入房間」，再輸入暱稱。房主負責開始或重設遊戲，以及踢出玩家。</p>
 
       <div id="room-cards" class="room-grid"></div>
 
@@ -139,7 +139,6 @@
       <h2><span>02</span>房間狀態</h2>
       <p id="game-status">遊戲狀態：等待開始</p>
       <p id="judge-status">裁判：—</p>
-      <p id="topic-hint">題目尚未抽出</p>
     </section>
 
     <section id="players-panel" class="hidden">
