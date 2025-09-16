@@ -33,11 +33,18 @@ const wordPool = [
   'adventure','analysis','balance','beacon','bridge','canvas','celebration','challenge','clarity','compass','confidence','connection','courage','creative','dawn','discovery','dream','energy','focus','friend','future','galaxy','harmony','idea','insight','journey','knowledge','legend','light','logic','memory','mission','momentum','mystery','network','ocean','origin','pioneer','puzzle','quest','rhythm','rocket','science','signal','spirit','story','strategy','sunrise','teamwork','victory','vision','voice','whisper','wisdom','wonder','勇氣','陪伴','舞台','突破','信任','導航','熱血','制服','課本','筆記','系辦','宿舍','迎新','笑聲','夥伴','挑戰','咖啡','創意','默契','藍圖','熱舞','報到','掌聲','合照','社團','系學會','冒險','新生','學長','學姐','教室','操場','期初','夜唱','旅行','海邊','燈塔','星空','火花','羅盤','影子','記憶','步伐','弧光','勇者','信號','驚喜','高歌','電光','火箭','能量','節奏'
 ];
 
+
+const wordSets = [
+  ['書包','黑板','制服','合作社','操場','社團','考卷','午餐','畢業','晚自習','走廊','補習班','福利社','園遊會','校慶','體育館','校車','導師','鐘聲','便當','樓梯','桌子','獎狀','作業','校長'],
+  ['YouTube','籃球','電玩','電影','小說','動漫','手機','音樂','網購','漫畫','旅遊','偶像','追劇','社群','滑板','吉他','美食','咖啡','運動','朋友','錢包','KTV','流行','打工','大人'],
+  ['鑰匙','雨傘','電腦','冰箱','床','衣櫃','燈','時鐘','筆記本','椅子','書桌','水杯','眼鏡','耳機','手機','鞋子','枕頭','門','窗戶','鏡子','手電筒','衛生紙','書','地圖','刀'],
+  ['愛','夢想','勇氣','希望','未來','自由','歡樂','熱情','和平','正義','時間','記憶','藝術','歷史','科學','奇蹟','信念','生命','命運','靈魂','黑暗','恐懼','聲音','沉默','死亡']
+];
 const defaultRoomConfigs = [
-  { id: 'room-alpha', name: '迎新戰場 A', capacity: 8 },
-  { id: 'room-bravo', name: '迎新戰場 B', capacity: 8 },
-  { id: 'room-charlie', name: '默契挑戰 C', capacity: 8 },
-  { id: 'room-delta', name: '默契挑戰 D', capacity: 8 }
+  { id: 'room-alpha', name: '機密代號 A', capacity: 10 },
+  { id: 'room-bravo', name: '機密代號 B', capacity: 10 },
+  { id: 'room-charlie', name: '機密代號 C', capacity: 10 },
+  { id: 'room-delta', name: '機密代號 D', capacity: 10 }
 ];
 
 const localPlayerKey = 'codenamePlayerStore-v1';
@@ -80,8 +87,8 @@ function otherTeam(team) {
   return team === 'red' ? 'blue' : 'red';
 }
 
-function generateBoard(startingTeam) {
-  const boardWords = shuffle(wordPool).slice(0, 25);
+function generateBoard(startingTeam, wordSet = wordPool) {
+  const selectedWords = shuffle([...wordSet]).slice(0, 25);
   const otherTeam = startingTeam === 'red' ? 'blue' : 'red';
   const roles = [
     ...Array(9).fill(startingTeam),
@@ -90,7 +97,7 @@ function generateBoard(startingTeam) {
     'assassin'
   ];
   const shuffledRoles = shuffle(roles);
-  return boardWords.map((word, index) => ({
+  return selectedWords.map((word, index) => ({
     index,
     word,
     role: shuffledRoles[index],
@@ -716,7 +723,8 @@ async function startGame() {
       const redCaptain = redTeam[Math.floor(Math.random() * redTeam.length)];
       const blueCaptain = blueTeam[Math.floor(Math.random() * blueTeam.length)];
       const startingTeam = Math.random() < 0.5 ? 'red' : 'blue';
-      const cards = generateBoard(startingTeam);
+      const wordSet = wordSets[Math.floor(Math.random() * wordSets.length)];
+      const cards = generateBoard(startingTeam, wordSet);
       const remainingRed = cards.filter(card => card.role === 'red').length;
       const remainingBlue = cards.filter(card => card.role === 'blue').length;
 
