@@ -44,7 +44,7 @@
       color: #374151;
     }
     section {
-      background: rgba(255,255,255,.85);
+      background: rgba(255,255,255,.86);
       border: 1px solid rgba(249, 158, 47, .35);
       border-radius: 22px;
       padding: clamp(1.4rem, 3vw, 2rem);
@@ -76,7 +76,7 @@
       padding: .65rem 1rem;
       border-radius: 14px;
       border: 1px solid rgba(15,23,42,.1);
-      background: rgba(255,255,255,.95);
+      background: rgba(255,255,255,.92);
     }
     button {
       font: inherit;
@@ -100,7 +100,6 @@
     .ghost { background: rgba(15,23,42,.08); box-shadow: none; }
     .grid-two { display: grid; gap: 1.2rem; }
     @media(min-width: 860px) { .grid-two { grid-template-columns: repeat(2, minmax(0,1fr)); } }
-    .hint { margin: .4rem 0 0; font-size: .9rem; color: #64748b; }
     .room-grid {
       display: grid;
       gap: 1rem;
@@ -109,7 +108,7 @@
     .room-card {
       border-radius: 18px;
       border: 1px solid rgba(249, 158, 47, .35);
-      background: rgba(255,255,255,.92);
+      background: rgba(255,255,255,.94);
       padding: 1rem 1.2rem;
       display: grid;
       gap: .6rem;
@@ -129,17 +128,19 @@
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: .65rem .75rem; border-bottom: 1px solid rgba(15,23,42,.08); text-align: left; }
     tbody tr.current-player { background: rgba(56,189,248,.15); }
-    tbody tr.player-eliminated { background: rgba(248, 113, 113, .2); }
+    tbody tr.player-eliminated { background: rgba(248,113,113,.2); }
     .hand { display: flex; flex-wrap: wrap; gap: .4rem; }
     .hand span { background: rgba(15,23,42,.08); border-radius: 12px; padding: .3rem .6rem; }
     .hidden { display: none !important; }
+    footer { text-align: center; font-size: .95rem; color: #4b5563; }
+    footer a { color: #1f2937; text-decoration: none; font-weight: 600; }
   </style>
 </head>
 <body>
   <main>
     <header>
       <h1>瘋狂黃牌大挑戰 · 多人同步版</h1>
-      <p>選擇房間、輸入暱稱即可與全體玩家同步管理黃牌、題目卡與詞語卡。</p>
+      <p>選擇房間、輸入暱稱後即可即時同步管理黃牌、題目卡與詞語牌庫。</p>
     </header>
 
     <section id="room-selection">
@@ -148,11 +149,11 @@
         <div>
           <label for="nickname">我的暱稱</label>
           <input id="nickname" type="text" placeholder="輸入暱稱">
-          <p class="hint">加入任一房間後，所有操作會自動同步至 Firestore。</p>
+          <p style="margin:.4rem 0 0;font-size:.9rem;color:#64748b;">加入房間後，所有操作會自動同步至 Firestore。</p>
         </div>
         <div id="current-room-box" class="hidden">
           <strong id="current-room-name">目前未加入房間</strong>
-          <p class="hint" id="current-room-count">—</p>
+          <p id="current-room-count" style="margin:.35rem 0 0;font-size:.95rem;color:#475569;">—</p>
           <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.6rem;">
             <button id="leave-room-btn" class="ghost">離開房間</button>
           </div>
@@ -163,7 +164,6 @@
 
     <section id="players-panel" class="hidden">
       <h2><span>02</span>玩家黃牌＆手牌</h2>
-      <p class="hint">平均 3 張黃牌遊戲就會結束，可透過表格快速調整或補牌。</p>
       <div style="overflow-x:auto;">
         <table>
           <thead>
@@ -173,8 +173,8 @@
         </table>
       </div>
       <div style="display:flex;gap:.8rem;flex-wrap:wrap;">
-        <button id="btn-next-round" class="ghost">下一局：清除黃牌與手牌</button>
-        <button id="btn-reset-game" class="ghost">重設房間（重新洗牌）</button>
+        <button id="btn-next-round" class="ghost">下一局：清空黃牌與手牌</button>
+        <button id="btn-reset-game" class="ghost">重設房間（重洗題目＋詞語）</button>
       </div>
     </section>
 
@@ -192,17 +192,17 @@
     </section>
 
     <section id="words-panel" class="hidden">
-      <h2><span>04</span>詞語卡牌庫</h2>
+      <h2><span>04</span>詞語牌庫</h2>
       <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:center;">
         <button id="btn-deal-cards">為所有玩家發 13 張詞語卡</button>
-        <button id="btn-reset-deck" class="ghost">重洗詞語牌庫</button>
+        <button id="btn-reset-deck" class="ghost">重洗牌庫</button>
         <span class="pill" id="word-remaining">牌庫剩餘：--</span>
       </div>
-      <p class="hint">玩家若打出詞語卡，可於手牌欄按「補一張」。</p>
+      <p style="margin:0;font-size:.9rem;color:#4b5563;">玩家若打出詞語卡，可在手牌欄按「補一張」。</p>
     </section>
 
     <footer>
-      <p>遊戲結束後，比較黃牌最少者即為贏家。祝活動順利！｜<a href="index.html">返回遊戲選擇</a></p>
+      <p>遊戲結束後，黃牌最少者獲勝。祝活動順利！｜<a href="index.html">返回遊戲選擇</a></p>
     </footer>
   </main>
   <script type="module" src="yellow-card.js"></script>
