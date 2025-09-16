@@ -104,10 +104,11 @@ const submitForm = document.getElementById("submit-form");
 const handSelect = document.getElementById("hand-select");
 const previewText = document.getElementById("preview-text");
 
-const state = {\n  currentPlayer: null,
+const state = {
+  currentPlayer: null,
   currentRoomId: null,
   currentPlayerId: null,
-  currentPlayerName: '',
+  currentPlayerName: "",
   roomSnapshot: null,
   players: [],
   submissions: [],
