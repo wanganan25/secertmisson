@@ -846,6 +846,10 @@ async function revealCard(index) {
             guessesRemaining -= 1;
           } else if (extraGuessAvailable) {
             extraGuessAvailable = false;
+            turnChanged = true;
+            nextTurn = otherTeam(team);
+            guessesRemaining = BASE_GUESSES;
+            extraGuessAvailable = true;
           } else {
             turnChanged = true;
             nextTurn = otherTeam(team);
