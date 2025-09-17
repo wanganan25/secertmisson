@@ -462,36 +462,36 @@ function renderTeamChat() {
   const team = player?.team || null;
   const status = room?.status;
 
-  let indicatorText = '未分隊';
-  let statusText = '加入隊伍後即可查看隊長訊息。';
-  let emptyMessage = '等待分配隊伍中...';
+  let indicatorText = 'No Team';
+  let statusText = 'Join a room to see captain messages.';
+  let emptyMessage = 'Waiting for the game to start...';
   let allowSend = false;
 
   if (!room) {
-    statusText = '加入房間後才能使用隊伍聊天室。';
-    emptyMessage = '請先加入房間。';
+    statusText = 'Please join a room first.';
+    emptyMessage = 'No room joined yet.';
   } else if (!player) {
-    statusText = '請確認您已出現在房內玩家列表。';
+    statusText = 'Confirm that you appear in the player list.';
   } else if (!team) {
     statusText = status === 'in-progress'
-      ? '尚未分配隊伍，暫時無法聊天。'
-      : '等待房主開始遊戲並分配隊伍。';
+      ? 'You are not assigned to a team yet.'
+      : 'Wait for the host to start the game and assign teams.';
   } else {
     const isRed = team === 'red';
-    indicatorText = isRed ? '紅隊' : '藍隊';
+    indicatorText = isRed ? 'Red Team' : 'Blue Team';
 
     if (status === 'in-progress') {
       if (player.isCaptain) {
         allowSend = true;
-        statusText = isRed ? '你是紅隊隊長，請輸入提示訊息。' : '你是藍隊隊長，請輸入提示訊息。';
-        emptyMessage = '尚未有訊息，開始與隊友討論吧！';
+        statusText = isRed ? 'You are the red captain. Share clues with your team.' : 'You are the blue captain. Share clues with your team.';
+        emptyMessage = 'No clues yet, send the first message!';
       } else {
-        statusText = isRed ? '僅紅隊隊長可以發送訊息，請留意隊長的提示。' : '僅藍隊隊長可以發送訊息，請留意隊長的提示。';
-        emptyMessage = '等待隊長分享線索…';
+        statusText = isRed ? 'Only the red captain can send messages.' : 'Only the blue captain can send messages.';
+        emptyMessage = 'Waiting for the captain to speak...';
       }
     } else {
-      statusText = '遊戲開始後由隊長負責發送提示。';
-      emptyMessage = '等待遊戲開始。';
+      statusText = 'Captains can talk once the game begins.';
+      emptyMessage = 'Waiting for the game to begin.';
     }
   }
 
@@ -504,10 +504,18 @@ function renderTeamChat() {
   } else {
     teamChatMessagesEl.classList.remove('empty');
     const items = state.chatMessages.map(message => {
-      const senderName = escapeHtml(message.senderName || '匿名隊友');
+      const senderName = escapeHtml(message.senderName || 'Captain');
       const roleFlag = message.senderRole || '';
-      const roleLabel = roleFlag === 'red-captain' ? '紅隊隊長' : roleFlag === 'blue-captain' ? '藍隊隊長' : message.team === 'red' ? '紅隊隊長' : message.team === 'blue' ? '藍隊隊長' : '隊長';
-      const senderLabel = ${senderName}（）;
+      const roleLabel = roleFlag === 'red-captain'
+        ? 'Red Captain'
+        : roleFlag === 'blue-captain'
+        ? 'Blue Captain'
+        : message.team === 'red'
+        ? 'Red Captain'
+        : message.team === 'blue'
+        ? 'Blue Captain'
+        : 'Captain';
+      const senderLabel = senderName + ' (' + roleLabel + ')';
       const content = escapeHtml(message.text || '');
       const timeLabel = formatTeamChatTimestamp(message.createdAt);
       const meta = timeLabel ? '<span>' + escapeHtml(timeLabel) + '</span>' : '';
@@ -583,7 +591,7 @@ async function sendTeamMessage() {
   const player = getCurrentPlayer();
   if (!roomId || !player || !player.team) return;
   if (!player.isCaptain) {
-    logAndAlert('只有隊長可以發送訊息');
+    logAndAlert('只有隊長可以發送隊伍訊息');
     return;
   }
 
@@ -1347,6 +1355,7 @@ async function init() {
 }
 
 init();
+
 
 
 
