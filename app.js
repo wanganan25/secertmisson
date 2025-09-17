@@ -12,7 +12,8 @@ import {
   onSnapshot,
   runTransaction,
   serverTimestamp,
-  getDocs
+  getDocs,
+  addDoc
 } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js';
 
 // -------------------- Firebase bootstrap --------------------
