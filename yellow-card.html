@@ -1,0 +1,282 @@
+﻿<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>瘋狂黃牌大挑戰｜房間大廳</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+      --bg-top: #fff4cc;
+      --bg-bottom: #ffc15e;
+      --panel: rgba(255, 255, 255, 0.96);
+      --accent: #ef476f;
+      --accent-dark: #d9365d;
+      --ink: #17212b;
+      --ink-soft: #44515f;
+      --divider: rgba(17, 24, 39, 0.12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: clamp(1.5rem, 5vw, 4rem);
+      background: linear-gradient(155deg, var(--bg-top) 0%, var(--bg-bottom) 48%, #ef476f 100%);
+      color: var(--ink);
+    }
+    main {
+      width: min(1200px, 100%);
+      background: var(--panel);
+      border-radius: 30px;
+      box-shadow: 0 32px 78px rgba(23, 33, 43, 0.24);
+      padding: clamp(2.2rem, 5vw, 3.4rem);
+      display: grid;
+      gap: clamp(2rem, 4vw, 3rem);
+    }
+    header h1 {
+      margin: 0 0 .6rem;
+      font-size: clamp(2.2rem, 5vw, 3.2rem);
+      letter-spacing: .08em;
+    }
+    header p {
+      margin: 0;
+      line-height: 1.7;
+      color: var(--ink-soft);
+      max-width: 70ch;
+    }
+    section {
+      background: rgba(255, 255, 255, 0.94);
+      border: 1px solid rgba(255, 209, 102, 0.55);
+      border-radius: 26px;
+      padding: clamp(1.4rem, 3.6vw, 2.4rem);
+      display: grid;
+      gap: 1.2rem;
+    }
+    section h2 {
+      margin: 0;
+      font-size: clamp(1.3rem, 3vw, 1.8rem);
+      display: flex;
+      align-items: center;
+      gap: .8rem;
+    }
+    section h2 span {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+    }
+    .subtext {
+      font-size: .95rem;
+      color: var(--ink-soft);
+      margin: 0;
+    }
+    input, select, button {
+      font: inherit;
+    }
+    input, select {
+      width: 100%;
+      padding: .7rem 1rem;
+      border-radius: 16px;
+      border: 1px solid rgba(17, 24, 39, 0.18);
+      background: rgba(255, 255, 255, 0.98);
+    }
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: .7rem 1.5rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .4rem;
+      transition: transform .16s ease, box-shadow .16s ease, opacity .16s ease;
+    }
+    button:hover:not([disabled]) { transform: translateY(-2px); }
+    button:active:not([disabled]) { transform: translateY(1px); }
+    button[disabled] { opacity: .55; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      color: #fff;
+      box-shadow: 0 16px 30px rgba(239, 71, 111, 0.32);
+    }
+    .btn-ghost {
+      background: rgba(17, 24, 39, 0.08);
+      color: var(--ink);
+      box-shadow: none;
+    }
+    .room-grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+    .room-card {
+      border-radius: 22px;
+      border: 1px solid rgba(239, 71, 111, 0.2);
+      padding: 1.1rem 1.3rem;
+      display: grid;
+      gap: .8rem;
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 16px 36px rgba(239, 71, 111, 0.2);
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .room-card.active {
+      transform: translateY(-4px);
+      box-shadow: 0 22px 48px rgba(239, 71, 111, 0.3);
+      border-color: rgba(239, 71, 111, 0.45);
+    }
+    .room-name { font-size: 1.25rem; font-weight: 700; }
+    .room-meta {
+      display: flex;
+      flex-direction: column;
+      gap: .3rem;
+      font-size: .95rem;
+      color: var(--ink-soft);
+    }
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .45rem;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: .28rem .7rem;
+      border-radius: 999px;
+      font-size: .8rem;
+      letter-spacing: .05em;
+      background: rgba(17, 24, 39, 0.08);
+      color: var(--ink);
+    }
+    .badge.host { background: rgba(239, 71, 111, 0.18); color: var(--accent-dark); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .95rem;
+    }
+    th, td {
+      padding: .65rem .8rem;
+      border-bottom: 1px solid var(--divider);
+      text-align: left;
+    }
+    tbody tr.host { background: rgba(239, 71, 111, 0.12); }
+    tbody tr.me { background: rgba(56, 189, 248, 0.18); }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: .28rem .8rem;
+      border-radius: 999px;
+      background: rgba(17, 24, 39, 0.08);
+      font-size: .78rem;
+      letter-spacing: .04em;
+    }
+    .hidden { display: none !important; }
+    footer {
+      text-align: center;
+      font-size: .92rem;
+      color: rgba(17, 24, 39, 0.65);
+    }
+    footer a { color: var(--accent-dark); font-weight: 600; text-decoration: none; }
+    @media (max-width: 720px) {
+      body { padding: 1.2rem; }
+      main { padding: 1.6rem; }
+      section { padding: 1.2rem; }
+      th, td { font-size: .88rem; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>瘋狂黃牌大挑戰｜同步房間大廳</h1>
+      <p>直接連線到 Firestore 的 yellowRooms 集合即可顯示所有房間。輸入暱稱後加入房間，第一位玩家會成為房主，負責開局、抽題目與管理玩家。</p>
+    </header>
+
+    <section id="room-section">
+      <h2><span>01</span>選擇房間與暱稱</h2>
+      <p class="subtext">請先輸入暱稱，再從下方房間列表選擇加入。若房間已滿或有重複暱稱，系統會立即提示。</p>
+      <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));align-items:end;">
+        <label>我的暱稱
+          <input id="nickname" placeholder="輸入暱稱">
+        </label>
+        <div id="current-room-box" class="hidden" style="display:grid;gap:.6rem;">
+          <div>
+            <strong id="current-room-name">目前房間：—</strong>
+            <p id="current-room-info" class="subtext" style="margin:.25rem 0 0;">尚未加入房間</p>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:.55rem;">
+            <button id="btn-ready" class="btn-ghost">我準備好了</button>
+            <button id="btn-leave" class="btn-ghost">離開房間</button>
+            <button id="btn-start" class="btn-ghost hidden">房主開始新回合</button>
+          </div>
+        </div>
+      </div>
+      <div id="room-cards" class="room-grid"></div>
+    </section>
+
+    <section id="status-panel" class="hidden">
+      <h2><span>02</span>房間狀態</h2>
+      <p id="game-phase" class="subtext">遊戲狀態：等待加入</p>
+      <p id="judge-info" class="subtext">本局裁判：—</p>
+      <div class="room-card" style="background:rgba(239,244,255,.55);">
+        <h3 style="margin:0 0 .4rem;">目前題目</h3>
+        <p id="topic-text" style="margin:0;line-height:1.6;">尚未抽題目</p>
+        <span id="topic-remaining" class="pill">剩餘題目：--</span>
+      </div>
+    </section>
+
+    <section id="players-panel" class="hidden">
+      <h2><span>03</span>玩家列表與操作</h2>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>玩家</th>
+              <th>身分</th>
+              <th>黃牌</th>
+              <th>準備</th>
+              <th>手牌</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="players-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="host-panel" class="hidden">
+      <h2><span>04</span>房主 / 裁判工具</h2>
+      <div style="display:flex;flex-wrap:wrap;gap:.6rem;">
+        <button id="btn-draw-topic" class="btn-primary">抽題目卡</button>
+        <button id="btn-recycle-topic" class="btn-ghost">題庫回收並洗牌</button>
+        <button id="btn-reset-room" class="btn-ghost">重設房間</button>
+      </div>
+      <div style="display:grid;gap:.8rem;">
+        <h3 style="margin:0;">匿名提交</h3>
+        <div id="submission-list" style="display:grid;gap:.6rem;"></div>
+      </div>
+    </section>
+
+    <section id="player-panel" class="hidden">
+      <h2><span>05</span>提交我的詞語</h2>
+      <form id="submit-form" style="display:grid;gap:.8rem;max-width:520px;">
+        <label class="subtext" for="hand-select">從手牌中選擇要填入題目的詞語</label>
+        <select id="hand-select"></select>
+        <button type="submit" class="btn-primary">確認送出</button>
+      </form>
+    </section>
+
+    <footer>
+      <p>任何玩家累積 3 張黃牌即宣布結束，黃牌最少者獲勝。完成活動後可返回 <a href="index.html">主頁</a>。</p>
+    </footer>
+  </main>
