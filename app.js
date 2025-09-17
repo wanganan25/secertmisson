@@ -49,6 +49,7 @@ const defaultRoomConfigs = [
 
 const localPlayerKey = 'codenamePlayerStore-v1';
 const BASE_GUESSES = 1;
+const TEAM_KEYS = ['red','blue'];
 
 const lastRoomKey = 'codenameLastRoomId';
 
@@ -69,6 +70,12 @@ function roomCollection(roomId, ...segments) {
   return collection(db, 'rooms', safeId, ...segments);
 }
 
+function teamChatCollection(roomId, team) {
+  const safeId = normalizeRoomId(roomId);
+  if (!TEAM_KEYS.includes(team)) throw new Error('�䲼���覡�����T');
+  return collection(db, 'rooms', safeId, 'teamChats-' + team);
+}
+
 function logAndAlert(message, error) {
   console.error(message, error || '');
   alert(message);
@@ -81,6 +88,17 @@ function shuffle(arr) {
     [copy[i], copy[j]] = [copy[j], copy[i]];
   }
   return copy;
+}
+
+function escapeHtml(value) {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  };
+  return String(value ?? '').replace(/[&<>"']/g, char => map[char] || char);
 }
 
 function otherTeam(team) {
@@ -274,6 +292,7 @@ function renderRoomDetail() {
     boardScoreEl.innerHTML = '';
     viewIndicatorEl.textContent = '請加入房間';
     winnerBannerEl.style.display = 'none';
+    renderTeamChat();
     return;
   }
 
@@ -322,6 +341,7 @@ function renderRoomDetail() {
 
   updateViewIndicator();
   renderBoard();
+  renderTeamChat();
 }
 
 function renderBoard() {
@@ -332,6 +352,7 @@ function renderBoard() {
     boardGridEl.classList.add('disabled');
     boardScoreEl.innerHTML = '';
     winnerBannerEl.style.display = 'none';
+    renderTeamChat();
     return;
   }
 
@@ -391,11 +412,177 @@ function updateViewIndicator() {
   }
 }
 
+
+function cleanupChatSubscription() {
+  if (state.unsubChat) {
+    state.unsubChat();
+    state.unsubChat = null;
+  }
+}
+
+function resetChatState() {
+  cleanupChatSubscription();
+  state.chatMessages = [];
+  state.chatTeam = null;
+}
+
+function formatTeamChatTimestamp(value) {
+  try {
+    if (value && typeof value.toDate === 'function') {
+      const date = value.toDate();
+      return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    }
+  } catch (error) {
+    console.warn('�䲼��Ʈw�ɮצ����T', error);
+  }
+  return '';
+}
+
+function updateTeamChatControls() {
+  if (!teamChatInputEl || !teamChatSendBtn) return;
+  const canSend = !teamChatInputEl.disabled && Boolean(teamChatInputEl.value.trim());
+  teamChatSendBtn.disabled = !canSend;
+}
+
+function renderTeamChat() {
+  if (!teamChatPanelEl || !teamChatIndicatorEl || !teamChatStatusEl || !teamChatMessagesEl || !teamChatInputEl || !teamChatSendBtn) return;
+
+  const room = state.roomData;
+  const player = getCurrentPlayer();
+  const team = player?.team || null;
+  const status = room?.status;
+
+  let indicatorText = '未分隊';
+  let statusText = '加入隊伍後即可與隊友聊天。';
+  let emptyMessage = '等待分配隊伍中...';
+  let allowSend = false;
+
+  if (!room) {
+    statusText = '加入房間後即可使用隊伍聊天室。';
+    emptyMessage = '請先加入房間。';
+  } else if (!player) {
+    statusText = '請確認您已成功加入玩家列表。';
+  } else if (!team) {
+    statusText = status === 'in-progress'
+      ? '尚未分配隊伍，暫時無法傳訊。'
+      : '等待房主開始遊戲並分配隊伍。';
+  } else {
+    indicatorText = team === 'red' ? '紅隊' : '藍隊';
+    if (status === 'in-progress') {
+      allowSend = true;
+      statusText = team === 'red' ? '與紅隊隊友交換線索。' : '與藍隊隊友交換線索。';
+      emptyMessage = '還沒有訊息，快和隊友討論策略吧！';
+    } else {
+      statusText = '遊戲開始後才能聊天。';
+      emptyMessage = '等待遊戲開始。';
+    }
+  }
+
+  teamChatIndicatorEl.textContent = indicatorText;
+  teamChatStatusEl.textContent = statusText;
+
+  if (!state.chatMessages.length) {
+    teamChatMessagesEl.classList.add('empty');
+    teamChatMessagesEl.textContent = emptyMessage;
+  } else {
+    teamChatMessagesEl.classList.remove('empty');
+    const items = state.chatMessages.map(message => {
+      const sender = escapeHtml(message.senderName || '匿名隊友');
+      const content = escapeHtml(message.text || '');
+      const timeLabel = formatTeamChatTimestamp(message.createdAt);
+      const meta = timeLabel ? '<span>' + escapeHtml(timeLabel) + '</span>' : '';
+      return '<div class="chat-message"><div class="sender"><span>' + sender + '</span>' + meta + '</div><div class="text">' + content + '</div></div>';
+    }).join('');
+    teamChatMessagesEl.innerHTML = items;
+    teamChatMessagesEl.scrollTop = teamChatMessagesEl.scrollHeight;
+  }
+
+  teamChatInputEl.disabled = !allowSend;
+  if (!allowSend) teamChatInputEl.value = '';
+  if (teamChatFormEl) teamChatFormEl.classList.toggle('disabled', !allowSend);
+  updateTeamChatControls();
+}
+
+function ensureTeamChatSubscription() {
+  if (!teamChatPanelEl) return;
+  const roomId = state.currentRoomId;
+  const room = state.roomData;
+  const player = getCurrentPlayer();
+  const team = player?.team || null;
+  const active = Boolean(roomId && room && room.status === 'in-progress' && team);
+
+  if (!active) {
+    if (state.chatTeam !== null || state.chatMessages.length) {
+      resetChatState();
+    } else {
+      cleanupChatSubscription();
+    }
+    renderTeamChat();
+    return;
+  }
+
+  if (state.chatTeam === team && state.unsubChat) return;
+
+  resetChatState();
+
+  let messagesQuery;
+  try {
+    messagesQuery = query(teamChatCollection(roomId, team), orderBy('createdAt', 'asc'));
+  } catch (error) {
+    console.warn('�䲼��Ʈw�����覡����', error);
+    renderTeamChat();
+    return;
+  }
+
+  state.chatTeam = team;
+  state.unsubChat = onSnapshot(messagesQuery, snapshot => {
+    state.chatMessages = snapshot.docs.map(docSnap => {
+      const data = docSnap.data();
+      return {
+        id: docSnap.id,
+        text: data.text || '',
+        senderId: data.senderId || '',
+        senderName: data.senderName || '',
+        createdAt: data.createdAt || null
+      };
+    });
+    renderTeamChat();
+  });
+  renderTeamChat();
+}
+
+
+async function sendTeamMessage() {
+  if (!teamChatInputEl || teamChatInputEl.disabled) return;
+  const message = teamChatInputEl.value.trim();
+  if (!message) return;
+
+  const roomId = state.currentRoomId;
+  const player = getCurrentPlayer();
+  if (!roomId || !player || !player.team) return;
+
+  if (teamChatSendBtn) teamChatSendBtn.disabled = true;
+  try {
+    await addDoc(teamChatCollection(roomId, player.team), {
+      text: message,
+      senderId: player.id,
+      senderName: player.name || '',
+      team: player.team,
+      createdAt: serverTimestamp()
+    });
+    teamChatInputEl.value = '';
+  } catch (error) {
+    logAndAlert('�Ǧ^隊伍��T����', error);
+  } finally {
+    updateTeamChatControls();
+  }
+}
 // -------------------- Firestore listeners --------------------
 function cleanupRoomSubscriptions() {
   if (state.unsubRoom) { state.unsubRoom(); state.unsubRoom = null; }
   if (state.unsubPlayers) { state.unsubPlayers(); state.unsubPlayers = null; }
   if (state.unsubCards) { state.unsubCards(); state.unsubCards = null; }
+  if (state.unsubChat) { state.unsubChat(); state.unsubChat = null; }
 }
 
 function subscribeToDirectory() {
@@ -414,9 +601,11 @@ function subscribeToDirectory() {
 
 function subscribeToRoom(roomId) {
   cleanupRoomSubscriptions();
+  resetChatState();
   state.roomData = null;
   state.players = [];
   state.cards = [];
+  renderTeamChat();
 
   if (!roomId) {
     renderRoomDetail();
@@ -438,6 +627,7 @@ function subscribeToRoom(roomId) {
       state.currentRoomId = null;
       state.currentPlayerId = null;
       clearLastRoom();
+      resetChatState();
       updateViews();
       renderRoomList();
       renderRoomDetail();
@@ -445,6 +635,7 @@ function subscribeToRoom(roomId) {
     }
     state.roomData = { id: snapshot.id, ...snapshot.data() };
     renderRoomDetail();
+    ensureTeamChatSubscription();
   });
 
   const playersQuery = query(roomCollection(roomId, 'players'), orderBy('joinedAt', 'asc'));
@@ -456,6 +647,7 @@ function subscribeToRoom(roomId) {
       state.currentPlayerId = null;
     }
     renderRoomDetail();
+    ensureTeamChatSubscription();
   });
 
   state.unsubCards = onSnapshot(roomCollection(roomId, 'cards'), snapshot => {
@@ -531,6 +723,19 @@ async function fetchCardRefs(roomId) {
   }
 }
 
+async function fetchTeamChatRefs(roomId) {
+  const refs = [];
+  for (const team of TEAM_KEYS) {
+    try {
+      const snapshot = await getDocs(teamChatCollection(roomId, team));
+      snapshot.forEach(docSnap => refs.push(docSnap.ref));
+    } catch (error) {
+      console.warn('Ū�����䲼��Ʈw����', error);
+    }
+  }
+  return refs;
+}
+
 // -------------------- Room flows --------------------
 async function resetRoom(roomId) {
   const safeRoomId = normalizeRoomId(roomId);
@@ -539,12 +744,14 @@ async function resetRoom(roomId) {
   try {
     const playersSnap = await getDocs(roomCollection(safeRoomId, 'players'));
     const cardsSnap = await getDocs(roomCollection(safeRoomId, 'cards'));
+    const chatRefs = await fetchTeamChatRefs(safeRoomId);
     await runTransaction(db, async transaction => {
       const roomRef = doc(db, 'rooms', safeRoomId);
       const roomSnap = await transaction.get(roomRef);
       if (!roomSnap.exists()) return;
       playersSnap.forEach(docSnap => transaction.delete(docSnap.ref));
       cardsSnap.forEach(docSnap => transaction.delete(docSnap.ref));
+      chatRefs.forEach(ref => transaction.delete(ref));
       transaction.set(roomRef, {
         status: 'lobby',
         ownerId: null,
@@ -566,15 +773,20 @@ async function resetRoom(roomId) {
     if (state.currentRoomId === roomId) {
       clearLastRoom();
       cleanupRoomSubscriptions();
+      resetChatState();
       state.currentRoomId = null;
       state.currentPlayerId = null;
       state.roomData = null;
       state.players = [];
       state.cards = [];
+      state.chatMessages = [];
+      state.chatTeam = null;
       updateViews();
       renderRoomDetail();
+      renderTeamChat();
     } else {
       renderRoomDetail();
+      renderTeamChat();
     }
     renderRoomList();
   } catch (error) {
@@ -697,6 +909,7 @@ async function startGame() {
   const safeRoomId = normalizeRoomId(roomId);
   const playerRefs = await fetchPlayerRefs(safeRoomId);
   const cardRefs = await fetchCardRefs(safeRoomId);
+  const chatRefs = await fetchTeamChatRefs(safeRoomId);
 
   try {
     await runTransaction(db, async transaction => {
@@ -729,6 +942,7 @@ async function startGame() {
       const remainingBlue = cards.filter(card => card.role === 'blue').length;
 
       cardRefs.forEach(ref => transaction.delete(ref));
+      chatRefs.forEach(ref => transaction.delete(ref));
       cards.forEach(card => {
         transaction.set(doc(db, 'rooms', safeRoomId, 'cards', String(card.index)), card);
       });
@@ -766,6 +980,7 @@ async function resetGame() {
   const safeRoomId = normalizeRoomId(roomId);
   const playerRefs = await fetchPlayerRefs(safeRoomId);
   const cardRefs = await fetchCardRefs(safeRoomId);
+  const chatRefs = await fetchTeamChatRefs(safeRoomId);
 
   try {
     await runTransaction(db, async transaction => {
@@ -779,6 +994,7 @@ async function resetGame() {
         transaction.set(ref, { ready: false, team: null, isCaptain: false }, { merge: true });
       }
       cardRefs.forEach(ref => transaction.delete(ref));
+      chatRefs.forEach(ref => transaction.delete(ref));
       transaction.set(roomRef, {
         status: 'lobby',
         winner: null,
@@ -922,6 +1138,7 @@ async function kickPlayer(targetId) {
   const safeRoomId = normalizeRoomId(roomId);
   const remainingSnapshot = state.players.filter(player => player.id !== targetId);
   const cardRefs = !remainingSnapshot.length ? await fetchCardRefs(safeRoomId) : [];
+  const chatRefs = !remainingSnapshot.length ? await fetchTeamChatRefs(safeRoomId) : [];
 
   try {
     await runTransaction(db, async transaction => {
@@ -960,6 +1177,7 @@ async function kickPlayer(targetId) {
         updates.extraGuessAvailable = null;
         updates.remainingRed = null;
         updates.remainingBlue = null;
+        chatRefs.forEach(ref => transaction.delete(ref));
         cardRefs.forEach(ref => transaction.delete(ref));
       }
 
@@ -977,6 +1195,7 @@ async function leaveRoom() {
   const safeRoomId = normalizeRoomId(roomId);
   const playerRefs = await fetchPlayerRefs(safeRoomId);
   const cardRefs = await fetchCardRefs(safeRoomId);
+  const chatRefs = await fetchTeamChatRefs(safeRoomId);
 
   try {
     await runTransaction(db, async transaction => {
@@ -1017,6 +1236,7 @@ async function leaveRoom() {
         updates.extraGuessAvailable = null;
         updates.remainingRed = null;
         updates.remainingBlue = null;
+        chatRefs.forEach(ref => transaction.delete(ref));
         cardRefs.forEach(ref => transaction.delete(ref));
       }
 
@@ -1028,13 +1248,17 @@ async function leaveRoom() {
     removeStoredPlayer(safeRoomId);
     clearLastRoom();
     cleanupRoomSubscriptions();
+    resetChatState();
     state.currentRoomId = null;
     state.currentPlayerId = null;
     state.roomData = null;
     state.players = [];
     state.cards = [];
+    state.chatMessages = [];
+    state.chatTeam = null;
     updateViews();
     renderRoomDetail();
+    renderTeamChat();
   }
 }
 
@@ -1069,6 +1293,17 @@ boardGridEl.addEventListener('click', event => {
   if (!Number.isNaN(index)) revealCard(index);
 });
 
+if (teamChatFormEl) {
+  teamChatFormEl.addEventListener('submit', event => {
+    event.preventDefault();
+    sendTeamMessage();
+  });
+}
+
+if (teamChatInputEl) {
+  teamChatInputEl.addEventListener('input', updateTeamChatControls);
+}
+
 // -------------------- Init --------------------
 async function init() {
   try {
@@ -1076,6 +1311,7 @@ async function init() {
     subscribeToDirectory();
     renderRoomList();
     updateViews();
+    renderTeamChat();
     await attemptResume();
   } catch (error) {
     logAndAlert('初始化 Firebase 失敗', error);
@@ -1083,5 +1319,12 @@ async function init() {
 }
 
 init();
+
+
+
+
+
+
+
 
 

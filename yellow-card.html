@@ -75,14 +75,8 @@
       font-weight: 700;
       letter-spacing: .08em;
     }
-    .subtext {
-      font-size: .95rem;
-      color: var(--ink-soft);
-      margin: 0;
-    }
-    input, select, button {
-      font: inherit;
-    }
+    .subtext { font-size: .95rem; color: var(--ink-soft); margin: 0; }
+    input, select, button { font: inherit; }
     input, select {
       width: 100%;
       padding: .7rem 1rem;
@@ -115,11 +109,7 @@
       color: var(--ink);
       box-shadow: none;
     }
-    .room-grid {
-      display: grid;
-      gap: 1rem;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    }
+    .room-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
     .room-card {
       border-radius: 22px;
       border: 1px solid rgba(239, 71, 111, 0.2);
@@ -130,69 +120,18 @@
       box-shadow: 0 16px 36px rgba(239, 71, 111, 0.2);
       transition: transform .18s ease, box-shadow .18s ease;
     }
-    .room-card.active {
-      transform: translateY(-4px);
-      box-shadow: 0 22px 48px rgba(239, 71, 111, 0.3);
-      border-color: rgba(239, 71, 111, 0.45);
-    }
+    .room-card.active { transform: translateY(-4px); box-shadow: 0 22px 48px rgba(239, 71, 111, 0.3); border-color: rgba(239, 71, 111, 0.45); }
     .room-name { font-size: 1.25rem; font-weight: 700; }
-    .room-meta {
-      display: flex;
-      flex-direction: column;
-      gap: .3rem;
-      font-size: .95rem;
-      color: var(--ink-soft);
-    }
-    .badges {
-      display: flex;
-      flex-wrap: wrap;
-      gap: .45rem;
-    }
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      padding: .28rem .7rem;
-      border-radius: 999px;
-      font-size: .8rem;
-      letter-spacing: .05em;
-      background: rgba(17, 24, 39, 0.08);
-      color: var(--ink);
-    }
+    .room-meta { display: flex; flex-direction: column; gap: .3rem; font-size: .95rem; color: var(--ink-soft); }
+    .badges { display: flex; flex-wrap: wrap; gap: .45rem; }
+    .badge { display: inline-flex; align-items: center; padding: .28rem .7rem; border-radius: 999px; font-size: .8rem; letter-spacing: .05em; background: rgba(17, 24, 39, 0.08); color: var(--ink); }
     .badge.host { background: rgba(239, 71, 111, 0.18); color: var(--accent-dark); }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: .95rem;
-    }
-    th, td {
-      padding: .65rem .8rem;
-      border-bottom: 1px solid var(--divider);
-      text-align: left;
-    }
+    table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+    th, td { padding: .65rem .8rem; border-bottom: 1px solid var(--divider); text-align: left; }
     tbody tr.host { background: rgba(239, 71, 111, 0.12); }
     tbody tr.me { background: rgba(56, 189, 248, 0.18); }
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      padding: .28rem .8rem;
-      border-radius: 999px;
-      background: rgba(17, 24, 39, 0.08);
-      font-size: .78rem;
-      letter-spacing: .04em;
-    }
+    .pill { display: inline-flex; align-items: center; padding: .28rem .8rem; border-radius: 999px; background: rgba(17, 24, 39, 0.08); font-size: .78rem; letter-spacing: .04em; }
     .hidden { display: none !important; }
-    footer {
-      text-align: center;
-      font-size: .92rem;
-      color: rgba(17, 24, 39, 0.65);
-    }
-    footer a { color: var(--accent-dark); font-weight: 600; text-decoration: none; }
-    @media (max-width: 720px) {
-      body { padding: 1.2rem; }
-      main { padding: 1.6rem; }
-      section { padding: 1.2rem; }
-      th, td { font-size: .88rem; }
-    }
   </style>
 </head>
 <body>
@@ -255,7 +194,7 @@
     </section>
 
     <section id="host-panel" class="hidden">
-      <h2><span>04</span>房主 / 裁判工具</h2>
+      <h2><span>04</span>房主／裁判工具</h2>
       <div style="display:flex;flex-wrap:wrap;gap:.6rem;">
         <button id="btn-draw-topic" class="btn-primary">抽題目卡</button>
         <button id="btn-recycle-topic" class="btn-ghost">題庫回收並洗牌</button>
@@ -585,7 +524,6 @@
         updatedAt: serverTimestamp()
       });
     }
-
     async function drawTopic() {
       const roomId = state.currentRoomId;
       const roomData = state.currentRoomData;
