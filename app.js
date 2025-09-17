@@ -463,27 +463,34 @@ function renderTeamChat() {
   const status = room?.status;
 
   let indicatorText = '未分隊';
-  let statusText = '加入隊伍後即可與隊友聊天。';
+  let statusText = '加入隊伍後即可查看隊長訊息。';
   let emptyMessage = '等待分配隊伍中...';
   let allowSend = false;
 
   if (!room) {
-    statusText = '加入房間後即可使用隊伍聊天室。';
+    statusText = '加入房間後才能使用隊伍聊天室。';
     emptyMessage = '請先加入房間。';
   } else if (!player) {
-    statusText = '請確認您已成功加入玩家列表。';
+    statusText = '請確認您已出現在房內玩家列表。';
   } else if (!team) {
     statusText = status === 'in-progress'
-      ? '尚未分配隊伍，暫時無法傳訊。'
+      ? '尚未分配隊伍，暫時無法聊天。'
       : '等待房主開始遊戲並分配隊伍。';
   } else {
-    indicatorText = team === 'red' ? '紅隊' : '藍隊';
+    const isRed = team === 'red';
+    indicatorText = isRed ? '紅隊' : '藍隊';
+
     if (status === 'in-progress') {
-      allowSend = true;
-      statusText = team === 'red' ? '與紅隊隊友交換線索。' : '與藍隊隊友交換線索。';
-      emptyMessage = '還沒有訊息，快和隊友討論策略吧！';
+      if (player.isCaptain) {
+        allowSend = true;
+        statusText = isRed ? '你是紅隊隊長，請輸入提示訊息。' : '你是藍隊隊長，請輸入提示訊息。';
+        emptyMessage = '尚未有訊息，開始與隊友討論吧！';
+      } else {
+        statusText = isRed ? '僅紅隊隊長可以發送訊息，請留意隊長的提示。' : '僅藍隊隊長可以發送訊息，請留意隊長的提示。';
+        emptyMessage = '等待隊長分享線索…';
+      }
     } else {
-      statusText = '遊戲開始後才能聊天。';
+      statusText = '遊戲開始後由隊長負責發送提示。';
       emptyMessage = '等待遊戲開始。';
     }
   }
@@ -497,11 +504,14 @@ function renderTeamChat() {
   } else {
     teamChatMessagesEl.classList.remove('empty');
     const items = state.chatMessages.map(message => {
-      const sender = escapeHtml(message.senderName || '匿名隊友');
+      const senderName = escapeHtml(message.senderName || '匿名隊友');
+      const roleFlag = message.senderRole || '';
+      const roleLabel = roleFlag === 'red-captain' ? '紅隊隊長' : roleFlag === 'blue-captain' ? '藍隊隊長' : message.team === 'red' ? '紅隊隊長' : message.team === 'blue' ? '藍隊隊長' : '隊長';
+      const senderLabel = ${senderName}（）;
       const content = escapeHtml(message.text || '');
       const timeLabel = formatTeamChatTimestamp(message.createdAt);
       const meta = timeLabel ? '<span>' + escapeHtml(timeLabel) + '</span>' : '';
-      return '<div class="chat-message"><div class="sender"><span>' + sender + '</span>' + meta + '</div><div class="text">' + content + '</div></div>';
+      return '<div class="chat-message"><div class="sender"><span>' + senderLabel + '</span>' + meta + '</div><div class="text">' + content + '</div></div>';
     }).join('');
     teamChatMessagesEl.innerHTML = items;
     teamChatMessagesEl.scrollTop = teamChatMessagesEl.scrollHeight;
@@ -553,6 +563,8 @@ function ensureTeamChatSubscription() {
         text: data.text || '',
         senderId: data.senderId || '',
         senderName: data.senderName || '',
+        team: data.team || null,
+        senderRole: data.senderRole || '',
         createdAt: data.createdAt || null
       };
     });
@@ -570,6 +582,10 @@ async function sendTeamMessage() {
   const roomId = state.currentRoomId;
   const player = getCurrentPlayer();
   if (!roomId || !player || !player.team) return;
+  if (!player.isCaptain) {
+    logAndAlert('只有隊長可以發送訊息');
+    return;
+  }
 
   if (teamChatSendBtn) teamChatSendBtn.disabled = true;
   try {
@@ -578,15 +594,17 @@ async function sendTeamMessage() {
       senderId: player.id,
       senderName: player.name || '',
       team: player.team,
+      senderRole: player.team === 'red' ? 'red-captain' : 'blue-captain',
       createdAt: serverTimestamp()
     });
     teamChatInputEl.value = '';
   } catch (error) {
-    logAndAlert('�Ǧ^隊伍��T����', error);
+    logAndAlert('發送隊伍訊息失敗', error);
   } finally {
     updateTeamChatControls();
   }
 }
+
 // -------------------- Firestore listeners --------------------
 function cleanupRoomSubscriptions() {
   if (state.unsubRoom) { state.unsubRoom(); state.unsubRoom = null; }
@@ -1329,6 +1347,7 @@ async function init() {
 }
 
 init();
+
 
 
 
