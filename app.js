@@ -224,7 +224,10 @@ const state = {
   unsubRooms: null,
   unsubRoom: null,
   unsubPlayers: null,
-  unsubCards: null
+  unsubCards: null,
+  unsubChat: null,
+  chatMessages: [],
+  chatTeam: null
 };
 
 const lobbyView = document.getElementById('lobby-view');
@@ -238,6 +241,13 @@ const viewIndicatorEl = document.getElementById('view-indicator');
 const boardGridEl = document.getElementById('board-grid');
 const boardScoreEl = document.getElementById('board-score');
 const winnerBannerEl = document.getElementById('winner-banner');
+const teamChatPanelEl = document.getElementById('team-chat-panel');
+const teamChatIndicatorEl = document.getElementById('team-chat-indicator');
+const teamChatStatusEl = document.getElementById('team-chat-status');
+const teamChatMessagesEl = document.getElementById('team-chat-messages');
+const teamChatFormEl = document.getElementById('team-chat-form');
+const teamChatInputEl = document.getElementById('team-chat-input');
+const teamChatSendBtn = document.getElementById('team-chat-send');
 const toggleReadyBtn = document.getElementById('toggle-ready');
 const startGameBtn = document.getElementById('start-game');
 const resetGameBtn = document.getElementById('reset-game');
