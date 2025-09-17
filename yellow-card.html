@@ -1,1 +1,960 @@
-﻿
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>黃牌大挑戰｜房間大廳</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
+      --bg-top: #fff4cc;
+      --bg-bottom: #ffc15e;
+      --panel: rgba(255, 255, 255, 0.96);
+      --accent: #ef476f;
+      --accent-dark: #d9365d;
+      --ink: #17212b;
+      --ink-soft: #44515f;
+      --border: rgba(255, 209, 102, 0.55);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: clamp(1.5rem, 5vw, 4rem);
+      background: linear-gradient(150deg, var(--bg-top) 0%, var(--bg-bottom) 48%, #ef476f 100%);
+      color: var(--ink);
+    }
+    main {
+      width: min(1180px, 100%);
+      background: var(--panel);
+      border-radius: 30px;
+      box-shadow: 0 32px 72px rgba(23, 33, 43, 0.24);
+      padding: clamp(2.2rem, 5vw, 3.4rem);
+      display: grid;
+      gap: clamp(1.6rem, 4vw, 2.6rem);
+    }
+    header.hero h1 {
+      margin: 0 0 .6rem;
+      font-size: clamp(2.2rem, 5vw, 3.1rem);
+      letter-spacing: .08em;
+    }
+    header.hero p {
+      margin: 0;
+      line-height: 1.7;
+      color: var(--ink-soft);
+      max-width: 70ch;
+    }
+    section {
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: clamp(1.4rem, 3.6vw, 2.2rem);
+      display: grid;
+      gap: 1.2rem;
+    }
+    section h2 {
+      margin: 0;
+      font-size: clamp(1.2rem, 3vw, 1.7rem);
+      display: flex;
+      align-items: center;
+      gap: .8rem;
+    }
+    section h2 span {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 2.4rem;
+      height: 2.4rem;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: .08em;
+    }
+    .room-grid {
+      display: grid;
+      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+    .room-card {
+      border-radius: 20px;
+      border: 1px solid rgba(239, 71, 111, 0.18);
+      padding: 1.1rem 1.3rem;
+      display: grid;
+      gap: .8rem;
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 16px 36px rgba(239, 71, 111, 0.18);
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .room-card.active {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 44px rgba(239, 71, 111, 0.26);
+      border-color: rgba(239, 71, 111, 0.45);
+    }
+    .room-name {
+      font-size: 1.25rem;
+      font-weight: 700;
+    }
+    .room-meta {
+      display: flex;
+      flex-direction: column;
+      gap: .3rem;
+      color: var(--ink-soft);
+      font-size: .95rem;
+    }
+    .room-badges {
+      display: flex;
+      gap: .4rem;
+      flex-wrap: wrap;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: .28rem .7rem;
+      border-radius: 999px;
+      font-size: .78rem;
+      letter-spacing: .05em;
+      background: rgba(17, 24, 39, 0.08);
+      color: var(--ink);
+    }
+    .badge.host { background: rgba(239, 71, 111, 0.18); color: var(--accent-dark); }
+    button {
+      font: inherit;
+      font-weight: 600;
+      border: none;
+      border-radius: 999px;
+      padding: .65rem 1.4rem;
+      cursor: pointer;
+      transition: transform .16s ease, box-shadow .16s ease, opacity .16s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: .4rem;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      color: #fff;
+      box-shadow: 0 14px 28px rgba(239, 71, 111, 0.32);
+    }
+    .btn-ghost {
+      background: rgba(17, 24, 39, 0.08);
+      color: var(--ink);
+      box-shadow: none;
+    }
+    button:hover:not([disabled]) { transform: translateY(-2px); }
+    button:active:not([disabled]) { transform: translateY(1px); }
+    button[disabled] { opacity: .55; cursor: not-allowed; transform: none; box-shadow: none; }
+    input, select {
+      font: inherit;
+      width: 100%;
+      padding: .7rem 1rem;
+      border-radius: 16px;
+      border: 1px solid rgba(17, 24, 39, 0.18);
+      background: rgba(255, 255, 255, 0.98);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: .65rem .75rem;
+      border-bottom: 1px solid rgba(17, 24, 39, 0.08);
+      text-align: left;
+      font-size: .95rem;
+    }
+    tbody tr.highlight { background: rgba(56, 189, 248, 0.18); }
+    tbody tr.host { background: rgba(239, 71, 111, 0.12); }
+    .label {
+      font-size: .85rem;
+      color: var(--ink-soft);
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: .26rem .8rem;
+      border-radius: 999px;
+      background: rgba(17, 24, 39, 0.08);
+      font-size: .78rem;
+      letter-spacing: .04em;
+    }
+    .hidden { display: none !important; }
+    footer {
+      text-align: center;
+      font-size: .92rem;
+      color: rgba(17, 24, 39, 0.65);
+    }
+    footer a { color: var(--accent-dark); text-decoration: none; font-weight: 600; }
+    @media (max-width: 720px) {
+      body { padding: 1.2rem; }
+      main { padding: 1.6rem; }
+      section { padding: 1.1rem; }
+      th, td { font-size: .88rem; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="hero">
+      <h1>瘋狂黃牌大挑戰｜同步房間大廳</h1>
+      <p>選擇 Firestore 中既有的黃牌房間即可加入。第一位玩家自動成為房主，擁有抽題目、踢人與判黃牌的權限。所有動作都即時同步到 Cloud Firestore。</p>
+    </header>
+
+    <section id="room-selector">
+      <h2><span>01</span>選擇房間與暱稱</h2>
+      <p class="label">輸入暱稱後選擇房間。若超過容量或房間已存在相同暱稱，系統會提示錯誤。</p>
+      <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));align-items:end;">
+        <label>暱稱
+          <input id="nickname" placeholder="輸入暱稱">
+        </label>
+        <div id="current-room" class="hidden" style="display:grid;gap:.5rem;">
+          <div>
+            <strong id="current-room-name">目前房間：—</strong>
+            <p id="current-room-meta" class="label" style="margin:.2rem 0 0;">未加入任何房間</p>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:.5rem;">
+            <button id="btn-ready" class="btn-ghost">我準備好了</button>
+            <button id="btn-leave" class="btn-ghost">離開房間</button>
+            <button id="btn-start" class="btn-ghost hidden">開始新回合</button>
+          </div>
+        </div>
+      </div>
+      <div id="room-cards" class="room-grid"></div>
+    </section>
+
+    <section id="status-panel" class="hidden">
+      <h2><span>02</span>房間狀態</h2>
+      <p id="game-phase" class="label">遊戲狀態：—</p>
+      <p id="judge-info" class="label">本局裁判：—</p>
+      <div class="room-card" style="background:rgba(239, 244, 255, .55);">
+        <h3 style="margin:0 0 .4rem;">目前題目</h3>
+        <p id="topic-text" style="margin:0;line-height:1.6;">尚未抽題目</p>
+        <span class="pill" id="topic-remaining">剩餘題目：--</span>
+      </div>
+    </section>
+
+    <section id="players-panel" class="hidden">
+      <h2><span>03</span>玩家清單與操作</h2>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>玩家</th>
+              <th>黃牌</th>
+              <th>準備</th>
+              <th>身分</th>
+              <th>手牌</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="players-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="judge-panel" class="hidden">
+      <h2><span>04</span>裁判 / 房主工具</h2>
+      <div style="display:flex;flex-wrap:wrap;gap:.6rem;">
+        <button id="btn-draw-topic" class="btn-primary">抽題目卡</button>
+        <button id="btn-reset-topics" class="btn-ghost">題庫回收並洗牌</button>
+        <button id="btn-reset-room" class="btn-ghost">重設整個房間</button>
+      </div>
+      <div>
+        <h3 style="margin:.8rem 0 .4rem;">匿名投稿</h3>
+        <div id="submissions" style="display:grid;gap:.6rem;"></div>
+      </div>
+    </section>
+
+    <section id="player-submit" class="hidden">
+      <h2><span>05</span>提交手牌</h2>
+      <form id="submit-form" style="display:grid;gap:.8rem;max-width:520px;">
+        <label class="label" for="hand-select">選擇要填入題目的詞語</label>
+        <select id="hand-select"></select>
+        <button type="submit" class="btn-primary">確認送出</button>
+      </form>
+    </section>
+
+    <footer>
+      <p>累積三張黃牌的玩家就出局，黃牌越少越接近勝利。完成活動後可回到 <a href="index.html">遊戲主頁</a>。</p>
+    </footer>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+    import {
+      getFirestore,
+      collection,
+      doc,
+      getDoc,
+      getDocs,
+      onSnapshot,
+      runTransaction,
+      setDoc,
+      updateDoc,
+      deleteDoc,
+      serverTimestamp,
+      query,
+      orderBy
+    } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyADGfYlLyMB-W5A2JM6uF8VqTiF3LL9lEI",
+      authDomain: "secertmisson-19e11.firebaseapp.com",
+      databaseURL: "https://secertmisson-19e11-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "secertmisson-19e11",
+      storageBucket: "secertmisson-19e11.firebasestorage.app",
+      messagingSenderId: "730645471093",
+      appId: "1:730645471093:web:dacceb7a79256deb06fd3c"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const state = {
+      clientId: localStorage.getItem("yellowcard-client-id") || crypto.randomUUID(),
+      nickname: "",
+      user: null,
+      roomsUnsub: null,
+      roomDocUnsub: null,
+      playersUnsub: null,
+      submissionsUnsub: null,
+      currentRoomId: null,
+      currentRoomData: null,
+      currentPlayerMap: new Map(),
+    };
+    localStorage.setItem("yellowcard-client-id", state.clientId);
+
+    const roomCardsEl = document.getElementById("room-cards");
+    const nicknameInput = document.getElementById("nickname");
+    const currentRoomBox = document.getElementById("current-room");
+    const currentRoomName = document.getElementById("current-room-name");
+    const currentRoomMeta = document.getElementById("current-room-meta");
+    const btnReady = document.getElementById("btn-ready");
+    const btnLeave = document.getElementById("btn-leave");
+    const btnStart = document.getElementById("btn-start");
+    const statusPanel = document.getElementById("status-panel");
+    const playersPanel = document.getElementById("players-panel");
+    const judgePanel = document.getElementById("judge-panel");
+    const playerSubmitPanel = document.getElementById("player-submit");
+    const gamePhaseEl = document.getElementById("game-phase");
+    const judgeInfoEl = document.getElementById("judge-info");
+    const topicTextEl = document.getElementById("topic-text");
+    const topicRemainingEl = document.getElementById("topic-remaining");
+    const playersBody = document.getElementById("players-body");
+    const submissionsEl = document.getElementById("submissions");
+    const handSelect = document.getElementById("hand-select");
+    const submitForm = document.getElementById("submit-form");
+
+    nicknameInput.addEventListener("input", () => {
+      state.nickname = nicknameInput.value.trim();
+    });
+
+    btnReady.addEventListener("click", async () => {
+      if (!state.currentRoomId) return;
+      await toggleReady();
+    });
+
+    btnLeave.addEventListener("click", async () => {
+      if (!state.currentRoomId) return;
+      await leaveRoom(state.currentRoomId);
+    });
+
+    btnStart.addEventListener("click", async () => {
+      if (!state.currentRoomId) return;
+      await startRound();
+    });
+
+    document.getElementById("btn-draw-topic").addEventListener("click", drawTopic);
+    document.getElementById("btn-reset-topics").addEventListener("click", recycleTopics);
+    document.getElementById("btn-reset-room").addEventListener("click", resetRoom);
+
+    submitForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!state.currentRoomId) return;
+      const value = handSelect.value;
+      if (!value) return;
+      await submitHand(value);
+    });
+
+    signInAnonymously(auth).catch(console.error);
+    onAuthStateChanged(auth, (user) => {
+      state.user = user;
+      if (!state.roomsUnsub) subscribeRooms();
+    });
+
+    function subscribeRooms() {
+      const roomsCol = collection(db, "yellowRooms");
+      state.roomsUnsub = onSnapshot(roomsCol, (snapshot) => {
+        renderRooms(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })));
+      });
+    }
+
+    function renderRooms(rooms) {
+      roomCardsEl.innerHTML = "";
+      rooms.forEach((room) => {
+        const card = document.createElement("article");
+        card.className = "room-card" + (room.id === state.currentRoomId ? " active" : "");
+        const playerCount = Array.isArray(room.playerIds) ? room.playerIds.length : (room.playerCount || 0);
+        const capacity = room.capacity || 8;
+        card.innerHTML = `
+          <div>
+            <div class="room-name">${room.name || room.id}</div>
+            <div class="room-meta">
+              <span>玩家：${playerCount} / ${capacity}</span>
+              <span>題目剩餘：${Array.isArray(room.topicDeck) ? room.topicDeck.length : 0}</span>
+            </div>
+          </div>
+          <div class="room-badges"></div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+            <button class="btn-primary" data-action="join">加入房間</button>
+            <button class="btn-ghost" data-action="preview">檢視狀態</button>
+          </div>
+        `;
+        const badges = card.querySelector(".room-badges");
+        if (room.hostId) {
+          badges.appendChild(makeBadge(`房主 ${room.hostNickname || "—"}`, "host"));
+        }
+        if (room.currentTopic) {
+          badges.appendChild(makeBadge("進行中", ""));
+        }
+        card.querySelector("[data-action=join]").addEventListener("click", () => joinRoom(room.id));
+        card.querySelector("[data-action=preview]").addEventListener("click", () => watchRoom(room.id, { previewOnly: true }));
+        roomCardsEl.appendChild(card);
+      });
+    }
+
+    function makeBadge(text, type) {
+      const span = document.createElement("span");
+      span.className = "badge" + (type ? " " + type : "");
+      span.textContent = text;
+      return span;
+    }
+
+    async function joinRoom(roomId) {
+      const nickname = (state.nickname || nicknameInput.value || "").trim();
+      if (!nickname) {
+        alert("請先輸入暱稱");
+        nicknameInput.focus();
+        return;
+      }
+      try {
+        await runTransaction(db, async (tx) => {
+          const roomRef = doc(db, "yellowRooms", roomId);
+          const snapshot = await tx.get(roomRef);
+          if (!snapshot.exists()) throw new Error("找不到房間");
+          const data = snapshot.data();
+          const capacity = data.capacity || 8;
+          const playerIds = Array.isArray(data.playerIds) ? [...data.playerIds] : [];
+          const existingIndex = playerIds.indexOf(state.clientId);
+          const playersCol = collection(roomRef, "players");
+          const playerRef = doc(playersCol, state.clientId);
+          const playerSnapshot = await tx.get(playerRef);
+          if (existingIndex === -1) {
+            if (playerIds.length >= capacity) throw new Error("房間已滿");
+            if (playerSnapshot.exists()) throw new Error("已在其他裝置加入，請先離開");
+            const playersList = await getDocs(playersCol);
+            playersList.forEach((docSnap) => {
+              if (docSnap.data().nickname === nickname) {
+                throw new Error("房間內已有相同暱稱");
+              }
+            });
+            playerIds.push(state.clientId);
+            const isHost = !data.hostId;
+            const wordDeck = Array.isArray(data.wordDeck) ? [...data.wordDeck] : [];
+            const drawCount = Math.min(13, wordDeck.length);
+            const drawn = wordDeck.slice(0, drawCount);
+            const remain = wordDeck.slice(drawCount);
+            tx.update(roomRef, {
+              playerIds,
+              playerCount: playerIds.length,
+              hostId: isHost ? state.clientId : (data.hostId || null),
+              hostNickname: isHost ? nickname : (data.hostNickname || null),
+              wordDeck: remain,
+              updatedAt: serverTimestamp()
+            });
+            tx.set(playerRef, {
+              nickname,
+              ready: false,
+              yellowCards: 0,
+              hand: drawn,
+              joinedAt: serverTimestamp(),
+              isHost,
+              lastActive: serverTimestamp()
+            });
+          } else {
+            tx.update(playerRef, {
+              nickname,
+              lastActive: serverTimestamp()
+            });
+          }
+        });
+        nicknameInput.value = nickname;
+        state.nickname = nickname;
+        await watchRoom(roomId);
+      } catch (error) {
+        console.error(error);
+        alert(error.message || "加入房間失敗");
+      }
+    }
+
+    async function leaveRoom(roomId) {
+      try {
+        await runTransaction(db, async (tx) => {
+          const roomRef = doc(db, "yellowRooms", roomId);
+          const roomSnap = await tx.get(roomRef);
+          if (!roomSnap.exists()) return;
+          const data = roomSnap.data();
+          const playerIds = Array.isArray(data.playerIds) ? [...data.playerIds] : [];
+          const index = playerIds.indexOf(state.clientId);
+          if (index === -1) return;
+          playerIds.splice(index, 1);
+          const playersCol = collection(roomRef, "players");
+          const playerRef = doc(playersCol, state.clientId);
+          const playerSnap = await tx.get(playerRef);
+          const playerData = playerSnap.exists() ? playerSnap.data() : null;
+          tx.delete(playerRef);
+          let hostId = data.hostId || null;
+          let hostNickname = data.hostNickname || null;
+          if (hostId === state.clientId) {
+            hostId = playerIds[0] || null;
+            if (hostId) {
+              const newHostRef = doc(playersCol, hostId);
+              const newHostSnap = await tx.get(newHostRef);
+              if (newHostSnap.exists()) {
+                const nh = newHostSnap.data();
+                hostNickname = nh.nickname || null;
+                tx.update(newHostRef, { isHost: true });
+              }
+            } else {
+              hostNickname = null;
+            }
+          }
+          tx.update(roomRef, {
+            playerIds,
+            playerCount: playerIds.length,
+            hostId,
+            hostNickname,
+            updatedAt: serverTimestamp()
+          });
+          if (playerData && Array.isArray(playerData.hand) && playerData.hand.length) {
+            const wordDeck = Array.isArray(data.wordDeck) ? [...data.wordDeck] : [];
+            const recycled = [...wordDeck, ...playerData.hand];
+            tx.update(roomRef, { wordDeck: recycled });
+          }
+        });
+      } catch (error) {
+        console.error(error);
+        alert(error.message || "離開房間失敗");
+      }
+      cleanupRoomWatch();
+      updateRoomUI(null, null);
+    }
+
+    async function toggleReady() {
+      const roomId = state.currentRoomId;
+      if (!roomId) return;
+      const player = state.currentPlayerMap.get(state.clientId);
+      if (!player) return;
+      const playerRef = doc(db, "yellowRooms", roomId, "players", state.clientId);
+      await updateDoc(playerRef, {
+        ready: !player.ready,
+        lastActive: serverTimestamp()
+      });
+    }
+
+    async function startRound() {
+      const roomId = state.currentRoomId;
+      const roomData = state.currentRoomData;
+      if (!roomId || !roomData) return;
+      if (roomData.hostId !== state.clientId) {
+        alert("只有房主可以開始回合");
+        return;
+      }
+      const readyPlayers = Array.from(state.currentPlayerMap.values()).filter((p) => p.ready);
+      if (!readyPlayers.length) {
+        alert("至少要有一位玩家按下準備");
+        return;
+      }
+      const judgeEntry = readyPlayers[0] || state.currentPlayerMap.get(state.clientId);
+      const judgeId = judgeEntry ? judgeEntry.id : state.clientId;
+      const judgeNickname = judgeEntry ? (judgeEntry.nickname || "") : (state.nickname || "");
+      await updateDoc(doc(db, "yellowRooms", roomId), {
+        phase: "running",
+        judgeId,
+        judgeNickname,
+        currentTopic: roomData.currentTopic || "",
+        updatedAt: serverTimestamp()
+      });
+    }
+
+    async function drawTopic() {
+      const roomId = state.currentRoomId;
+      if (!roomId) return;
+      const roomData = state.currentRoomData;
+      if (!roomData || roomData.hostId !== state.clientId) {
+        alert("只有房主可以抽題目");
+        return;
+      }
+      try {
+        await runTransaction(db, async (tx) => {
+          const roomRef = doc(db, "yellowRooms", roomId);
+          const snap = await tx.get(roomRef);
+          if (!snap.exists()) throw new Error("房間不存在");
+          const data = snap.data();
+          const deck = Array.isArray(data.topicDeck) ? [...data.topicDeck] : [];
+          if (!deck.length) throw new Error("題庫已空，請先重置題目");
+          const topic = deck.shift();
+          const used = Array.isArray(data.usedTopics) ? [...data.usedTopics, topic] : [topic];
+          const judgeId = data.judgeId || state.clientId;
+          const judgeNickname = data.judgeNickname || roomData?.judgeNickname || state.nickname || data.hostNickname || "";
+          tx.update(roomRef, {
+            topicDeck: deck,
+            usedTopics: used,
+            currentTopic: topic,
+            phase: "topic",
+            judgeId,
+            judgeNickname,
+            updatedAt: serverTimestamp()
+          });
+        });
+      } catch (error) {
+        console.error(error);
+        alert(error.message || "抽題目失敗");
+      }
+    }
+
+    async function recycleTopics() {
+      const roomId = state.currentRoomId;
+      if (!roomId) return;
+      const roomData = state.currentRoomData;
+      if (!roomData || roomData.hostId !== state.clientId) {
+        alert("只有房主可以操作");
+        return;
+      }
+      const used = Array.isArray(roomData.usedTopics) ? [...roomData.usedTopics] : [];
+      const deck = Array.isArray(roomData.topicDeck) ? [...roomData.topicDeck] : [];
+      const merged = shuffle([...deck, ...used]);
+      await updateDoc(doc(db, "yellowRooms", roomId), {
+        topicDeck: merged,
+        usedTopics: [],
+        currentTopic: "",
+        judgeId: null,
+        judgeNickname: "",
+        phase: "idle",
+        updatedAt: serverTimestamp()
+      });
+    }
+
+    async function resetRoom() {
+      const roomId = state.currentRoomId;
+      if (!roomId) return;
+      const roomData = state.currentRoomData;
+      if (!roomData || roomData.hostId !== state.clientId) {
+        alert("只有房主可以操作");
+        return;
+      }
+      if (!confirm("確定要重設房間？所有玩家與牌組都會清除。")) return;
+      try {
+        await runTransaction(db, async (tx) => {
+          const roomRef = doc(db, "yellowRooms", roomId);
+          const snap = await tx.get(roomRef);
+          if (!snap.exists()) return;
+          const playersCol = collection(roomRef, "players");
+          const submissionsCol = collection(roomRef, "submissions");
+          const playerDocs = await getDocs(playersCol);
+          playerDocs.forEach((p) => tx.delete(doc(playersCol, p.id)));
+          const submissionDocs = await getDocs(submissionsCol);
+          submissionDocs.forEach((s) => tx.delete(doc(submissionsCol, s.id)));
+          tx.update(roomRef, {
+            playerIds: [],
+            playerCount: 0,
+            hostId: null,
+            hostNickname: null,
+            currentTopic: "",
+            judgeId: null,
+            judgeNickname: "",
+            phase: "idle",
+            usedTopics: [],
+            updatedAt: serverTimestamp()
+          });
+        });
+      } catch (error) {
+        console.error(error);
+        alert(error.message || "重設房間失敗");
+      }
+    }
+
+    async function submitHand(word) {
+      const roomId = state.currentRoomId;
+      const roomData = state.currentRoomData;
+      if (!roomId || !roomData) return;
+      const hand = handSelect.options.length ? Array.from(state.currentPlayerMap.get(state.clientId)?.hand || []) : [];
+      if (!hand.includes(word)) {
+        alert("手牌中沒有該詞語");
+        return;
+      }
+      try {
+        await runTransaction(db, async (tx) => {
+          const playerRef = doc(db, "yellowRooms", roomId, "players", state.clientId);
+          const playerSnap = await tx.get(playerRef);
+          if (!playerSnap.exists()) throw new Error("玩家不存在");
+          const playerData = playerSnap.data();
+          const newHand = (playerData.hand || []).filter((item) => item !== word);
+          tx.update(playerRef, {
+            hand: newHand,
+            ready: false,
+            lastActive: serverTimestamp()
+          });
+          const roomRef = doc(db, "yellowRooms", roomId);
+          const roomSnap = await tx.get(roomRef);
+          const roomInfo = roomSnap.data();
+          const deck = Array.isArray(roomInfo.wordDeck) ? [...roomInfo.wordDeck] : [];
+          const draw = deck.shift();
+          tx.update(roomRef, {
+            wordDeck: deck,
+            updatedAt: serverTimestamp()
+          });
+          if (draw) {
+            newHand.push(draw);
+            tx.update(playerRef, { hand: newHand });
+          }
+          const submissionRef = doc(collection(roomRef, "submissions"), state.clientId);
+          tx.set(submissionRef, {
+            playerId: state.clientId,
+            nickname: playerData.nickname,
+            word,
+            createdAt: serverTimestamp()
+          });
+        });
+      } catch (error) {
+        console.error(error);
+        alert(error.message || "提交失敗");
+      }
+    }
+
+    function shuffle(list) {
+      const arr = [...list];
+      for (let i = arr.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    async function giveYellowCard(targetId) {
+      const roomId = state.currentRoomId;
+      const roomData = state.currentRoomData;
+      if (!roomId || !roomData) return;
+      if (roomData.hostId !== state.clientId) {
+        alert("只有房主可以給黃牌");
+        return;
+      }
+      await runTransaction(db, async (tx) => {
+        const playerRef = doc(db, "yellowRooms", roomId, "players", targetId);
+        const snap = await tx.get(playerRef);
+        if (!snap.exists()) throw new Error("找不到玩家");
+        const data = snap.data();
+        const total = (data.yellowCards || 0) + 1;
+        tx.update(playerRef, { yellowCards: total });
+        if (total >= 3) {
+          const roomRef = doc(db, "yellowRooms", roomId);
+          tx.update(roomRef, { phase: "finished", updatedAt: serverTimestamp() });
+        }
+      });
+    }
+
+    async function kickPlayer(targetId) {
+      if (targetId === state.clientId) return;
+      const roomId = state.currentRoomId;
+      const roomData = state.currentRoomData;
+      if (!roomId || !roomData) return;
+      if (roomData.hostId !== state.clientId) {
+        alert("只有房主可以踢人");
+        return;
+      }
+      await runTransaction(db, async (tx) => {
+        const roomRef = doc(db, "yellowRooms", roomId);
+        const snap = await tx.get(roomRef);
+        if (!snap.exists()) throw new Error("房間不存在");
+        const data = snap.data();
+        const playerIds = Array.isArray(data.playerIds) ? [...data.playerIds] : [];
+        const index = playerIds.indexOf(targetId);
+        if (index === -1) return;
+        playerIds.splice(index, 1);
+        tx.update(roomRef, {
+          playerIds,
+          playerCount: playerIds.length,
+          updatedAt: serverTimestamp()
+        });
+        const playerRef = doc(roomRef, "players", targetId);
+        tx.delete(playerRef);
+      });
+    }
+
+    function cleanupRoomWatch() {
+      if (state.roomDocUnsub) state.roomDocUnsub();
+      if (state.playersUnsub) state.playersUnsub();
+      if (state.submissionsUnsub) state.submissionsUnsub();
+      state.roomDocUnsub = null;
+      state.playersUnsub = null;
+      state.submissionsUnsub = null;
+      state.currentRoomId = null;
+      state.currentRoomData = null;
+      state.currentPlayerMap = new Map();
+      submissionsEl.innerHTML = "";
+      playersBody.innerHTML = "";
+      handSelect.innerHTML = "";
+      playerSubmitPanel.classList.add("hidden");
+      judgePanel.classList.add("hidden");
+      playersPanel.classList.add("hidden");
+      statusPanel.classList.add("hidden");
+    }
+
+    async function watchRoom(roomId, options = {}) {
+      if (state.currentRoomId === roomId && !options.previewOnly) return;
+      cleanupRoomWatch();
+      const roomRef = doc(db, "yellowRooms", roomId);
+      state.roomDocUnsub = onSnapshot(roomRef, (docSnap) => {
+        if (!docSnap.exists()) {
+          cleanupRoomWatch();
+          return;
+        }
+        const data = docSnap.data();
+        state.currentRoomData = { id: roomId, ...data };
+        if (!options.previewOnly) {
+          state.currentRoomId = roomId;
+          updateRoomUI(roomId, data);
+        }
+        renderRoomStatus(data);
+      });
+      state.playersUnsub = onSnapshot(query(collection(roomRef, "players"), orderBy("joinedAt", "asc")), (snapshot) => {
+        const list = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+        const map = new Map(list.map((item) => [item.id, item]));
+        state.currentPlayerMap = map;
+        if (state.currentRoomId === roomId && !options.previewOnly) {
+          renderPlayers(list);
+          renderHandOptions(map.get(state.clientId));
+        }
+      });
+      state.submissionsUnsub = onSnapshot(collection(roomRef, "submissions"), (snapshot) => {
+        if (state.currentRoomId !== roomId || options.previewOnly) return;
+        submissionsEl.innerHTML = "";
+        snapshot.docs.forEach((docSnap) => {
+          const data = docSnap.data();
+          const item = document.createElement("div");
+          item.className = "room-card";
+          item.style.background = "rgba(239, 236, 255, .7)";
+          item.innerHTML = `
+            <strong style="font-size:1rem;">匿名提交</strong>
+            <span class="label">${data.word || "(未填)"}</span>
+          `;
+          if (state.currentRoomData && state.currentRoomData.hostId === state.clientId) {
+            const action = document.createElement("button");
+            action.className = "btn-ghost";
+            action.textContent = "給予黃牌";
+            action.addEventListener("click", () => giveYellowCard(data.playerId));
+            item.appendChild(action);
+          }
+          submissionsEl.appendChild(item);
+        });
+      });
+      if (!options.previewOnly) {
+        currentRoomBox.classList.remove("hidden");
+      }
+    }
+
+    function renderRoomStatus(data) {
+      statusPanel.classList.remove("hidden");
+      gamePhaseEl.textContent = `遊戲狀態：${data.phase || "等待中"}`;
+      judgeInfoEl.textContent = `本局裁判：${data.judgeNickname || "—"}`;
+      topicTextEl.textContent = data.currentTopic || "尚未抽題目";
+      const remaining = Array.isArray(data.topicDeck) ? data.topicDeck.length : 0;
+      topicRemainingEl.textContent = `剩餘題目：${remaining}`;
+    }
+    function renderPlayers(players) {
+      playersPanel.classList.remove("hidden");
+      const roomData = state.currentRoomData;
+      const isHost = roomData && roomData.hostId === state.clientId;
+      btnStart.classList.toggle("hidden", !isHost);
+      judgePanel.classList.toggle("hidden", !isHost);
+      const me = players.find((p) => p.id === state.clientId);
+      playerSubmitPanel.classList.toggle("hidden", !me);
+      btnReady.textContent = me && me.ready ? "取消準備" : "我準備好了";
+      currentRoomName.textContent = roomData ? `目前房間：${roomData.name || roomData.id}` : "目前房間：—";
+      const count = players.length;
+      currentRoomMeta.textContent = `${count} 人在線`; 
+      playersBody.innerHTML = "";
+      players.forEach((player) => {
+        const tr = document.createElement("tr");
+        if (player.id === state.clientId) tr.classList.add("highlight");
+        if (player.isHost) tr.classList.add("host");
+        tr.innerHTML = `
+          <td>${player.nickname || "(未命名)"}</td>
+          <td>${player.yellowCards || 0}</td>
+          <td>${player.ready ? "✅" : "⏳"}</td>
+          <td>${player.isHost ? "房主" : (player.id === roomData?.judgeId ? "裁判" : "玩家")}</td>
+          <td>${Array.isArray(player.hand) ? player.hand.length : 0} 張</td>
+          <td data-actions></td>
+        `;
+        const actionsCell = tr.querySelector("[data-actions]");
+        if (isHost && player.id !== state.clientId) {
+          const kickBtn = document.createElement("button");
+          kickBtn.className = "btn-ghost";
+          kickBtn.textContent = "踢出";
+          kickBtn.addEventListener("click", () => kickPlayer(player.id));
+          const cardBtn = document.createElement("button");
+          cardBtn.className = "btn-ghost";
+          cardBtn.textContent = "黃牌 +1";
+          cardBtn.addEventListener("click", () => giveYellowCard(player.id));
+          actionsCell.appendChild(kickBtn);
+          actionsCell.appendChild(cardBtn);
+        } else if (player.id === state.clientId) {
+          const readyBtn = document.createElement("button");
+          readyBtn.className = "btn-ghost";
+          readyBtn.textContent = player.ready ? "取消準備" : "我準備好了";
+          readyBtn.addEventListener("click", toggleReady);
+          actionsCell.appendChild(readyBtn);
+        }
+        playersBody.appendChild(tr);
+      });
+    }
+
+    function renderHandOptions(player) {
+      handSelect.innerHTML = "";
+      if (!player || !Array.isArray(player.hand) || !player.hand.length) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = player ? "目前沒有手牌" : "尚未加入房間";
+        handSelect.appendChild(option);
+        handSelect.disabled = true;
+        return;
+      }
+      handSelect.disabled = false;
+      player.hand.forEach((word) => {
+        const option = document.createElement("option");
+        option.value = word;
+        option.textContent = word;
+        handSelect.appendChild(option);
+      });
+    }
+
+    function updateRoomUI(roomId, data) {
+      if (!roomId || !data) {
+        currentRoomBox.classList.add("hidden");
+        btnReady.textContent = "我準備好了";
+        return;
+      }
+      currentRoomBox.classList.remove("hidden");
+      currentRoomName.textContent = `目前房間：${data.name || roomId}`;
+      const playerCount = Array.isArray(data.playerIds) ? data.playerIds.length : 0;
+      const capacity = data.capacity || 8;
+      currentRoomMeta.textContent = `${playerCount} / ${capacity} 人`;
+    }
+  </script>
+</body>
+</html>
