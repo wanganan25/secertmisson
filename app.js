@@ -49,7 +49,6 @@ const defaultRoomConfigs = [
 ];
 
 const localPlayerKey = 'codenamePlayerStore-v1';
-const BASE_GUESSES = 1;
 const TEAM_KEYS = ['red','blue'];
 
 const lastRoomKey = 'codenameLastRoomId';
@@ -71,10 +70,9 @@ function roomCollection(roomId, ...segments) {
   return collection(db, 'rooms', safeId, ...segments);
 }
 
-function teamChatCollection(roomId, team) {
+function roomChatCollection(roomId) {
   const safeId = normalizeRoomId(roomId);
-  if (!TEAM_KEYS.includes(team)) throw new Error('�䲼���覡�����T');
-  return collection(db, 'rooms', safeId, 'teamChats-' + team);
+  return collection(db, 'rooms', safeId, 'chat');
 }
 
 function logAndAlert(message, error) {
@@ -249,6 +247,17 @@ const teamChatMessagesEl = document.getElementById('team-chat-messages');
 const teamChatFormEl = document.getElementById('team-chat-form');
 const teamChatInputEl = document.getElementById('team-chat-input');
 const teamChatSendBtn = document.getElementById('team-chat-send');
+const clueNumberButtons = Array.from(document.querySelectorAll('[data-clue-number]'));
+if (clueNumberButtons.length) {
+  clueNumberButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      if (button.disabled) return;
+      clueNumberButtons.forEach(btn => btn.classList.toggle('selected', btn === button));
+      const value = Number(button.dataset.clueNumber);
+      submitClue(value);
+    });
+  });
+}
 const toggleReadyBtn = document.getElementById('toggle-ready');
 const startGameBtn = document.getElementById('start-game');
 const resetGameBtn = document.getElementById('reset-game');
@@ -435,6 +444,10 @@ function resetChatState() {
   cleanupChatSubscription();
   state.chatMessages = [];
   state.chatTeam = null;
+  if (teamChatInputEl) teamChatInputEl.value = '';
+    if (teamChatInputEl) teamChatInputEl.disabled = true;
+    renderTeamChat();
+  setClueNumberAvailability(false);
 }
 
 function formatTeamChatTimestamp(value) {
@@ -451,49 +464,87 @@ function formatTeamChatTimestamp(value) {
 
 function updateTeamChatControls() {
   if (!teamChatInputEl || !teamChatSendBtn) return;
+  if (clueNumberButtons.length) {
+    teamChatSendBtn.disabled = true;
+    return;
+  }
   const canSend = !teamChatInputEl.disabled && Boolean(teamChatInputEl.value.trim());
   teamChatSendBtn.disabled = !canSend;
 }
 
+
+function setClueNumberAvailability(enabled) {
+  if (!clueNumberButtons.length) return;
+  clueNumberButtons.forEach(button => {
+    button.disabled = !enabled;
+    if (!enabled) button.classList.remove('selected');
+  });
+}
+
 function renderTeamChat() {
-  if (!teamChatPanelEl || !teamChatIndicatorEl || !teamChatStatusEl || !teamChatMessagesEl || !teamChatInputEl || !teamChatSendBtn) return;
+  if (!teamChatPanelEl || !teamChatIndicatorEl || !teamChatStatusEl || !teamChatMessagesEl || !teamChatInputEl) return;
 
   const room = state.roomData;
   const player = getCurrentPlayer();
   const team = player?.team || null;
   const status = room?.status;
+  const isCaptain = Boolean(player?.isCaptain);
+  const isTurn = room?.currentTurn ? room.currentTurn === team : false;
+  const clueSubmitted = room?.clueSubmitted === true;
 
   let indicatorText = 'No Team';
-  let statusText = 'Join a room to see captain messages.';
+  let statusText = 'Join a room to use the team chat.';
   let emptyMessage = 'Waiting for the game to start...';
   let allowSend = false;
 
   if (!room) {
-    statusText = 'Please join a room first.';
-    emptyMessage = 'No room joined yet.';
+    statusText = 'Join a room to see captain messages.';
+    emptyMessage = 'No active room.';
   } else if (!player) {
     statusText = 'Confirm that you appear in the player list.';
   } else if (!team) {
     statusText = status === 'in-progress'
-      ? 'You are not assigned to a team yet.'
-      : 'Wait for the host to start the game and assign teams.';
+      ? 'You have not been assigned to a team yet.'
+      : 'Wait for the host to start the match.';
   } else {
-    const isRed = team === 'red';
-    indicatorText = isRed ? 'Red Team' : 'Blue Team';
-
+    indicatorText = team === 'red' ? 'Red Team' : 'Blue Team';
     if (status === 'in-progress') {
-      if (player.isCaptain) {
-        allowSend = true;
-        statusText = isRed ? 'You are the red captain. Share clues with your team.' : 'You are the blue captain. Share clues with your team.';
-        emptyMessage = 'No clues yet, send the first message!';
+      if (isCaptain) {
+        if (isTurn) {
+          if (clueSubmitted) {
+            statusText = 'Clue sent. Wait for teammates to act.';
+            emptyMessage = 'Clue already posted.';
+          } else {
+            allowSend = true;
+            statusText = 'Enter a one-word clue, then tap a number.';
+            emptyMessage = 'No clue yet. Please provide one.';
+          }
+        } else {
+          statusText = 'Not our turn yet. Please wait.';
+          emptyMessage = 'Captains can speak once it is our turn.';
+        }
       } else {
-        statusText = isRed ? 'Only the red captain can send messages.' : 'Only the blue captain can send messages.';
-        emptyMessage = 'Waiting for the captain to speak...';
+        if (isTurn) {
+          statusText = clueSubmitted
+            ? 'Discuss the clue and flip cards carefully.'
+            : 'Waiting for the captain to send a clue.';
+        } else {
+          statusText = 'Waiting for the other team to finish their turn.';
+        }
+        emptyMessage = 'No clue yet.';
       }
     } else {
-      statusText = 'Captains can talk once the game begins.';
-      emptyMessage = 'Waiting for the game to begin.';
+      statusText = 'The game has not started yet.';
+      emptyMessage = 'Waiting for the host to start the match.';
     }
+  }
+
+  const hasClue = room?.clueSubmitted && typeof room?.clueWord === 'string' && room.clueWord.trim();
+  if (hasClue) {
+    const summary = room.clueWord.trim() + (typeof room.clueNumber === 'number' ? ' [' + room.clueNumber + ']' : '');
+    const guessesLeft = typeof room.guessesRemaining === 'number' ? Math.max(0, room.guessesRemaining) : null;
+    const clueInfo = 'Current clue: ' + summary + (guessesLeft !== null ? ' (' + guessesLeft + ' guesses left)' : '') + '.';
+    statusText += (statusText ? ' ' : '') + clueInfo;
   }
 
   teamChatIndicatorEl.textContent = indicatorText;
@@ -518,16 +569,19 @@ function renderTeamChat() {
         : 'Captain';
       const senderLabel = senderName + ' (' + roleLabel + ')';
       const content = escapeHtml(message.text || '');
+      const numberLabel = typeof message.clueNumber === 'number' ? ' [' + message.clueNumber + ']' : '';
       const timeLabel = formatTeamChatTimestamp(message.createdAt);
       const meta = timeLabel ? '<span>' + escapeHtml(timeLabel) + '</span>' : '';
-      return '<div class="chat-message"><div class="sender"><span>' + senderLabel + '</span>' + meta + '</div><div class="text">' + content + '</div></div>';
+      return '<div class="chat-message"><div class="sender"><span>' + senderLabel + '</span>' + meta + '</div><div class="text">' + content + numberLabel + '</div></div>';
     }).join('');
     teamChatMessagesEl.innerHTML = items;
     teamChatMessagesEl.scrollTop = teamChatMessagesEl.scrollHeight;
   }
 
+  setClueNumberAvailability(allowSend);
   teamChatInputEl.disabled = !allowSend;
-  if (!allowSend) teamChatInputEl.value = '';
+  if (teamChatInputEl && allowSend) teamChatInputEl.focus();
+  if (teamChatSendBtn) teamChatSendBtn.disabled = true;
   if (teamChatFormEl) teamChatFormEl.classList.toggle('disabled', !allowSend);
   updateTeamChatControls();
 }
@@ -535,84 +589,136 @@ function renderTeamChat() {
 function ensureTeamChatSubscription() {
   if (!teamChatPanelEl) return;
   const roomId = state.currentRoomId;
-  const room = state.roomData;
-  const player = getCurrentPlayer();
-  const team = player?.team || null;
-  const active = Boolean(roomId && room && room.status === 'in-progress' && team);
-
-  if (!active) {
-    if (state.chatTeam !== null || state.chatMessages.length) {
-      resetChatState();
-    } else {
-      cleanupChatSubscription();
-    }
+  if (!roomId) {
+    cleanupChatSubscription();
+    state.chatMessages = [];
     renderTeamChat();
     return;
   }
 
-  if (state.chatTeam === team && state.unsubChat) return;
-
-  resetChatState();
-
-  let messagesQuery;
+  cleanupChatSubscription();
   try {
-    messagesQuery = query(teamChatCollection(roomId, team), orderBy('createdAt', 'asc'));
-  } catch (error) {
-    console.warn('�䲼��Ʈw�����覡����', error);
-    renderTeamChat();
-    return;
-  }
-
-  state.chatTeam = team;
-  state.unsubChat = onSnapshot(messagesQuery, snapshot => {
-    state.chatMessages = snapshot.docs.map(docSnap => {
-      const data = docSnap.data();
-      return {
-        id: docSnap.id,
-        text: data.text || '',
-        senderId: data.senderId || '',
-        senderName: data.senderName || '',
-        team: data.team || null,
-        senderRole: data.senderRole || '',
-        createdAt: data.createdAt || null
-      };
+    const messagesQuery = query(roomChatCollection(roomId), orderBy('createdAt', 'asc'));
+    state.unsubChat = onSnapshot(messagesQuery, snapshot => {
+      state.chatMessages = snapshot.docs.map(docSnap => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          text: data.text || '',
+          senderId: data.senderId || '',
+          senderName: data.senderName || '',
+          team: data.team || null,
+          senderRole: data.senderRole || '',
+          clueNumber: typeof data.clueNumber === 'number' ? data.clueNumber : null,
+          createdAt: data.createdAt || null
+        };
+      });
+      renderTeamChat();
     });
-    renderTeamChat();
-  });
+  } catch (error) {
+    console.warn('Failed to subscribe to room chat', error);
+  }
   renderTeamChat();
 }
 
-
-async function sendTeamMessage() {
-  if (!teamChatInputEl || teamChatInputEl.disabled) return;
-  const message = teamChatInputEl.value.trim();
-  if (!message) return;
-
+async function sendTeamMessage(clueNumber, clueWord) {
   const roomId = state.currentRoomId;
   const player = getCurrentPlayer();
   if (!roomId || !player || !player.team) return;
+
+  const number = Number(clueNumber);
+  const rawWord = clueWord ?? (teamChatInputEl ? teamChatInputEl.value : '');
+  const word = rawWord.trim();
+
+  if (!word) {
+    logAndAlert('Please enter a clue word.');
+    return;
+  }
+  if (word.split(/\s+/).filter(Boolean).length > 1) {
+    logAndAlert('Clue must be a single word.');
+    return;
+  }
+  if (!Number.isInteger(number) || number < 1 || number > 10) {
+    logAndAlert('Choose a number between 1 and 10.');
+    return;
+  }
   if (!player.isCaptain) {
-    logAndAlert('只有隊長可以發送隊伍訊息');
+    logAndAlert('Only the captain can send team messages.');
     return;
   }
 
+  const safeRoomId = normalizeRoomId(roomId);
+  const guessesAllowed = number + 1;
+
   if (teamChatSendBtn) teamChatSendBtn.disabled = true;
+  setClueNumberAvailability(false);
+
   try {
-    await addDoc(teamChatCollection(roomId, player.team), {
-      text: message,
+    await runTransaction(db, async transaction => {
+      const roomRef = doc(db, 'rooms', safeRoomId);
+      const roomSnap = await transaction.get(roomRef);
+      if (!roomSnap.exists()) throw new Error('Room no longer exists');
+      const roomData = roomSnap.data();
+      if (roomData.status !== 'in-progress') throw new Error('Game has not started');
+      if (roomData.currentTurn && roomData.currentTurn !== player.team) throw new Error('It is not your team\'s turn');
+      if (roomData.clueSubmitted) throw new Error('A clue has already been submitted this turn');
+      transaction.update(roomRef, {
+        clueSubmitted: true,
+        clueWord: word,
+        clueNumber: number,
+        clueBy: player.name || '',
+        guessesRemaining: guessesAllowed,
+        extraGuessAvailable: false,
+        lastClueAt: serverTimestamp()
+      });
+    });
+
+    await addDoc(roomChatCollection(roomId, player.team), {
+      text: word,
+      clueNumber: number,
       senderId: player.id,
       senderName: player.name || '',
-      team: player.team,
       senderRole: player.team === 'red' ? 'red-captain' : 'blue-captain',
+      team: player.team,
       createdAt: serverTimestamp()
     });
-    teamChatInputEl.value = '';
+
+    if (state.roomData && state.roomData.id === safeRoomId) {
+      state.roomData = {
+        ...state.roomData,
+        clueSubmitted: true,
+        clueWord: word,
+        clueNumber: number,
+        clueBy: player.name || '',
+        guessesRemaining: guessesAllowed,
+        extraGuessAvailable: false
+      };
+    }
+
+    if (teamChatInputEl) {
+      teamChatInputEl.value = '';
+      teamChatInputEl.disabled = true;
+    }
+    renderTeamChat();
   } catch (error) {
-    logAndAlert('發送隊伍訊息失敗', error);
+    logAndAlert(error.message || 'Failed to send team message', error);
+    setClueNumberAvailability(true);
+    if (teamChatInputEl) teamChatInputEl.disabled = false;
   } finally {
     updateTeamChatControls();
   }
 }
+
+function submitClue(number) {
+  if (!teamChatInputEl || teamChatInputEl.disabled) return;
+  const word = teamChatInputEl.value.trim();
+  if (!word) {
+    logAndAlert('Please enter a clue word.');
+    return;
+  }
+  sendTeamMessage(number, word);
+}
+
 
 // -------------------- Firestore listeners --------------------
 function cleanupRoomSubscriptions() {
@@ -720,6 +826,11 @@ async function ensureDefaultRooms() {
         currentTurn: null,
         guessesRemaining: null,
         extraGuessAvailable: null,
+        clueSubmitted: false,
+        clueWord: '',
+        clueNumber: null,
+        clueBy: '',
+        lastClueAt: null,
         createdAt: serverTimestamp()
       });
     } else {
@@ -733,6 +844,11 @@ async function ensureDefaultRooms() {
       if (!('currentTurn' in data)) updates.currentTurn = null;
       if (!('guessesRemaining' in data)) updates.guessesRemaining = null;
       if (!('extraGuessAvailable' in data)) updates.extraGuessAvailable = null;
+      if (!('clueSubmitted' in data)) updates.clueSubmitted = false;
+      if (!('clueWord' in data)) updates.clueWord = '';
+      if (!('clueNumber' in data)) updates.clueNumber = null;
+      if (!('clueBy' in data)) updates.clueBy = '';
+      if (!('lastClueAt' in data)) updates.lastClueAt = null;
       if (Object.keys(updates).length) await updateDoc(roomRef, updates);
     }
   }));
@@ -760,15 +876,16 @@ async function fetchCardRefs(roomId) {
   }
 }
 
-async function fetchTeamChatRefs(roomId) {
-  const refs = [];
-  for (const team of TEAM_KEYS) {
-    try {
-      const snapshot = await getDocs(teamChatCollection(roomId, team));
-      snapshot.forEach(docSnap => refs.push(docSnap.ref));
-    } catch (error) {
-      console.warn('Ū�����䲼��Ʈw����', error);
-    }
+async function fetchChatRefs(roomId) {
+  try {
+    const snapshot = await getDocs(roomChatCollection(roomId));
+    return snapshot.docs.map(docSnap => docSnap.ref);
+  } catch (error) {
+    console.warn('Failed to load room chat messages', error);
+    return [];
+  }
+}
+
   }
   return refs;
 }
@@ -781,7 +898,7 @@ async function resetRoom(roomId) {
   try {
     const playersSnap = await getDocs(roomCollection(safeRoomId, 'players'));
     const cardsSnap = await getDocs(roomCollection(safeRoomId, 'cards'));
-    const chatRefs = await fetchTeamChatRefs(safeRoomId);
+    const chatRefs = await fetchChatRefs(safeRoomId);
     await runTransaction(db, async transaction => {
       const roomRef = doc(db, 'rooms', safeRoomId);
       const roomSnap = await transaction.get(roomRef);
@@ -800,7 +917,12 @@ async function resetRoom(roomId) {
         winner: null,
         playerCount: 0,
         remainingRed: null,
-        remainingBlue: null
+        remainingBlue: null,
+        clueSubmitted: false,
+        clueWord: '',
+        clueNumber: null,
+        clueBy: '',
+        lastClueAt: null
       }, { merge: true });
     });
     if (playerStore[safeRoomId]) {
@@ -904,7 +1026,7 @@ async function joinRoomTransaction(roomId, name) {
   await runTransaction(db, async transaction => {
     const roomRef = doc(db, 'rooms', safeRoomId);
     const roomSnap = await transaction.get(roomRef);
-    if (!roomSnap.exists()) throw new Error('房間不存在');
+    if (!roomSnap.exists()) throw new Error('Room no longer exists');
     const room = roomSnap.data();
     if (room.status === 'in-progress') throw new Error('遊戲進行中，請稍候加入');
     const currentCount = room.playerCount || 0;
@@ -946,13 +1068,13 @@ async function startGame() {
   const safeRoomId = normalizeRoomId(roomId);
   const playerRefs = await fetchPlayerRefs(safeRoomId);
   const cardRefs = await fetchCardRefs(safeRoomId);
-  const chatRefs = await fetchTeamChatRefs(safeRoomId);
+  const chatRefs = await fetchChatRefs(safeRoomId);
 
   try {
     await runTransaction(db, async transaction => {
       const roomRef = doc(db, 'rooms', safeRoomId);
       const roomSnap = await transaction.get(roomRef);
-      if (!roomSnap.exists()) throw new Error('房間不存在');
+      if (!roomSnap.exists()) throw new Error('Room no longer exists');
       const room = roomSnap.data();
       if (room.ownerId !== player.id) throw new Error('只有房主可以開始遊戲');
       if (room.status !== 'lobby') throw new Error('遊戲狀態不允許開始');
@@ -998,8 +1120,13 @@ async function startGame() {
         status: 'in-progress',
         startingTeam,
         currentTurn: startingTeam,
-        guessesRemaining: BASE_GUESSES,
+        guessesRemaining: 0,
         extraGuessAvailable: true,
+        clueSubmitted: false,
+        clueWord: '',
+        clueNumber: null,
+        clueBy: '',
+        lastClueAt: null,
         winner: null,
         remainingRed,
         remainingBlue
@@ -1017,13 +1144,13 @@ async function resetGame() {
   const safeRoomId = normalizeRoomId(roomId);
   const playerRefs = await fetchPlayerRefs(safeRoomId);
   const cardRefs = await fetchCardRefs(safeRoomId);
-  const chatRefs = await fetchTeamChatRefs(safeRoomId);
+  const chatRefs = await fetchChatRefs(safeRoomId);
 
   try {
     await runTransaction(db, async transaction => {
       const roomRef = doc(db, 'rooms', safeRoomId);
       const roomSnap = await transaction.get(roomRef);
-      if (!roomSnap.exists()) throw new Error('房間不存在');
+      if (!roomSnap.exists()) throw new Error('Room no longer exists');
       if (roomSnap.data().ownerId !== player.id) throw new Error('只有房主可以重設');
 
       for (const item of playerRefs) {
@@ -1040,7 +1167,12 @@ async function resetGame() {
         guessesRemaining: null,
         extraGuessAvailable: null,
         remainingRed: null,
-        remainingBlue: null
+        remainingBlue: null,
+        clueSubmitted: false,
+        clueWord: '',
+        clueNumber: null,
+        clueBy: '',
+        lastClueAt: null
       }, { merge: true });
     });
   } catch (error) {
@@ -1066,7 +1198,7 @@ async function revealCard(index) {
         transaction.get(cardRef)
       ]);
 
-      if (!roomSnap.exists()) throw new Error('房間不存在');
+      if (!roomSnap.exists()) throw new Error('Room no longer exists');
       const room = roomSnap.data();
       if (room.status !== 'in-progress') return;
       if (!playerSnap.exists()) throw new Error('找不到玩家資料');
@@ -1074,7 +1206,7 @@ async function revealCard(index) {
       const playerData = playerSnap.data();
       if (playerData.isCaptain) throw new Error('隊長不能翻牌');
       if (!playerData.team) throw new Error('觀戰者無法翻牌');
-      if (room.currentTurn && playerData.team !== room.currentTurn) throw new Error('尚未輪到你的隊伍');
+      if (room.currentTurn && playerData.team !== room.currentTurn) throw new Error('It is not your team's turn');
       const card = cardSnap.data();
       if (card.revealed) return;
       if (room.guessesRemaining !== null && room.guessesRemaining <= 0 && room.extraGuessAvailable === false) {
@@ -1086,7 +1218,7 @@ async function revealCard(index) {
       const team = playerData.team;
       let winner = null;
       const updates = {};
-      let guessesRemaining = typeof room.guessesRemaining === 'number' ? room.guessesRemaining : BASE_GUESSES;
+      let guessesRemaining = typeof room.guessesRemaining === 'number' ? room.guessesRemaining : 0;
       let extraGuessAvailable = typeof room.extraGuessAvailable === 'boolean' ? room.extraGuessAvailable : true;
       let nextTurn = room.currentTurn || team;
       let turnChanged = false;
@@ -1110,25 +1242,28 @@ async function revealCard(index) {
 
       if (!winner) {
         if (correctGuess) {
-          if (guessesRemaining > 0) {
-            guessesRemaining -= 1;
-          } else if (extraGuessAvailable) {
+          guessesRemaining = Math.max(0, guessesRemaining - 1);
+          if (guessesRemaining <= 0) {
+            turnChanged = true;
+            nextTurn = otherTeam(team);
+            guessesRemaining = 0;
             extraGuessAvailable = false;
-            turnChanged = true;
-            nextTurn = otherTeam(team);
-            guessesRemaining = BASE_GUESSES;
-            extraGuessAvailable = true;
-          } else {
-            turnChanged = true;
-            nextTurn = otherTeam(team);
-            guessesRemaining = BASE_GUESSES;
-            extraGuessAvailable = true;
+            updates.clueSubmitted = false;
+            updates.clueWord = '';
+            updates.clueNumber = null;
+            updates.clueBy = '';
+            updates.lastClueAt = null;
           }
         } else if (wrongGuess) {
           turnChanged = true;
           nextTurn = otherTeam(team);
-          guessesRemaining = BASE_GUESSES;
-          extraGuessAvailable = true;
+          guessesRemaining = 0;
+          extraGuessAvailable = false;
+          updates.clueSubmitted = false;
+          updates.clueWord = '';
+          updates.clueNumber = null;
+          updates.clueBy = '';
+          updates.lastClueAt = null;
         }
       }
 
@@ -1138,10 +1273,19 @@ async function revealCard(index) {
         updates.currentTurn = null;
         updates.guessesRemaining = null;
         updates.extraGuessAvailable = null;
+        updates.clueSubmitted = false;
+        updates.clueWord = '';
+        updates.clueNumber = null;
+        updates.clueBy = '';
+        updates.lastClueAt = null;
       } else if (turnChanged) {
         updates.currentTurn = nextTurn;
         updates.guessesRemaining = guessesRemaining;
         updates.extraGuessAvailable = extraGuessAvailable;
+        updates.clueSubmitted = false;
+        updates.clueWord = '';
+        updates.clueNumber = null;
+        updates.clueBy = '';
       } else {
         updates.guessesRemaining = guessesRemaining;
         updates.extraGuessAvailable = extraGuessAvailable;
@@ -1175,13 +1319,13 @@ async function kickPlayer(targetId) {
   const safeRoomId = normalizeRoomId(roomId);
   const remainingSnapshot = state.players.filter(player => player.id !== targetId);
   const cardRefs = !remainingSnapshot.length ? await fetchCardRefs(safeRoomId) : [];
-  const chatRefs = !remainingSnapshot.length ? await fetchTeamChatRefs(safeRoomId) : [];
+  const chatRefs = !remainingSnapshot.length ? await fetchChatRefs(safeRoomId) : [];
 
   try {
     await runTransaction(db, async transaction => {
       const roomRef = doc(db, 'rooms', safeRoomId);
       const roomSnap = await transaction.get(roomRef);
-      if (!roomSnap.exists()) throw new Error('房間不存在');
+      if (!roomSnap.exists()) throw new Error('Room no longer exists');
 
       const targetRef = doc(db, 'rooms', safeRoomId, 'players', targetId);
       const targetSnap = await transaction.get(targetRef);
@@ -1214,6 +1358,10 @@ async function kickPlayer(targetId) {
         updates.extraGuessAvailable = null;
         updates.remainingRed = null;
         updates.remainingBlue = null;
+        updates.clueSubmitted = false;
+        updates.clueWord = '';
+        updates.clueNumber = null;
+        updates.clueBy = '';
         chatRefs.forEach(ref => transaction.delete(ref));
         cardRefs.forEach(ref => transaction.delete(ref));
       }
@@ -1232,7 +1380,7 @@ async function leaveRoom() {
   const safeRoomId = normalizeRoomId(roomId);
   const playerRefs = await fetchPlayerRefs(safeRoomId);
   const cardRefs = await fetchCardRefs(safeRoomId);
-  const chatRefs = await fetchTeamChatRefs(safeRoomId);
+  const chatRefs = await fetchChatRefs(safeRoomId);
 
   try {
     await runTransaction(db, async transaction => {
@@ -1273,6 +1421,10 @@ async function leaveRoom() {
         updates.extraGuessAvailable = null;
         updates.remainingRed = null;
         updates.remainingBlue = null;
+        updates.clueSubmitted = false;
+        updates.clueWord = '';
+        updates.clueNumber = null;
+        updates.clueBy = '';
         chatRefs.forEach(ref => transaction.delete(ref));
         cardRefs.forEach(ref => transaction.delete(ref));
       }
@@ -1333,12 +1485,24 @@ boardGridEl.addEventListener('click', event => {
 if (teamChatFormEl) {
   teamChatFormEl.addEventListener('submit', event => {
     event.preventDefault();
-    sendTeamMessage();
+    logAndAlert('Tap a number button to send the clue.');
   });
 }
 
 if (teamChatInputEl) {
   teamChatInputEl.addEventListener('input', updateTeamChatControls);
+}
+
+if (clueNumberButtons.length) {
+if (clueNumberButtons.length) {
+  clueNumberButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      if (button.disabled) return;
+      clueNumberButtons.forEach(btn => btn.classList.toggle('selected', btn === button));
+      const value = Number(button.dataset.clueNumber);
+      submitClue(value);
+    });
+  });
 }
 
 // -------------------- Init --------------------
@@ -1356,6 +1520,8 @@ async function init() {
 }
 
 init();
+
+
 
 
 

@@ -563,12 +563,28 @@
                 <h3>隊伍聊天室</h3>
                 <span id="team-chat-indicator" class="chat-indicator pill">未分隊</span>
               </div>
-              <div id="team-chat-status" class="helper-text">加入隊伍後即可與隊友聊天。</div>
+              <div id="team-chat-status" class="helper-text">All players can follow the captain&#39;s clues here.</div>
               <div id="team-chat-messages" class="chat-log empty">等待分配隊伍中...</div>
               <form id="team-chat-form" class="chat-form">
-                <input id="team-chat-input" type="text" placeholder="輸入訊息..." autocomplete="off" maxlength="160">
-                <button id="team-chat-send" type="submit" disabled>傳送</button>
+                <input id="team-chat-input" type="text" placeholder="Clue word..." autocomplete="off" maxlength="40">
+                <button id="team-chat-send" type="submit" style="display:none;">Send</button>
               </form>
+              <div id="team-chat-controls" class="chat-controls">
+                <div class="helper-text">Captains enter a clue word, then tap a number.</div>
+                <div id="clue-number-buttons" class="clue-number-grid">
+                  <button type="button" data-clue-number="1">1</button>
+                  <button type="button" data-clue-number="2">2</button>
+                  <button type="button" data-clue-number="3">3</button>
+                  <button type="button" data-clue-number="4">4</button>
+                  <button type="button" data-clue-number="5">5</button>
+                  <button type="button" data-clue-number="6">6</button>
+                  <button type="button" data-clue-number="7">7</button>
+                  <button type="button" data-clue-number="8">8</button>
+                  <button type="button" data-clue-number="9">9</button>
+                  <button type="button" data-clue-number="10">10</button>
+                </div>
+              </div>
+              </div>
             </div>
           </div>        </div>
       </div>
@@ -581,6 +597,7 @@
 
 </body>
 </html>
+
 
 
 
