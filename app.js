@@ -1123,20 +1123,6 @@ async function castVote(choice) {
       round: voteRound,
       createdAt: serverTimestamp()
     });
-
-    if (state.voteState.round === voteRound) {
-      state.voteState.voters.add(player.id);
-      if (choice === 'pass') {
-        state.voteState.pass.add(player.id);
-      } else {
-        if (!state.voteState.byCard.has(normalized)) state.voteState.byCard.set(normalized, new Set());
-        state.voteState.byCard.get(normalized).add(player.id);
-      }
-      renderTeamVoteFeed();
-      renderVoteSection();
-      renderBoard();
-      attemptFinalizeVote();
-    }
   } catch (error) {
     console.error('投票失敗', error);
   }
