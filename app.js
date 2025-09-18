@@ -645,13 +645,16 @@ function renderBoard() {
   const currentPlayer = getCurrentPlayer();
   const voteRound = typeof room?.voteRound === 'number' ? room.voteRound : null;
   const voteState = state.voteState;
+  const activeTeam = room?.currentTurn || null;
+  const sameTeam = Boolean(currentPlayer && activeTeam && currentPlayer.team === activeTeam);
   const voteActive = Boolean(
     room &&
     room.status === 'in-progress' &&
     room.clueSubmitted &&
     typeof voteRound === 'number' &&
     !room.voteResolved &&
-    voteState.round === voteRound
+    voteState.round === voteRound &&
+    sameTeam
   );
 
   const cardVoteCounts = new Map();
