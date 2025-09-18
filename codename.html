@@ -541,6 +541,21 @@
       box-shadow: none;
     }
 
+    .vote-feed {
+      margin-top: 1rem;
+      padding: .75rem 1rem;
+      border-radius: 12px;
+      background: rgba(79,70,229,.08);
+      color: #312e81;
+      font-size: .9rem;
+      line-height: 1.5;
+      display: none;
+    }
+
+    .vote-feed.active {
+      display: block;
+    }
+
 
     .back-home {
       display: inline-flex;
@@ -664,6 +679,7 @@
                 <div id="vote-status" class="helper-text"></div>
                 <button id="vote-pass" type="button" class="ghost">放棄投票</button>
               </div>
+              <div id="team-vote-feed" class="vote-feed"></div>
             </div>
           </div>
 

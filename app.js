@@ -347,6 +347,7 @@ function resetVoteState(preserveRound = false) {
   const next = createEmptyVoteState();
   if (preserveRound && state.voteState.round) next.round = state.voteState.round;
   state.voteState = next;
+  renderTeamVoteFeed();
 }
 
 function cleanupVoteSubscription() {
@@ -507,6 +508,7 @@ const teamChatInputEl = document.getElementById('team-chat-input');
 const teamChatSendBtn = document.getElementById('team-chat-send');
 const voteStatusEl = document.getElementById('vote-status');
 const votePassBtn = document.getElementById('vote-pass');
+const teamVoteFeedEl = document.getElementById('team-vote-feed');
 const clueNumberButtons = Array.from(document.querySelectorAll('[data-clue-number]'));
 if (clueNumberButtons.length) {
   clueNumberButtons.forEach(button => {
@@ -899,8 +901,64 @@ function renderTeamChat() {
 }
 
 
+function renderTeamVoteFeed() {
+  if (!teamVoteFeedEl) return;
+
+  const room = state.roomData;
+  const player = getCurrentPlayer();
+  const voteRound = typeof room?.voteRound === 'number' ? room.voteRound : null;
+  const voteState = state.voteState;
+  const team = room?.currentTurn || null;
+  const voteActive = Boolean(
+    room &&
+    room.status === 'in-progress' &&
+    room.clueSubmitted &&
+    typeof voteRound === 'number' &&
+    !room.voteResolved &&
+    voteState.round === voteRound
+  );
+  const isTeamMember = Boolean(player && team && player.team === team);
+
+  if (!voteActive || !isTeamMember) {
+    teamVoteFeedEl.classList.remove('active');
+    teamVoteFeedEl.textContent = '';
+    return;
+  }
+
+  const rows = [];
+  voteState.byCard.forEach((set, key) => {
+    if (!(set instanceof Set) || set.size === 0) return;
+    const index = Number(key);
+    const card = state.cards.find(item => item.index === index);
+    const word = card ? card.word : `#${index}`;
+    rows.push({ word, count: set.size });
+  });
+  const passCount = voteState.pass.size;
+  if (passCount > 0) {
+    rows.push({ word: '棄權', count: passCount });
+  }
+
+  if (!rows.length) {
+    teamVoteFeedEl.classList.add('active');
+    teamVoteFeedEl.textContent = '尚未有人投票。';
+    return;
+  }
+
+  rows.sort((a, b) => {
+    if (b.count !== a.count) return b.count - a.count;
+    return String(a.word).localeCompare(String(b.word), 'zh-Hant');
+  });
+
+  teamVoteFeedEl.innerHTML = rows
+    .map(item => `<div>✦ ${escapeHtml(item.word)}：${item.count} 票</div>`)
+    .join('');
+  teamVoteFeedEl.classList.add('active');
+}
+
 function renderVoteSection() {
   if (!voteStatusEl || !votePassBtn) return;
+
+  renderTeamVoteFeed();
 
   const room = state.roomData;
   const player = getCurrentPlayer();
@@ -909,7 +967,8 @@ function renderVoteSection() {
   const team = room?.currentTurn || null;
   const eligible = team ? getTeamVoters(team) : [];
   const eligibleCount = eligible.length;
-  const isMyTurn = Boolean(player && team && player.team === team && !player.isCaptain);
+  const sameTeam = Boolean(player && team && player.team === team);
+  const canVote = Boolean(sameTeam && player && !player.isCaptain);
 
   const voteActive = Boolean(
     room &&
@@ -922,6 +981,12 @@ function renderVoteSection() {
 
   if (!room) {
     voteStatusEl.textContent = '尚未加入房間。';
+    votePassBtn.disabled = true;
+    return;
+  }
+
+  if (voteActive && !sameTeam) {
+    voteStatusEl.textContent = '另一隊正在進行投票，請稍候。';
     votePassBtn.disabled = true;
     return;
   }
@@ -955,7 +1020,12 @@ function renderVoteSection() {
   const passVotes = voteState.pass.size;
   const parts = [];
   voteState.byCard.forEach((set, key) => {
-    if (set.size > 0) parts.push(`#${key}:${set.size}`);
+    if (set.size > 0) {
+      const index = Number(key);
+      const card = state.cards.find(item => item.index === index);
+      const word = card ? card.word : `#${index}`;
+      parts.push(`${word}:${set.size}`);
+    }
   });
   if (passVotes > 0) parts.push(`棄權:${passVotes}`);
   const summary = parts.length ? parts.join('，') : '尚未有投票。';
@@ -964,10 +1034,11 @@ function renderVoteSection() {
   voteStatusEl.textContent = eligibleCount
     ? `${header}：${summary}${waiting > 0 ? `，尚有 ${waiting} 人未表態。` : ''}`
     : '本隊沒有可投票成員，將自動跳過。';
-  votePassBtn.disabled = !(isMyTurn && voteActive);
+  votePassBtn.disabled = !canVote;
 }
 
 function ensureVoteSubscription() {
+
   const room = state.roomData;
   const roomId = state.currentRoomId;
   if (!room || !roomId || room.status !== 'in-progress') {
@@ -1028,6 +1099,10 @@ async function castVote(choice) {
   if (room.status !== 'in-progress' || !room.clueSubmitted || room.voteResolved || typeof voteRound !== 'number') return;
   if (!room.currentTurn || player.team !== room.currentTurn || player.isCaptain) return;
   if (state.voteState.round !== voteRound) return;
+  if (state.voteState.voters.has(player.id)) {
+    logAndAlert('你已完成投票。');
+    return;
+  }
 
   let normalized = choice;
   if (choice !== 'pass') {
@@ -1049,6 +1124,20 @@ async function castVote(choice) {
       round: voteRound,
       createdAt: serverTimestamp()
     });
+
+    if (state.voteState.round === voteRound) {
+      state.voteState.voters.add(player.id);
+      if (choice === 'pass') {
+        state.voteState.pass.add(player.id);
+      } else {
+        if (!state.voteState.byCard.has(normalized)) state.voteState.byCard.set(normalized, new Set());
+        state.voteState.byCard.get(normalized).add(player.id);
+      }
+      renderTeamVoteFeed();
+      renderVoteSection();
+      renderBoard();
+      attemptFinalizeVote();
+    }
   } catch (error) {
     console.error('投票失敗', error);
   }
