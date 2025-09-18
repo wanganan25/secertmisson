@@ -598,7 +598,7 @@ function renderRoomDetail() {
 function renderBoard() {
   const room = state.roomData;
   if (!room || !state.cards.length) {
-    boardGridEl.innerHTML = '<div class="empty-state">等待房主開始遊戲後才會生成任務地圖。</div>';
+    boardGridEl.innerHTML = '<div class="empty-state">等待房主開始遊戲，遊戲開始後會出現 25 張卡片。</div>';
     boardGridEl.classList.remove('captain-view');
     boardGridEl.classList.add('disabled');
     boardScoreEl.innerHTML = '';
@@ -617,7 +617,7 @@ function renderBoard() {
 
   updateScoreboard();
   if (room.status === 'finished' && room.winner) {
-    winnerBannerEl.textContent = room.winner === 'red' ? '紅隊勝利！' : '藍隊勝利！';
+    winnerBannerEl.textContent = room.winner === 'red' ? '紅隊獲勝' : '藍隊獲勝';
     winnerBannerEl.style.display = 'block';
   } else {
     winnerBannerEl.style.display = 'none';
@@ -634,8 +634,9 @@ function updateScoreboard() {
     if (!card.revealed) counts[card.role] = (counts[card.role] || 0) + 1;
   });
   boardScoreEl.innerHTML = `
-    <span class="score"><span class="dot" style="background:#ef4444"></span>紅隊剩 ${counts.red}</span>
-    <span class="score"><span class="dot" style="background:#2563eb"></span>藍隊剩 ${counts.blue}</span>
+    <span class="score"><strong>剩餘卡片</strong></span>
+    <span class="score"><span class="dot" style="background:#ef4444"></span>紅隊 ${counts.red}</span>
+    <span class="score"><span class="dot" style="background:#2563eb"></span>藍隊 ${counts.blue}</span>
     <span class="score"><span class="dot" style="background:#94a3b8"></span>中立 ${counts.neutral}</span>
     <span class="score"><span class="dot" style="background:#0f172a"></span>刺客 ${counts.assassin}</span>`;
 }
@@ -648,21 +649,24 @@ function updateViewIndicator() {
     return;
   }
   if (room.status === 'lobby') {
-    viewIndicatorEl.textContent = '尚未開始';
+    viewIndicatorEl.textContent = '遊戲尚未開始';
   } else if (room.status === 'in-progress') {
-    const turnInfo = room.currentTurn ? (room.currentTurn === 'red' ? '輪到紅隊' : '輪到藍隊') : '輪到誰等待更新';
+    const turnInfo = room.currentTurn
+      ? (room.currentTurn === 'red' ? '輪到紅隊行動' : '輪到藍隊行動')
+      : '目前尚未輪到任何隊伍';
     if (currentPlayer.isCaptain) {
-      viewIndicatorEl.textContent = `你是隊長，可查看全部顏色｜${turnInfo}`;
+      const teamLabel = currentPlayer.team === 'red' ? '你是紅隊隊長' : currentPlayer.team === 'blue' ? '你是藍隊隊長' : '你是隊長';
+      viewIndicatorEl.textContent = `${teamLabel}，請提供線索。${turnInfo}`;
     } else if (currentPlayer.team) {
-      viewIndicatorEl.textContent = `你是${currentPlayer.team === 'red' ? '紅隊' : '藍隊'}成員，只能看到已翻開的卡片｜${turnInfo}`;
+      const teamLabel = currentPlayer.team === 'red' ? '你是紅隊成員' : '你是藍隊成員';
+      viewIndicatorEl.textContent = `${teamLabel}，請依線索小心翻牌。${turnInfo}`;
     } else {
-      viewIndicatorEl.textContent = '你目前為觀戰者，只能看到公開資訊';
+      viewIndicatorEl.textContent = '你尚未分隊，請等待主持人安排。';
     }
   } else {
-    viewIndicatorEl.textContent = '本局結束，等待房主重設';
+    viewIndicatorEl.textContent = '本局已結束，請等待主持人的下一步。';
   }
 }
-
 
 function cleanupChatSubscription() {
   if (state.unsubChat) {
@@ -723,50 +727,50 @@ function renderTeamChat() {
   const isTurn = room?.currentTurn ? room.currentTurn === team : false;
   const clueSubmitted = room?.clueSubmitted === true;
 
-  let indicatorText = 'No Team';
-  let statusText = 'Join a room to use the team chat.';
-  let emptyMessage = 'Waiting for the game to start...';
+  let indicatorText = '尚未分隊';
+  let statusText = '加入房間後即可使用隊伍聊天。';
+  let emptyMessage = '等待遊戲開始…';
   let allowSend = false;
 
   if (!room) {
-    statusText = 'Join a room to see captain messages.';
-    emptyMessage = 'No active room.';
+    statusText = '加入房間後可查看隊長發出的線索。';
+    emptyMessage = '目前沒有進行中的房間。';
   } else if (!player) {
-    statusText = 'Confirm that you appear in the player list.';
+    statusText = '請確認自己已出現在玩家清單。';
   } else if (!team) {
     statusText = status === 'in-progress'
-      ? 'You have not been assigned to a team yet.'
-      : 'Wait for the host to start the match.';
+      ? '你尚未被分配到隊伍，請稍候。'
+      : '請等待房主開始遊戲。';
   } else {
-    indicatorText = team === 'red' ? 'Red Team' : 'Blue Team';
+    indicatorText = team === 'red' ? '紅隊' : '藍隊';
     if (status === 'in-progress') {
       if (isCaptain) {
         if (isTurn) {
           if (clueSubmitted) {
-            statusText = 'Clue sent. Wait for teammates to act.';
-            emptyMessage = 'Clue already posted.';
+            statusText = '線索已送出，請等待隊友行動。';
+            emptyMessage = '線索已發佈。';
           } else {
             allowSend = true;
-            statusText = 'Enter a one-word clue, then tap a number.';
-            emptyMessage = 'No clue yet. Please provide one.';
+            statusText = '輸入一個線索詞，然後點選數字。';
+            emptyMessage = '尚未發送線索。';
           }
         } else {
-          statusText = 'Not our turn yet. Please wait.';
-          emptyMessage = 'Captains can speak once it is our turn.';
+          statusText = '還沒輪到我們，請稍候。';
+          emptyMessage = '輪到我們時才能發送線索。';
         }
       } else {
         if (isTurn) {
           statusText = clueSubmitted
-            ? 'Discuss the clue and flip cards carefully.'
-            : 'Waiting for the captain to send a clue.';
+            ? '討論隊長的線索，再謹慎翻牌。'
+            : '等待隊長送出線索。';
         } else {
-          statusText = 'Waiting for the other team to finish their turn.';
+          statusText = '等待另一隊完成回合。';
         }
-        emptyMessage = 'No clue yet.';
+        emptyMessage = '尚未有新的線索。';
       }
     } else {
-      statusText = 'The game has not started yet.';
-      emptyMessage = 'Waiting for the host to start the match.';
+      statusText = '遊戲尚未開始。';
+      emptyMessage = '等待房主開始遊戲。';
     }
   }
 
@@ -774,7 +778,7 @@ function renderTeamChat() {
   if (hasClue) {
     const summary = room.clueWord.trim() + (typeof room.clueNumber === 'number' ? ' [' + room.clueNumber + ']' : '');
     const guessesLeft = typeof room.guessesRemaining === 'number' ? Math.max(0, room.guessesRemaining) : null;
-    const clueInfo = 'Current clue: ' + summary + (guessesLeft !== null ? ' (' + guessesLeft + ' guesses left)' : '') + '.';
+    const clueInfo = '目前線索：' + summary + (guessesLeft !== null ? '（剩餘 ' + guessesLeft + ' 次猜測）' : '') + '。';
     statusText += (statusText ? ' ' : '') + clueInfo;
   }
 
@@ -787,18 +791,18 @@ function renderTeamChat() {
   } else {
     teamChatMessagesEl.classList.remove('empty');
     const items = state.chatMessages.map(message => {
-      const senderName = escapeHtml(message.senderName || 'Captain');
+      const senderName = escapeHtml(message.senderName || '隊長');
       const roleFlag = message.senderRole || '';
       const roleLabel = roleFlag === 'red-captain'
-        ? 'Red Captain'
+        ? '紅隊隊長'
         : roleFlag === 'blue-captain'
-        ? 'Blue Captain'
+        ? '藍隊隊長'
         : message.team === 'red'
-        ? 'Red Captain'
+        ? '紅隊隊長'
         : message.team === 'blue'
-        ? 'Blue Captain'
-        : 'Captain';
-      const senderLabel = senderName + ' (' + roleLabel + ')';
+        ? '藍隊隊長'
+        : '隊長';
+      const senderLabel = senderName + '（' + roleLabel + '）';
       const content = escapeHtml(message.text || '');
       const numberLabel = typeof message.clueNumber === 'number' ? ' [' + message.clueNumber + ']' : '';
       const timeLabel = formatTeamChatTimestamp(message.createdAt);
@@ -862,7 +866,7 @@ async function sendTeamMessage(clueNumber, clueWord) {
   const word = rawWord.trim();
 
   if (!word) {
-    logAndAlert('Please enter a clue word.');
+    logAndAlert('請輸入線索。');
     return;
   }
   if (word.split(/\s+/).filter(Boolean).length > 1) {
@@ -944,7 +948,7 @@ function submitClue(number) {
   if (!teamChatInputEl || teamChatInputEl.disabled) return;
   const word = teamChatInputEl.value.trim();
   if (!word) {
-    logAndAlert('Please enter a clue word.');
+    logAndAlert('請輸入線索。');
     return;
   }
   sendTeamMessage(number, word);
