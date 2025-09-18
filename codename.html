@@ -325,6 +325,31 @@
       overflow: hidden;
       transition: transform var(--duration), box-shadow var(--duration), filter var(--duration);
     }
+    .card.vote-option { cursor: pointer; }
+
+    .card.vote-leading {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 32px rgba(59,130,246,.35);
+    }
+
+    .card .vote-badge {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      min-width: 26px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(15,23,42,.78);
+      color: #f8fafc;
+      font-size: .72rem;
+      font-weight: 600;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .card .vote-badge.ally { background: rgba(16,185,129,.82); }
+    .card .vote-badge.warning { background: rgba(239,68,68,.78); }
+
 
     .card:hover { transform: translateY(-2px); box-shadow: 0 16px 28px rgba(100,116,139,.35); }
 
@@ -394,6 +419,33 @@
       background: rgba(99,102,241,.08);
       border: 1px solid rgba(99,102,241,.2);
     }
+    .vote-controls {
+      margin-top: .6rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: .75rem;
+      align-items: center;
+      padding: .75rem 1rem;
+      border-radius: 12px;
+      background: rgba(15,23,42,.04);
+      border: 1px dashed rgba(148,163,184,.35);
+    }
+
+    #vote-status {
+      flex: 1 1 220px;
+      margin: 0;
+    }
+
+    #vote-pass {
+      flex-shrink: 0;
+      padding: .55rem 1.25rem;
+    }
+
+    #vote-pass[disabled] {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
 
     .chat-header {
       display: flex;
@@ -549,22 +601,22 @@
           <div class="board-panel">
             <div class="board-header">
               <div>
-                <h3>任務地圖</h3>
+                <h3>���Ȧa��</h3>
                 <div id="board-score" class="scoreboard"></div>
               </div>
               <div class="right">
-                <div id="view-indicator" class="pill">尚未開始</div>
+                <div id="view-indicator" class="pill">�|���}�l</div>
               </div>
             </div>
             <div id="board-grid" class="board"></div>
             <div id="winner-banner" class="winner-banner" style="display:none;"></div>
-                        <div id="team-chat-panel" class="chat-panel">
+            <div id="team-chat-panel" class="chat-panel">
               <div class="chat-header">
-                <h3>隊伍聊天室</h3>
-                <span id="team-chat-indicator" class="chat-indicator pill">未分隊</span>
+                <h3>�����ѫ�</h3>
+                <span id="team-chat-indicator" class="chat-indicator pill">������</span>
               </div>
               <div id="team-chat-status" class="helper-text">All players can follow the captain&#39;s clues here.</div>
-              <div id="team-chat-messages" class="chat-log empty">等待分配隊伍中...</div>
+              <div id="team-chat-messages" class="chat-log empty">���ݤ��t���...</div>
               <form id="team-chat-form" class="chat-form">
                 <input id="team-chat-input" type="text" placeholder="Clue word..." autocomplete="off" maxlength="40">
                 <button id="team-chat-send" type="submit" style="display:none;">Send</button>
@@ -584,9 +636,13 @@
                   <button type="button" data-clue-number="10">10</button>
                 </div>
               </div>
+              <div id="vote-controls" class="vote-controls">
+                <div id="vote-status" class="helper-text"></div>
+                <button id="vote-pass" type="button" class="ghost">放棄本輪</button>
               </div>
             </div>
-          </div>        </div>
+          </div>
+
       </div>
     </section>
   </main>

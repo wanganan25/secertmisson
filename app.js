@@ -9,6 +9,7 @@ import {
   collection,
   query,
   orderBy,
+  where,
   onSnapshot,
   runTransaction,
   serverTimestamp,
@@ -30,17 +31,15 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // -------------------- Constants --------------------
-const wordPool = [
-  'adventure','analysis','balance','beacon','bridge','canvas','celebration','challenge','clarity','compass','confidence','connection','courage','creative','dawn','discovery','dream','energy','focus','friend','future','galaxy','harmony','idea','insight','journey','knowledge','legend','light','logic','memory','mission','momentum','mystery','network','ocean','origin','pioneer','puzzle','quest','rhythm','rocket','science','signal','spirit','story','strategy','sunrise','teamwork','victory','vision','voice','whisper','wisdom','wonder','?除','?芯撈','?','蝒','靽∩遙','撠','?梯?','?嗆?','隤脫','蝑?','蝟餉齒','摰輯?','餈','蝚','憭乩撈','?','?','?菜?','暺?','??','?梯?','?勗','?','?','蝷曉?','蝟餃飛??,'?','?啁?','摮賊','摮詨?','?恕','?','??','憭','??','瘚琿?','??','?征','?怨','蝢','敶勗?','閮','甇乩?','撘批?','??,'靽∟?','撽?','擃?','?餃?','?怎悌','?賡?','蝭憟?
+const legacyWordPool = [
+  'adventure','analysis','balance','beacon','bridge','canvas','celebration','challenge','clarity','compass','confidence','connection','courage','creative','dawn','discovery','dream','energy','focus','friend','future','galaxy','harmony','idea','insight','journey','knowledge','legend','light','logic','memory','mission','momentum','mystery','network','ocean','origin','pioneer','puzzle','quest','rhythm','rocket','science','signal','spirit','story','strategy','sunrise','teamwork','victory','vision','voice','whisper','wisdom','wonder','?�氣','?�伴','?�台','突破','信任','導航','?��?','?��?','課本','筆�?','系辦','宿�?','迎新','笑聲','夥伴','?�戰','?�啡','?��?','默�?','?��?','?��?','?�到','?�聲','?�照','社�?','系學??,'?�險','?��?','學長','學�?','?�室','?�場','?��?','夜唱','?��?','海�?','?��?','?�空','?�花','羅盤','影�?','記憶','步�?','弧�?','?��?,'信�?','驚�?','高�?','?��?','?�箭','?��?','節�?
 ];
 
-
-const wordSets = [
-  ['?詨?','暺','?嗆?','??蝷?,'?','蝷曉?','?','??','?Ｘ平','?蝧?,'韏啣?','鋆???,'蝳蝷?,'????,'?⊥','擃擗?,'?∟?','撠葦','?','靘輻','璅０','獢?','??','雿平','?⊿'],
-  ['YouTube','蝐?','?餌','?餃蔣','撠牧','?憤','??','?單?','蝬脰頃','瞍怎','??','?嗅?','餈賢?','蝷曄黎','皛','??','蝢?','?','??','??','?Ｗ?','KTV','瘚?','?極','憭找犖'],
-  ['?啣?','?典?','?餉','?啁拳','摨?,'銵??','??,'??','蝑???,'璊?','?豢?','瘞湔','?潮','?單?','??','??','?','?','蝒','?∪?','?蝑?,'銵?蝝?,'??,'?啣?','?'],
-  ['??,'憭Ｘ','?除','撣?','?芯?','?芰','甇⊥?','?望?','?像','甇?儔','??','閮','??','甇瑕','蝘飛','憟?','靽∪艙','?','?賡?','??','暺?','?','?脤','瘝?','甇颱滿']
+const expandedWordPool = [
+  '三輪車','企鵝','作家','光','兔子','公園','公車','冰山','冰淇淋','冰箱','劇院','力量','勇氣','動物園','化學','博物館','卡車','原子筆','司機','和平','咖啡','商店','啤酒','圖書館','地圖','地鐵','坦克','城堡','城市','士兵','外套','夢','大象','太空船','太陽','學校','學生','導演','導遊','山','岩石','島嶼','峽谷','工人','工廠','工程師','市場','希望','帽子','店員','廚師','廟宇','廣場','建築師','影子','快樂','快艇','恐懼','恨','悲傷','愛','戰機','戰爭','手機','拖拉機','摩托車','操場','政府','故事','救護車','教堂','數學','星星','時間','書','書店','月亮','果汁','校車','桌子','桥樑','森林','椅子','樹木','橋樑','橘子','機器人','機場','歷史','死亡','水手','汽車','沙漠','沙灘','河流','洞穴','海岸','海洋','消防員','消防車','港口','湖泊','演員','潛水艇','瀑布','火山','火箭','火車','灯泡','烏龜','熊','熱氣球','燈塔','燈泡','牛','牛奶','物理','狗','獅子','生物','番茄','畫家','相機','眼鏡','科學家','秘密','空間','米飯','糖果','紙張','羊','老師','老虎','耳機','聲音','背包','胡蘿蔔','自由','自行車','舞者','船','芒果','花園','茶','草原','草莓','葡萄','蘋果','蛇','蛋糕','蜘蛛','蝴蝶','蟲','衝浪板','西瓜','記憶','記者','課本','課桌','警察','警車','豆腐','豬','貓','足球','車站','農場','農夫','農舍','遊戲','運動員','酒','酒店','醫生','醫院','鉛筆','銀行','鋼琴','鋼筆','錢包','鍋子','鏡子','鐘錶','鑰匙','長頸鹿','隧道','雨','雨傘','雪','雲','雷','電梯','電腦','電視','青蛙','鞋子','音樂家','顏色','風','風扇','飛機','餅乾','餐廳','香蕉','馬','馬車','馬鈴薯','高鐵','魔法','魔術師','魚','鯊魚','鳥','鳳梨','鴨','鷹','麵包','麵條','黑暗','黑板','龍'
 ];
+
+const wordPool = Array.from(new Set([...legacyWordPool, ...expandedWordPool]));
 const defaultRoomConfigs = [
   { id: 'room-alpha', name: '璈?隞?? A', capacity: 10 },
   { id: 'room-bravo', name: '璈?隞?? B', capacity: 10 },
@@ -109,9 +108,17 @@ function escapeHtml(value) {
 function otherTeam(team) {
   return team === 'red' ? 'blue' : 'red';
 }
+function createEmptyVoteState() {
+  return { round: null, byCard: new Map(), pass: new Set(), voters: new Set() };
+}
+
 
 function generateBoard(startingTeam, wordSet = wordPool) {
-  const selectedWords = shuffle([...wordSet]).slice(0, 25);
+  const uniqueWords = Array.from(new Set(wordSet));
+  if (uniqueWords.length < 25) {
+    throw new Error('Word pool must contain at least 25 unique entries.');
+  }
+  const selectedWords = shuffle(uniqueWords).slice(0, 25);
   const otherTeam = startingTeam === 'red' ? 'blue' : 'red';
   const roles = [
     ...Array(9).fill(startingTeam),
@@ -218,6 +225,12 @@ function getLastRoom() {
   }
 }
 
+function getTeamVoters(team) {
+  if (!team) return [];
+  return state.players.filter(player => player.team === team && !player.isCaptain);
+}
+
+
 // -------------------- Global state --------------------
 const state = {
   rooms: new Map(),
@@ -234,7 +247,8 @@ const state = {
   unsubVotes: null,
   chatMessages: [],
   chatTeam: null,
-  voteState: { round: null, byCard: new Map(), pass: new Set(), voters: new Set() }
+  voteState: createEmptyVoteState(),
+  voteFinalizingRound: null
 };
 
 const lobbyView = document.getElementById('lobby-view');
@@ -255,6 +269,8 @@ const teamChatMessagesEl = document.getElementById('team-chat-messages');
 const teamChatFormEl = document.getElementById('team-chat-form');
 const teamChatInputEl = document.getElementById('team-chat-input');
 const teamChatSendBtn = document.getElementById('team-chat-send');
+const voteStatusEl = document.getElementById('vote-status');
+const votePassBtn = document.getElementById('vote-pass');
 const clueNumberButtons = Array.from(document.querySelectorAll('[data-clue-number]'));
 if (clueNumberButtons.length) {
   clueNumberButtons.forEach(button => {
@@ -375,31 +391,92 @@ function renderRoomDetail() {
 function renderBoard() {
   const room = state.roomData;
   if (!room || !state.cards.length) {
-    boardGridEl.innerHTML = '<div class="empty-state">蝑??蹂蜓???敺????遙???/div>';
+    boardGridEl.innerHTML = '<div class=\"empty-state\">Waiting for the host to start the game...</div>';
     boardGridEl.classList.remove('captain-view');
     boardGridEl.classList.add('disabled');
     boardScoreEl.innerHTML = '';
     winnerBannerEl.style.display = 'none';
     renderTeamChat();
+    renderVoteSection();
     return;
   }
 
   const currentPlayer = getCurrentPlayer();
-  boardGridEl.classList.toggle('captain-view', Boolean(currentPlayer && currentPlayer.isCaptain));
-  boardGridEl.classList.toggle('disabled', room.status !== 'in-progress');
+  const isCaptain = Boolean(currentPlayer?.isCaptain);
+  const boardDisabled = room.status !== 'in-progress';
+
+  const voteRound = typeof room.voteRound === 'number' ? room.voteRound : null;
+  const voteState = state.voteState;
+  const voteInSync = Boolean(voteRound && voteState.round === voteRound);
+  const cardVoteCounts = new Map();
+  let maxVotes = 0;
+
+  if (voteInSync) {
+    voteState.byCard.forEach((set, key) => {
+      const index = Number(key);
+      const count = set instanceof Set ? set.size : 0;
+      if (count > 0) {
+        cardVoteCounts.set(index, count);
+        if (count > maxVotes) maxVotes = count;
+      }
+    });
+  }
+
+  const leadingCards = new Set();
+  if (maxVotes > 0) {
+    cardVoteCounts.forEach((count, index) => {
+      if (count === maxVotes) leadingCards.add(index);
+    });
+  }
+
+  const allowVoteClicks = Boolean(
+    voteInSync &&
+    !boardDisabled &&
+    currentPlayer &&
+    room.currentTurn &&
+    currentPlayer.team === room.currentTurn &&
+    room.clueSubmitted &&
+    !currentPlayer.isCaptain &&
+    room.voteResolved !== true
+  );
+
+  boardGridEl.classList.toggle('captain-view', isCaptain);
+  boardGridEl.classList.toggle('disabled', boardDisabled);
+
   boardGridEl.innerHTML = state.cards.map(card => {
-    const revealedClass = card.revealed ? ' revealed' : '';
-    return `<div class="card role-${card.role}${revealedClass}" data-index="${card.index}"><span class="label">${card.word}</span></div>`;
+    const classes = [`card`, `role-${card.role}`];
+    if (card.revealed) classes.push('revealed');
+    if (!card.revealed && allowVoteClicks) classes.push('vote-option');
+    if (!card.revealed && leadingCards.has(card.index)) classes.push('vote-leading');
+
+    const voteCount = cardVoteCounts.get(card.index) || 0;
+    let badgeClass = '';
+    if (voteCount > 0 && room.currentTurn) {
+      if (card.role === room.currentTurn) {
+        badgeClass = ' ally';
+      } else if (card.role === otherTeam(room.currentTurn) || card.role === 'assassin') {
+        badgeClass = ' warning';
+      }
+    }
+    const voteBadge = voteCount > 0
+      ? `<span class=\"vote-badge${badgeClass}\">${voteCount}</span>`
+      : '';
+
+    return `<div class=\"${classes.join(' ')}\" data-index=\"${card.index}\"><span class=\"label\">${escapeHtml(card.word)}</span>${voteBadge}</div>`;
   }).join('');
 
   updateScoreboard();
+
   if (room.status === 'finished' && room.winner) {
-    winnerBannerEl.textContent = room.winner === 'red' ? '蝝??嚗? : '???嚗?;
+    winnerBannerEl.textContent = room.winner === 'red' ? '紅隊勝利' : '藍隊勝利';
     winnerBannerEl.style.display = 'block';
   } else {
     winnerBannerEl.style.display = 'none';
   }
+
+  renderVoteSection();
 }
+
 
 function updateScoreboard() {
   if (!state.cards.length) {
@@ -445,6 +522,19 @@ function cleanupChatSubscription() {
   if (state.unsubChat) {
     state.unsubChat();
     state.unsubChat = null;
+  }
+}
+
+function resetVoteState(shouldRender = true) {
+  state.voteState = createEmptyVoteState();
+  state.voteFinalizingRound = null;
+  if (shouldRender) renderVoteSection();
+}
+
+function cleanupVoteSubscription() {
+  if (state.unsubVotes) {
+    state.unsubVotes();
+    state.unsubVotes = null;
   }
 }
 
@@ -592,7 +682,325 @@ function renderTeamChat() {
   if (teamChatSendBtn) teamChatSendBtn.disabled = true;
   if (teamChatFormEl) teamChatFormEl.classList.toggle('disabled', !allowSend);
   updateTeamChatControls();
+  renderVoteSection();
 }
+
+function renderVoteSection() {
+  if (!voteStatusEl || !votePassBtn) return;
+
+  const room = state.roomData;
+  const player = getCurrentPlayer();
+  const voteState = state.voteState;
+
+  if (!room) {
+    voteStatusEl.textContent = 'Join a room to participate in voting.';
+    votePassBtn.disabled = true;
+    return;
+  }
+
+  if (room.status !== 'in-progress') {
+    voteStatusEl.textContent = 'Voting will start when the game begins.';
+    votePassBtn.disabled = true;
+    return;
+  }
+
+  const voteRound = typeof room.voteRound === 'number' ? room.voteRound : null;
+  const voteResolved = room.voteResolved === true;
+  const turnTeam = room.currentTurn || null;
+
+  const voteActive = Boolean(
+    turnTeam &&
+    room.clueSubmitted &&
+    voteRound &&
+    voteState.round === voteRound &&
+    !voteResolved
+  );
+
+  let message = '';
+  let canPass = false;
+
+  if (voteActive) {
+    const eligible = getTeamVoters(turnTeam);
+    const eligibleCount = eligible.length;
+    const totalVotes = voteState.voters.size;
+    const passVotes = voteState.pass.size;
+
+    if (!eligibleCount) {
+      message = 'No teammates are eligible to vote this round.';
+    } else {
+      const remaining = Math.max(0, eligibleCount - totalVotes);
+      const parts = [`Votes: ${totalVotes}/${eligibleCount}`];
+      if (passVotes > 0) parts.push(`Pass: ${passVotes}`);
+      if (remaining > 0) parts.push(`${remaining} waiting`);
+      else parts.push('All votes received');
+      message = parts.join(' • ');
+      canPass = Boolean(player && player.team === turnTeam && !player.isCaptain);
+    }
+  } else if (!room.clueSubmitted) {
+    message = 'Waiting for the captain to send a clue.';
+  } else if (voteResolved) {
+    message = 'Voting complete.';
+  } else if (!turnTeam) {
+    message = 'No active team at the moment.';
+  } else if (!voteRound || voteState.round !== voteRound) {
+    message = 'Preparing the next voting round...';
+  } else {
+    message = 'Voting is paused.';
+  }
+
+  if (voteResolved && typeof room.voteOutcome !== 'undefined') {
+    let outcomeMessage = '';
+    if (room.voteOutcome === 'pass') {
+      outcomeMessage = 'Decision: pass.';
+    } else if (typeof room.voteOutcome === 'number') {
+      const card = state.cards.find(item => item.index === room.voteOutcome);
+      outcomeMessage = card ? `Decision: reveal "${card.word}".` : 'Decision has been applied.';
+    }
+    if (outcomeMessage) {
+      message = voteActive ? `${message} ${outcomeMessage}` : outcomeMessage;
+    }
+  }
+
+  voteStatusEl.textContent = message;
+  votePassBtn.disabled = !voteActive || !canPass;
+}
+
+async function castVote(choice) {
+  const room = state.roomData;
+  const player = getCurrentPlayer();
+  const roomId = state.currentRoomId;
+  if (!room || !player || !roomId) return;
+
+  const voteRound = typeof room.voteRound === 'number' ? room.voteRound : null;
+  if (!voteRound || room.status !== 'in-progress' || !room.clueSubmitted || room.voteResolved) return;
+  if (!room.currentTurn || player.team !== room.currentTurn || player.isCaptain) return;
+
+  let normalizedChoice = choice;
+  if (choice !== 'pass') {
+    normalizedChoice = Number(choice);
+    if (Number.isNaN(normalizedChoice)) return;
+    const card = state.cards.find(item => item.index === normalizedChoice);
+    if (!card || card.revealed) return;
+  }
+
+  try {
+    await setDoc(doc(voteCollection(roomId), player.id), {
+      playerId: player.id,
+      playerName: player.name || '',
+      team: player.team,
+      choice: choice === 'pass' ? 'pass' : normalizedChoice,
+      round: voteRound,
+      createdAt: serverTimestamp()
+    });
+  } catch (error) {
+    logAndAlert('Vote failed', error);
+  }
+}
+
+function submitPass() {
+  castVote('pass');
+}
+
+function attemptFinalizeVote() {
+  const room = state.roomData;
+  if (!room || room.status !== 'in-progress' || !room.currentTurn || !room.clueSubmitted) return;
+  if (room.voteResolved) return;
+  const voteRound = typeof room.voteRound === 'number' ? room.voteRound : null;
+  if (!voteRound || state.voteState.round !== voteRound) return;
+
+  const eligible = getTeamVoters(room.currentTurn);
+  const eligibleCount = eligible.length;
+  if (!eligibleCount) return;
+
+  const totalVotes = state.voteState.voters.size;
+  const passVotes = state.voteState.pass.size;
+  let highest = passVotes;
+  state.voteState.byCard.forEach(set => {
+    if (set.size > highest) highest = set.size;
+  });
+
+  const majorityReached = highest > Math.floor(eligibleCount / 2);
+  const everyoneVoted = totalVotes >= eligibleCount;
+
+  if (!majorityReached && !everyoneVoted) return;
+  if (state.voteFinalizingRound === voteRound) return;
+
+  state.voteFinalizingRound = voteRound;
+  finalizeVote(voteRound).finally(() => {
+    if (state.voteFinalizingRound === voteRound) {
+      state.voteFinalizingRound = null;
+    }
+  });
+}
+
+async function finalizeVote(round) {
+  const roomId = state.currentRoomId;
+  if (!roomId || state.voteState.round !== round) return;
+
+  const tallies = [];
+  state.voteState.byCard.forEach((set, index) => {
+    const count = set.size;
+    if (count > 0) tallies.push({ choice: Number(index), count });
+  });
+  const passCount = state.voteState.pass.size;
+  if (passCount > 0) tallies.push({ choice: 'pass', count: passCount });
+  if (!tallies.length) return;
+
+  const highest = Math.max(...tallies.map(item => item.count));
+  const top = tallies.filter(item => item.count === highest);
+  const outcome = top.length === 1 ? top[0] : top[Math.floor(Math.random() * top.length)];
+  const choice = outcome.choice;
+
+  const safeRoomId = normalizeRoomId(roomId);
+
+  try {
+    const result = await runTransaction(db, async transaction => {
+      const roomRef = doc(db, 'rooms', safeRoomId);
+      const roomSnap = await transaction.get(roomRef);
+      if (!roomSnap.exists()) throw new Error('Room no longer exists');
+      const roomData = roomSnap.data();
+      if (roomData.voteRound !== round || roomData.voteResolved === true) {
+        return { applied: false };
+      }
+      const team = roomData.currentTurn;
+      if (!team) {
+        return { applied: false };
+      }
+
+      const updates = {};
+      let continueVoting = false;
+      let nextRound = round;
+
+      if (choice === 'pass') {
+        updates.voteOutcome = 'pass';
+        updates.voteResolved = true;
+        updates.voteRound = round;
+        updates.currentTurn = otherTeam(team);
+        updates.guessesRemaining = 0;
+        updates.extraGuessAvailable = false;
+        updates.clueSubmitted = false;
+        updates.clueWord = '';
+        updates.clueNumber = null;
+        updates.clueBy = '';
+        updates.lastClueAt = null;
+      } else {
+        const cardIndex = Number(choice);
+        const cardRef = doc(db, 'rooms', safeRoomId, 'cards', String(cardIndex));
+        const cardSnap = await transaction.get(cardRef);
+        if (!cardSnap.exists()) throw new Error('Card not found');
+        const card = cardSnap.data();
+        if (card.revealed) {
+          updates.voteOutcome = cardIndex;
+          updates.voteResolved = true;
+          updates.voteRound = round;
+          transaction.set(roomRef, updates, { merge: true });
+          return { applied: true, continueVoting: false, nextRound: round };
+        }
+
+        transaction.update(cardRef, { revealed: true });
+        updates.voteOutcome = cardIndex;
+
+        let winner = null;
+        let guessesRemaining = typeof roomData.guessesRemaining === 'number' ? roomData.guessesRemaining : 0;
+        let extraGuessAvailable = typeof roomData.extraGuessAvailable === 'boolean' ? roomData.extraGuessAvailable : true;
+        let nextTurn = roomData.currentTurn || team;
+        let turnChanged = false;
+
+        if (card.role === 'assassin') {
+          winner = otherTeam(team);
+          turnChanged = true;
+          nextTurn = null;
+        } else if (card.role === 'red') {
+          const next = Math.max(0, (roomData.remainingRed ?? 0) - 1);
+          updates.remainingRed = next;
+          if (next === 0) winner = 'red';
+        } else if (card.role === 'blue') {
+          const next = Math.max(0, (roomData.remainingBlue ?? 0) - 1);
+          updates.remainingBlue = next;
+          if (next === 0) winner = 'blue';
+        }
+
+        const correctGuess = card.role === team;
+        const wrongGuess = card.role !== team && card.role !== 'assassin';
+
+        if (!winner) {
+          if (correctGuess) {
+            guessesRemaining = Math.max(0, guessesRemaining - 1);
+            if (guessesRemaining <= 0) {
+              turnChanged = true;
+              nextTurn = otherTeam(team);
+              guessesRemaining = 0;
+              extraGuessAvailable = false;
+              updates.clueSubmitted = false;
+              updates.clueWord = '';
+              updates.clueNumber = null;
+              updates.clueBy = '';
+              updates.lastClueAt = null;
+            }
+          } else if (wrongGuess) {
+            turnChanged = true;
+            nextTurn = otherTeam(team);
+            guessesRemaining = 0;
+            extraGuessAvailable = false;
+            updates.clueSubmitted = false;
+            updates.clueWord = '';
+            updates.clueNumber = null;
+            updates.clueBy = '';
+            updates.lastClueAt = null;
+          }
+        }
+
+        if (winner) {
+          updates.status = 'finished';
+          updates.winner = winner;
+          updates.currentTurn = null;
+          updates.guessesRemaining = null;
+          updates.extraGuessAvailable = null;
+          updates.clueSubmitted = false;
+          updates.clueWord = '';
+          updates.clueNumber = null;
+          updates.clueBy = '';
+          updates.lastClueAt = null;
+          updates.voteResolved = true;
+          updates.voteRound = round;
+        } else if (turnChanged) {
+          updates.currentTurn = nextTurn;
+          updates.guessesRemaining = guessesRemaining;
+          updates.extraGuessAvailable = extraGuessAvailable;
+          updates.clueSubmitted = false;
+          updates.clueWord = '';
+          updates.clueNumber = null;
+          updates.clueBy = '';
+          updates.voteResolved = true;
+          updates.voteRound = round;
+        } else {
+          updates.guessesRemaining = guessesRemaining;
+          updates.extraGuessAvailable = extraGuessAvailable;
+          updates.voteResolved = false;
+          updates.voteRound = round + 1;
+          continueVoting = true;
+          nextRound = round + 1;
+        }
+      }
+
+      transaction.set(roomRef, updates, { merge: true });
+      return { applied: true, continueVoting, nextRound };
+    });
+
+    if (!result || !result.applied) return;
+
+    await clearVotes(safeRoomId);
+    if (result.continueVoting) {
+      resetVoteState(false);
+      renderVoteSection();
+    } else {
+      resetVoteState();
+    }
+  } catch (error) {
+    console.error('Failed to finalize vote', error);
+  }
+}
+
 
 function ensureTeamChatSubscription() {
   if (!teamChatPanelEl) return;
@@ -628,6 +1036,63 @@ function ensureTeamChatSubscription() {
   }
   renderTeamChat();
 }
+
+function ensureVoteSubscription() {
+  const room = state.roomData;
+  const roomId = state.currentRoomId || room?.id || null;
+  if (!room || !roomId) {
+    cleanupVoteSubscription();
+    resetVoteState();
+    return;
+  }
+
+  const round = typeof room.voteRound === 'number' ? room.voteRound : null;
+  if (!round || room.status !== 'in-progress' || !room.clueSubmitted) {
+    cleanupVoteSubscription();
+    resetVoteState();
+    return;
+  }
+
+  if (state.unsubVotes && state.voteState.round === round) {
+    return;
+  }
+
+  cleanupVoteSubscription();
+  state.voteState = { round, byCard: new Map(), pass: new Set(), voters: new Set() };
+
+  try {
+    const votesQuery = query(voteCollection(roomId), where('round', '==', round));
+    state.unsubVotes = onSnapshot(votesQuery, snapshot => {
+      const byCard = new Map();
+      const pass = new Set();
+      const voters = new Set();
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.round !== round) return;
+        const playerId = data.playerId || docSnap.id;
+        voters.add(playerId);
+        if (data.choice === 'pass') {
+          pass.add(playerId);
+          return;
+        }
+        const choiceIndex = Number(data.choice);
+        if (!Number.isNaN(choiceIndex)) {
+          if (!byCard.has(choiceIndex)) byCard.set(choiceIndex, new Set());
+          byCard.get(choiceIndex).add(playerId);
+        }
+      });
+      state.voteState = { round, byCard, pass, voters };
+      renderBoard();
+      renderVoteSection();
+      attemptFinalizeVote();
+    });
+  } catch (error) {
+    console.warn('Failed to subscribe votes', error);
+    cleanupVoteSubscription();
+    resetVoteState();
+  }
+}
+
 
 async function sendTeamMessage(clueNumber, clueWord) {
   const roomId = state.currentRoomId;
@@ -670,6 +1135,9 @@ async function sendTeamMessage(clueNumber, clueWord) {
       if (roomData.status !== 'in-progress') throw new Error('Game has not started');
       if (roomData.currentTurn && roomData.currentTurn !== player.team) throw new Error('It is not your team\'s turn');
       if (roomData.clueSubmitted) throw new Error('A clue has already been submitted this turn');
+      const currentRound = typeof roomData.voteRound === 'number' ? roomData.voteRound : 0;
+      const nextRound = currentRound + 1;
+
       transaction.update(roomRef, {
         clueSubmitted: true,
         clueWord: word,
@@ -677,7 +1145,10 @@ async function sendTeamMessage(clueNumber, clueWord) {
         clueBy: player.name || '',
         guessesRemaining: guessesAllowed,
         extraGuessAvailable: false,
-        lastClueAt: serverTimestamp()
+        lastClueAt: serverTimestamp(),
+        voteRound: nextRound,
+        voteResolved: false,
+        voteOutcome: null
       });
     });
 
@@ -691,7 +1162,11 @@ async function sendTeamMessage(clueNumber, clueWord) {
       createdAt: serverTimestamp()
     });
 
+    await clearVotes(safeRoomId);
+    resetVoteState(false);
+
     if (state.roomData && state.roomData.id === safeRoomId) {
+      const nextRound = (state.roomData.voteRound ?? 0) + 1;
       state.roomData = {
         ...state.roomData,
         clueSubmitted: true,
@@ -699,9 +1174,14 @@ async function sendTeamMessage(clueNumber, clueWord) {
         clueNumber: number,
         clueBy: player.name || '',
         guessesRemaining: guessesAllowed,
-        extraGuessAvailable: false
+        extraGuessAvailable: false,
+        voteRound: nextRound,
+        voteResolved: false,
+        voteOutcome: null
       };
     }
+    renderVoteSection();
+    ensureVoteSubscription();
 
     if (teamChatInputEl) {
       teamChatInputEl.value = '';
@@ -734,6 +1214,8 @@ function cleanupRoomSubscriptions() {
   if (state.unsubPlayers) { state.unsubPlayers(); state.unsubPlayers = null; }
   if (state.unsubCards) { state.unsubCards(); state.unsubCards = null; }
   if (state.unsubChat) { state.unsubChat(); state.unsubChat = null; }
+  cleanupVoteSubscription();
+  resetVoteState();
 }
 
 function subscribeToDirectory() {
@@ -787,6 +1269,8 @@ function subscribeToRoom(roomId) {
     state.roomData = { id: snapshot.id, ...snapshot.data() };
     renderRoomDetail();
     ensureTeamChatSubscription();
+    ensureVoteSubscription();
+    attemptFinalizeVote();
   });
 
   const playersQuery = query(roomCollection(roomId, 'players'), orderBy('joinedAt', 'asc'));
@@ -799,6 +1283,8 @@ function subscribeToRoom(roomId) {
     }
     renderRoomDetail();
     ensureTeamChatSubscription();
+    ensureVoteSubscription();
+    attemptFinalizeVote();
   });
 
   state.unsubCards = onSnapshot(roomCollection(roomId, 'cards'), snapshot => {
@@ -838,6 +1324,9 @@ async function ensureDefaultRooms() {
         clueWord: '',
         clueNumber: null,
         clueBy: '',
+        voteRound: 0,
+        voteResolved: false,
+        voteOutcome: null,
         lastClueAt: null,
         createdAt: serverTimestamp()
       });
@@ -894,6 +1383,27 @@ async function fetchChatRefs(roomId) {
   }
 }
 
+async function fetchVoteRefs(roomId) {
+  try {
+    const snapshot = await getDocs(voteCollection(roomId));
+    return snapshot.docs.map(docSnap => docSnap.ref);
+  } catch (error) {
+    console.warn('Failed to load vote records', error);
+    return [];
+  }
+}
+
+async function clearVotes(roomId) {
+  try {
+    const refs = await fetchVoteRefs(roomId);
+    if (refs.length) {
+      await Promise.all(refs.map(ref => deleteDoc(ref)));
+    }
+  } catch (error) {
+    console.warn('Failed to clear votes', error);
+  }
+}
+
 
 // -------------------- Room flows --------------------
 async function resetRoom(roomId) {
@@ -904,6 +1414,7 @@ async function resetRoom(roomId) {
     const playersSnap = await getDocs(roomCollection(safeRoomId, 'players'));
     const cardsSnap = await getDocs(roomCollection(safeRoomId, 'cards'));
     const chatRefs = await fetchChatRefs(safeRoomId);
+    const voteRefs = await fetchVoteRefs(safeRoomId);
     await runTransaction(db, async transaction => {
       const roomRef = doc(db, 'rooms', safeRoomId);
       const roomSnap = await transaction.get(roomRef);
@@ -911,6 +1422,7 @@ async function resetRoom(roomId) {
       playersSnap.forEach(docSnap => transaction.delete(docSnap.ref));
       cardsSnap.forEach(docSnap => transaction.delete(docSnap.ref));
       chatRefs.forEach(ref => transaction.delete(ref));
+      voteRefs.forEach(ref => transaction.delete(ref));
       transaction.set(roomRef, {
         status: 'lobby',
         ownerId: null,
@@ -948,9 +1460,13 @@ async function resetRoom(roomId) {
       updateViews();
       renderRoomDetail();
       renderTeamChat();
+      renderVoteSection();
     } else {
       renderRoomDetail();
       renderTeamChat();
+      renderVoteSection();
+      ensureVoteSubscription();
+      attemptFinalizeVote();
     }
     renderRoomList();
   } catch (error) {
@@ -1074,6 +1590,7 @@ async function startGame() {
   const playerRefs = await fetchPlayerRefs(safeRoomId);
   const cardRefs = await fetchCardRefs(safeRoomId);
   const chatRefs = await fetchChatRefs(safeRoomId);
+  const voteRefs = await fetchVoteRefs(safeRoomId);
 
   try {
     await runTransaction(db, async transaction => {
@@ -1081,32 +1598,32 @@ async function startGame() {
       const roomSnap = await transaction.get(roomRef);
       if (!roomSnap.exists()) throw new Error('Room no longer exists');
       const room = roomSnap.data();
-      if (room.ownerId !== player.id) throw new Error('?芣??蹂蜓?臭誑???');
-      if (room.status !== 'lobby') throw new Error('?????迂??');
+      if (room.ownerId !== player.id) throw new Error('????????');
+      if (room.status !== 'lobby') throw new Error('???');
 
       const players = [];
       for (const item of playerRefs) {
         const snap = await transaction.get(item.ref);
         if (snap.exists()) players.push({ id: snap.id, ...snap.data() });
       }
-      if (players.length < 2) throw new Error('?喳??閬雿摰?);
-      if (!players.every(p => p.ready)) throw new Error('隞?鈭箸????);
+      if (players.length < 2) throw new Error('???');
+      if (!players.every(p => p.ready)) throw new Error('????');
 
       const randomized = shuffle(players);
       const midpoint = Math.ceil(randomized.length / 2);
       const redTeam = randomized.slice(0, midpoint);
       const blueTeam = randomized.slice(midpoint);
-      if (!redTeam.length || !blueTeam.length) throw new Error('?閬?霅?????);
+      if (!redTeam.length || !blueTeam.length) throw new Error('????');
       const redCaptain = redTeam[Math.floor(Math.random() * redTeam.length)];
       const blueCaptain = blueTeam[Math.floor(Math.random() * blueTeam.length)];
       const startingTeam = Math.random() < 0.5 ? 'red' : 'blue';
-      const wordSet = wordSets[Math.floor(Math.random() * wordSets.length)];
-      const cards = generateBoard(startingTeam, wordSet);
+      const cards = generateBoard(startingTeam);
       const remainingRed = cards.filter(card => card.role === 'red').length;
       const remainingBlue = cards.filter(card => card.role === 'blue').length;
 
       cardRefs.forEach(ref => transaction.delete(ref));
       chatRefs.forEach(ref => transaction.delete(ref));
+      voteRefs.forEach(ref => transaction.delete(ref));
       cards.forEach(card => {
         transaction.set(doc(db, 'rooms', safeRoomId, 'cards', String(card.index)), card);
       });
@@ -1131,14 +1648,21 @@ async function startGame() {
         clueWord: '',
         clueNumber: null,
         clueBy: '',
+        voteRound: 0,
+        voteResolved: false,
+        voteOutcome: null,
         lastClueAt: null,
         winner: null,
         remainingRed,
         remainingBlue
       }, { merge: true });
     });
+
+    resetVoteState();
+    renderVoteSection();
+    ensureVoteSubscription();
   } catch (error) {
-    logAndAlert(error.message || '???憭望?', error);
+    logAndAlert(error.message || '?????', error);
   }
 }
 
@@ -1150,13 +1674,14 @@ async function resetGame() {
   const playerRefs = await fetchPlayerRefs(safeRoomId);
   const cardRefs = await fetchCardRefs(safeRoomId);
   const chatRefs = await fetchChatRefs(safeRoomId);
+  const voteRefs = await fetchVoteRefs(safeRoomId);
 
   try {
     await runTransaction(db, async transaction => {
       const roomRef = doc(db, 'rooms', safeRoomId);
       const roomSnap = await transaction.get(roomRef);
       if (!roomSnap.exists()) throw new Error('Room no longer exists');
-      if (roomSnap.data().ownerId !== player.id) throw new Error('?芣??蹂蜓?臭誑?身');
+      if (roomSnap.data().ownerId !== player.id) throw new Error('?��??�主?�以?�設');
 
       for (const item of playerRefs) {
         const ref = doc(db, 'rooms', safeRoomId, 'players', item.id);
@@ -1164,6 +1689,7 @@ async function resetGame() {
       }
       cardRefs.forEach(ref => transaction.delete(ref));
       chatRefs.forEach(ref => transaction.delete(ref));
+      voteRefs.forEach(ref => transaction.delete(ref));
       transaction.set(roomRef, {
         status: 'lobby',
         winner: null,
@@ -1177,15 +1703,22 @@ async function resetGame() {
         clueWord: '',
         clueNumber: null,
         clueBy: '',
+        voteRound: 0,
+        voteResolved: false,
+        voteOutcome: null,
         lastClueAt: null
       }, { merge: true });
     });
+
+    resetVoteState();
+    renderVoteSection();
+    ensureVoteSubscription();
   } catch (error) {
-    logAndAlert(error.message || '?身?憭望?', error);
+    logAndAlert(error.message || '?��??�設?�戲失敗', error);
   }
 }
 
-async function revealCard(index) {
+async function revealCardasync function revealCard(index) {
   const roomId = state.currentRoomId;
   const player = getCurrentPlayer();
   if (!roomId || !player) return;
@@ -1325,6 +1858,7 @@ async function kickPlayer(targetId) {
   const remainingSnapshot = state.players.filter(player => player.id !== targetId);
   const cardRefs = !remainingSnapshot.length ? await fetchCardRefs(safeRoomId) : [];
   const chatRefs = !remainingSnapshot.length ? await fetchChatRefs(safeRoomId) : [];
+  const voteRefs = !remainingSnapshot.length ? await fetchVoteRefs(safeRoomId) : [];
 
   try {
     await runTransaction(db, async transaction => {
@@ -1369,6 +1903,10 @@ async function kickPlayer(targetId) {
         updates.clueBy = '';
         chatRefs.forEach(ref => transaction.delete(ref));
         cardRefs.forEach(ref => transaction.delete(ref));
+        voteRefs.forEach(ref => transaction.delete(ref));
+        updates.voteRound = 0;
+        updates.voteResolved = false;
+        updates.voteOutcome = null;
       }
 
       transaction.set(roomRef, updates, { merge: true });
@@ -1430,8 +1968,12 @@ async function leaveRoom() {
         updates.clueWord = '';
         updates.clueNumber = null;
         updates.clueBy = '';
+        updates.voteRound = 0;
+        updates.voteResolved = false;
+        updates.voteOutcome = null;
         chatRefs.forEach(ref => transaction.delete(ref));
         cardRefs.forEach(ref => transaction.delete(ref));
+        voteRefs.forEach(ref => transaction.delete(ref));
       }
 
       transaction.set(roomRef, updates, { merge: true });
@@ -1484,8 +2026,37 @@ boardGridEl.addEventListener('click', event => {
   const cardEl = event.target.closest('.card');
   if (!cardEl) return;
   const index = Number(cardEl.dataset.index);
-  if (!Number.isNaN(index)) revealCard(index);
+  if (Number.isNaN(index)) return;
+
+  const room = state.roomData;
+  const player = getCurrentPlayer();
+  const voteRound = typeof room?.voteRound === 'number' ? room.voteRound : null;
+  const voteActive = Boolean(
+    room &&
+    room.status === 'in-progress' &&
+    room.clueSubmitted &&
+    voteRound &&
+    state.voteState.round === voteRound &&
+    !room.voteResolved &&
+    player &&
+    player.team === room.currentTurn &&
+    !player.isCaptain
+  );
+
+  if (voteActive) {
+    castVote(index);
+    return;
+  }
+
+  revealCard(index);
 });
+
+if (votePassBtn) {
+  votePassBtn.addEventListener('click', () => {
+    submitPass();
+  });
+}
+
 
 if (teamChatFormEl) {
   teamChatFormEl.addEventListener('submit', event => {
@@ -1509,6 +2080,7 @@ async function init() {
     renderRoomList();
     updateViews();
     renderTeamChat();
+    renderVoteSection();
     await attemptResume();
   } catch (error) {
     logAndAlert('????Firebase 憭望?', error);
