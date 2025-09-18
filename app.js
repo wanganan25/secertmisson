@@ -343,6 +343,35 @@ function getTeamVoters(team) {
   return state.players.filter(player => player.team === team && !player.isCaptain);
 }
 
+function getVotePhaseState(room = state.roomData, player = getCurrentPlayer()) {
+  const voteState = state.voteState;
+  const voteRound = typeof room?.voteRound === 'number' ? room.voteRound : null;
+  const activeTeam = room?.currentTurn || null;
+  const phaseActive = Boolean(
+    room &&
+    room.status === 'in-progress' &&
+    room.clueSubmitted &&
+    typeof voteRound === 'number' &&
+    !room.voteResolved &&
+    voteState.round === voteRound
+  );
+  const sameTeam = Boolean(player && activeTeam && player.team === activeTeam);
+  const showTeamUi = phaseActive && sameTeam;
+  const eligible = activeTeam ? getTeamVoters(activeTeam) : [];
+  const canVote = Boolean(showTeamUi && player && !player.isCaptain);
+  return {
+    voteRound,
+    voteState,
+    activeTeam,
+    phaseActive,
+    sameTeam,
+    showTeamUi,
+    canVote,
+    eligible,
+    eligibleCount: eligible.length
+  };
+}
+
 function resetVoteState(preserveRound = false) {
   const next = createEmptyVoteState();
   if (preserveRound && state.voteState.round) next.round = state.voteState.round;
@@ -643,23 +672,14 @@ function renderBoard() {
   }
 
   const currentPlayer = getCurrentPlayer();
-  const voteRound = typeof room?.voteRound === 'number' ? room.voteRound : null;
-  const voteState = state.voteState;
-  const activeTeam = room?.currentTurn || null;
-  const sameTeam = Boolean(currentPlayer && activeTeam && currentPlayer.team === activeTeam);
-  const voteActive = Boolean(
-    room &&
-    room.status === 'in-progress' &&
-    room.clueSubmitted &&
-    typeof voteRound === 'number' &&
-    !room.voteResolved &&
-    voteState.round === voteRound &&
-    sameTeam
-  );
+  const votePhase = getVotePhaseState(room, currentPlayer);
+  const voteState = votePhase.voteState;
+  const activeTeam = votePhase.activeTeam;
+  const showTeamVotes = votePhase.showTeamUi;
 
   const cardVoteCounts = new Map();
   let maxVotes = 0;
-  if (voteActive) {
+  if (showTeamVotes) {
     voteState.byCard.forEach((set, key) => {
       const index = Number(key);
       const count = set instanceof Set ? set.size : 0;
@@ -676,13 +696,13 @@ function renderBoard() {
   boardGridEl.innerHTML = state.cards.map(card => {
     const classes = [`card`, `role-${card.role}`];
     if (card.revealed) classes.push('revealed');
-    if (voteActive && !card.revealed) classes.push('vote-option');
-    if (voteActive && !card.revealed && maxVotes > 0 && cardVoteCounts.get(card.index) === maxVotes) {
+    if (showTeamVotes && !card.revealed) classes.push('vote-option');
+    if (showTeamVotes && !card.revealed && maxVotes > 0 && cardVoteCounts.get(card.index) === maxVotes) {
       classes.push('vote-leading');
     }
-    const voteCount = cardVoteCounts.get(card.index) || 0;
-    const badgeTint = card.role === room.currentTurn ? ' ally' : (card.role === 'assassin' ? ' warning' : '');
-    const voteBadge = voteActive && voteCount > 0
+    const voteCount = showTeamVotes ? (cardVoteCounts.get(card.index) || 0) : 0;
+    const badgeTint = activeTeam && card.role === activeTeam ? ' ally' : (card.role === 'assassin' ? ' warning' : '');
+    const voteBadge = showTeamVotes && voteCount > 0
       ? `<span class="vote-badge${badgeTint}">${voteCount}</span>`
       : '';
     return `<div class="${classes.join(' ')}" data-index="${card.index}"><span class="label">${escapeHtml(card.word)}</span>${voteBadge}</div>`;
@@ -909,26 +929,16 @@ function renderTeamVoteFeed() {
 
   const room = state.roomData;
   const player = getCurrentPlayer();
-  const voteRound = typeof room?.voteRound === 'number' ? room.voteRound : null;
-  const voteState = state.voteState;
-  const team = room?.currentTurn || null;
-  const voteActive = Boolean(
-    room &&
-    room.status === 'in-progress' &&
-    room.clueSubmitted &&
-    typeof voteRound === 'number' &&
-    !room.voteResolved &&
-    voteState.round === voteRound
-  );
-  const isTeamMember = Boolean(player && team && player.team === team);
+  const votePhase = getVotePhaseState(room, player);
 
-  if (!voteActive || !isTeamMember) {
+  if (!votePhase.showTeamUi) {
     teamVoteFeedEl.classList.remove('active');
     teamVoteFeedEl.textContent = '';
     return;
   }
 
   const rows = [];
+  const voteState = votePhase.voteState;
   voteState.byCard.forEach((set, key) => {
     if (!(set instanceof Set) || set.size === 0) return;
     const index = Number(key);
@@ -965,22 +975,8 @@ function renderVoteSection() {
 
   const room = state.roomData;
   const player = getCurrentPlayer();
-  const voteState = state.voteState;
-  const voteRound = typeof room?.voteRound === 'number' ? room.voteRound : null;
-  const team = room?.currentTurn || null;
-  const eligible = team ? getTeamVoters(team) : [];
-  const eligibleCount = eligible.length;
-  const sameTeam = Boolean(player && team && player.team === team);
-  const canVote = Boolean(sameTeam && player && !player.isCaptain);
-
-  const voteActive = Boolean(
-    room &&
-    room.status === 'in-progress' &&
-    room.clueSubmitted &&
-    typeof voteRound === 'number' &&
-    !room.voteResolved &&
-    voteState.round === voteRound
-  );
+  const votePhase = getVotePhaseState(room, player);
+  const { voteState, phaseActive, sameTeam, canVote, eligibleCount } = votePhase;
 
   if (!room) {
     voteStatusEl.textContent = '尚未加入房間。';
@@ -988,13 +984,13 @@ function renderVoteSection() {
     return;
   }
 
-  if (voteActive && !sameTeam) {
+  if (phaseActive && !sameTeam) {
     voteStatusEl.textContent = '另一隊正在進行投票，請稍候。';
     votePassBtn.disabled = true;
     return;
   }
 
-  if (!voteActive) {
+  if (!phaseActive) {
     let message = '';
     if (room.status !== 'in-progress') {
       message = '遊戲尚未開始。';
@@ -1151,19 +1147,18 @@ function submitPass() {
 }
 
 function attemptFinalizeVote() {
-  const room = state.roomData;
-  if (!room || room.status !== 'in-progress' || !room.clueSubmitted) return;
-  const voteRound = typeof room.voteRound === 'number' ? room.voteRound : null;
-  if (!voteRound || room.voteResolved || state.voteState.round !== voteRound) return;
+  const votePhase = getVotePhaseState();
+  if (!votePhase.phaseActive) return;
 
-  const eligible = getTeamVoters(room.currentTurn);
-  const eligibleCount = eligible.length;
-  const totalVotes = state.voteState.voters.size;
-  const passVotes = state.voteState.pass.size;
+  const voteRound = votePhase.voteRound;
+  const voteState = votePhase.voteState;
+  const eligibleCount = votePhase.eligibleCount;
+  const totalVotes = voteState.voters.size;
+  const passVotes = voteState.pass.size;
 
   const majority = Math.floor(eligibleCount / 2) + 1;
   let highest = passVotes;
-  state.voteState.byCard.forEach(set => {
+  voteState.byCard.forEach(set => {
     if (set.size > highest) highest = set.size;
   });
 
@@ -1323,6 +1318,10 @@ async function finalizeVote(round) {
   });
 
   await clearVotes(safeRoomId);
+
+  resetVoteState();
+  renderVoteSection();
+  renderBoard();
 
   if (chatPayload) {
     await recordVoteResultMessage(roomId, chatPayload);
