@@ -73,6 +73,12 @@ function roomCollection(roomId, ...segments) {
 function roomChatCollection(roomId) {
   const safeId = normalizeRoomId(roomId);
   return collection(db, 'rooms', safeId, 'chat');
+
+}
+
+function voteCollection(roomId) {
+  const safeId = normalizeRoomId(roomId);
+  return collection(db, 'rooms', safeId, 'votes');
 }
 
 function logAndAlert(message, error) {
@@ -225,8 +231,10 @@ const state = {
   unsubPlayers: null,
   unsubCards: null,
   unsubChat: null,
+  unsubVotes: null,
   chatMessages: [],
-  chatTeam: null
+  chatTeam: null,
+  voteState: { round: null, byCard: new Map(), pass: new Set(), voters: new Set() }
 };
 
 const lobbyView = document.getElementById('lobby-view');
@@ -1520,6 +1528,7 @@ async function init() {
 }
 
 init();
+
 
 
 
