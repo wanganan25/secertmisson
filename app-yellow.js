@@ -662,3 +662,12 @@ function shuffle(list) {
   }
   return a;
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+    const cardData = {
+        title: '警告卡',
+        description: '這是一張黃色警告卡。'
+    };
+    const container = document.getElementById('card-container');
+    container.innerHTML = createYellowCard(cardData);
+});

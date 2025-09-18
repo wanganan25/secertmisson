@@ -1498,17 +1498,8 @@ if (teamChatInputEl) {
   teamChatInputEl.addEventListener('input', updateTeamChatControls);
 }
 
-if (clueNumberButtons.length) {
-if (clueNumberButtons.length) {
-  clueNumberButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      if (button.disabled) return;
-      clueNumberButtons.forEach(btn => btn.classList.toggle('selected', btn === button));
-      const value = Number(button.dataset.clueNumber);
-      submitClue(value);
-    });
-  });
-}
+
+
 
 // -------------------- Init --------------------
 async function init() {
@@ -1525,6 +1516,9 @@ async function init() {
 }
 
 init();
+
+
+
 
 
 
