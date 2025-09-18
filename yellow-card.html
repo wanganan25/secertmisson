@@ -142,25 +142,26 @@
     </header>
 
     <section id="room-section">
-      <h2><span>01</span>選擇房間與暱稱</h2>
-      <p class="subtext">請先輸入暱稱，再從下方房間列表選擇加入。若房間已滿或有重複暱稱，系統會立即提示。</p>
-      <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));align-items:end;">
+      <h2><span>01</span>選擇房間</h2>
+      <p class="subtext">請先從下方房間列表選擇要加入的房間，然後輸入暱稱。</p>
+      <div id="room-cards" class="room-grid"></div>
+      <div id="nickname-box" class="hidden" style="margin-top:1.2rem;display:grid;gap:1rem;max-width:320px;">
         <label>我的暱稱
           <input id="nickname" placeholder="輸入暱稱">
         </label>
-        <div id="current-room-box" class="hidden" style="display:grid;gap:.6rem;">
-          <div>
-            <strong id="current-room-name">目前房間：—</strong>
-            <p id="current-room-info" class="subtext" style="margin:.25rem 0 0;">尚未加入房間</p>
-          </div>
-          <div style="display:flex;flex-wrap:wrap;gap:.55rem;">
-            <button id="btn-ready" class="btn-ghost">我準備好了</button>
-            <button id="btn-leave" class="btn-ghost">離開房間</button>
-            <button id="btn-start" class="btn-ghost hidden">房主開始新回合</button>
-          </div>
+        <button id="btn-confirm-join" class="btn-primary">確認加入房間</button>
+      </div>
+      <div id="current-room-box" class="hidden" style="display:grid;gap:.6rem;">
+        <div>
+          <strong id="current-room-name">目前房間：—</strong>
+          <p id="current-room-info" class="subtext" style="margin:.25rem 0 0;">尚未加入房間</p>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:.55rem;">
+          <button id="btn-ready" class="btn-ghost">我準備好了</button>
+          <button id="btn-leave" class="btn-ghost">離開房間</button>
+          <button id="btn-start" class="btn-ghost hidden">房主開始新回合</button>
         </div>
       </div>
-      <div id="room-cards" class="room-grid"></div>
     </section>
 
     <section id="status-panel" class="hidden">
@@ -219,6 +220,7 @@
       <p>任何玩家累積 3 張黃牌即宣布結束，黃牌最少者獲勝。完成活動後可返回 <a href="index.html">主頁</a>。</p>
     </footer>
   </main>
+  <div id="card-container"></div>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
     import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
@@ -286,9 +288,24 @@
     const submissionList = document.getElementById("submission-list");
     const submitForm = document.getElementById("submit-form");
     const handSelect = document.getElementById("hand-select");
+    const nicknameBox = document.getElementById("nickname-box");
+    const btnConfirmJoin = document.getElementById("btn-confirm-join");
+    let pendingRoomId = null;
 
     nicknameInput.addEventListener("input", () => {
       state.nickname = nicknameInput.value.trim();
+    });
+
+    btnConfirmJoin.addEventListener("click", () => {
+      const nickname = nicknameInput.value.trim();
+      if (!pendingRoomId || !nickname) {
+        alert("請輸入暱稱");
+        return;
+      }
+      state.nickname = nickname;
+      joinRoom(pendingRoomId);
+      nicknameBox.classList.add("hidden");
+      pendingRoomId = null;
     });
 
     btnReady.addEventListener("click", () => {
@@ -359,7 +376,12 @@
         if (room.currentTopic) {
           badges.appendChild(makeBadge("進行中", ""));
         }
-        card.querySelector('[data-action="join"]').addEventListener("click", () => joinRoom(room.id));
+        card.querySelector('[data-action="join"]').addEventListener("click", () => {
+          pendingRoomId = room.id;
+          nicknameBox.classList.remove("hidden");
+          nicknameInput.value = "";
+          nicknameInput.focus();
+        });
         card.querySelector('[data-action="peek"]').addEventListener("click", () => watchRoom(room.id, true));
         roomCardsEl.appendChild(card);
       });
@@ -885,5 +907,7 @@
       return a;
     }
   </script>
+  <script src="yellow-card.js"></script>
+  <script src="app-yellow.js"></script>
 </body>
 </html>
