@@ -359,6 +359,8 @@ function getVotePhaseState(room = state.roomData, player = getCurrentPlayer()) {
   const showTeamUi = phaseActive && sameTeam;
   const eligible = activeTeam ? getTeamVoters(activeTeam) : [];
   const canVote = Boolean(showTeamUi && player && !player.isCaptain);
+  const eligibleCount = eligible.length;
+  const requiredVotes = eligibleCount;
   return {
     voteRound,
     voteState,
@@ -368,7 +370,8 @@ function getVotePhaseState(room = state.roomData, player = getCurrentPlayer()) {
     showTeamUi,
     canVote,
     eligible,
-    eligibleCount: eligible.length
+    eligibleCount,
+    requiredVotes
   };
 }
 
@@ -1083,7 +1086,7 @@ function ensureVoteSubscription() {
     state.voteState = { round: voteRound, byCard, pass, voters };
     renderVoteSection();
     renderBoard();
-    attemptFinalizeVote();
+    attemptFinalizeVote({ snapshotCount: snapshot.size });
   });
   renderVoteSection();
 }
@@ -1132,23 +1135,21 @@ function submitPass() {
   castVote('pass');
 }
 
-function attemptFinalizeVote() {
+function attemptFinalizeVote(context = {}) {
   const votePhase = getVotePhaseState();
   if (!votePhase.phaseActive) return;
 
   const voteRound = votePhase.voteRound;
   const voteState = votePhase.voteState;
   const eligibleCount = votePhase.eligibleCount;
+  const requiredVotes = votePhase.requiredVotes;
   const totalVotes = voteState.voters.size;
-  const passVotes = voteState.pass.size;
+  const snapshotCount = typeof context.snapshotCount === 'number' ? context.snapshotCount : null;
 
-  const majority = Math.floor(eligibleCount / 2) + 1;
-  let highest = passVotes;
-  voteState.byCard.forEach(set => {
-    if (set.size > highest) highest = set.size;
-  });
+  const reachedThreshold = eligibleCount === 0 || totalVotes >= requiredVotes;
+  const snapshotReached = snapshotCount !== null && snapshotCount >= requiredVotes;
 
-  if (eligibleCount === 0 || totalVotes >= eligibleCount || highest >= majority) {
+  if (reachedThreshold || snapshotReached) {
     if (state.voteFinalizingRound === voteRound) return;
     state.voteFinalizingRound = voteRound;
     finalizeVote(voteRound).finally(() => {
