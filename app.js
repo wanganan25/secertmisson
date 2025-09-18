@@ -2240,6 +2240,10 @@ boardGridEl.addEventListener('click', event => {
   );
 
   if (voteActive) {
+    const card = state.cards.find(item => item.index === index);
+    const word = card ? card.word : `#${index}`;
+    const confirmed = confirm(`是否投給「${word}」？`);
+    if (!confirmed) return;
     castVote(index);
     return;
   }
@@ -2249,6 +2253,7 @@ boardGridEl.addEventListener('click', event => {
 
 if (votePassBtn) {
   votePassBtn.addEventListener('click', () => {
+    if (!confirm('是否放棄投票？')) return;
     submitPass();
   });
 }
