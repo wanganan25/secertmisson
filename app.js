@@ -1,4 +1,4 @@
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js';
+﻿import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js';
 import {
   getFirestore,
   doc,
@@ -768,7 +768,7 @@ function formatTeamChatTimestamp(value) {
       return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
     }
   } catch (error) {
-    console.warn('�䲼��Ʈw�ɮצ����T', error);
+    console.warn('格式化聊天室時間失敗', error);
   }
   return '';
 }
@@ -2375,6 +2375,7 @@ async function init() {
 }
 
 init();
+
 
 
 
