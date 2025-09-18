@@ -643,7 +643,7 @@ async function sendTeamMessage(clueNumber, clueWord) {
     return;
   }
   if (word.split(/\s+/).filter(Boolean).length > 1) {
-    logAndAlert('Clue must be a single word.');
+    logAndAlert("Clue must be a single word.");
     return;
   }
   if (!Number.isInteger(number) || number < 1 || number > 10) {
@@ -894,9 +894,6 @@ async function fetchChatRefs(roomId) {
   }
 }
 
-  }
-  return refs;
-}
 
 // -------------------- Room flows --------------------
 async function resetRoom(roomId) {
@@ -1214,7 +1211,7 @@ async function revealCard(index) {
       const playerData = playerSnap.data();
       if (playerData.isCaptain) throw new Error('隊長不能翻牌');
       if (!playerData.team) throw new Error('觀戰者無法翻牌');
-      if (room.currentTurn && playerData.team !== room.currentTurn) throw new Error('It is not your team's turn');
+      if (room.currentTurn && playerData.team !== room.currentTurn) throw new Error("It is not your team's turn");
       const card = cardSnap.data();
       if (card.revealed) return;
       if (room.guessesRemaining !== null && room.guessesRemaining <= 0 && room.extraGuessAvailable === false) {
