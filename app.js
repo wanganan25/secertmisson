@@ -333,6 +333,32 @@ function otherTeam(team) {
   return team === 'red' ? 'blue' : 'red';
 }
 
+
+function createEmptyVoteState() {
+  return { round: null, byCard: new Map(), pass: new Set(), voters: new Set() };
+}
+
+function getTeamVoters(team) {
+  if (!team) return [];
+  return state.players.filter(player => player.team === team && !player.isCaptain);
+}
+
+function resetVoteState(preserveRound = false) {
+  const next = createEmptyVoteState();
+  if (preserveRound && state.voteState.round) next.round = state.voteState.round;
+  state.voteState = next;
+}
+
+function cleanupVoteSubscription() {
+  if (state.unsubVotes) {
+    state.unsubVotes();
+    state.unsubVotes = null;
+  }
+  resetVoteState();
+  state.voteFinalizingRound = null;
+  renderVoteSection();
+}
+
 function generateBoard(startingTeam, wordSet = wordPool) {
   const selectedWords = shuffle([...wordSet]).slice(0, 25);
   const otherTeam = startingTeam === 'red' ? 'blue' : 'red';
@@ -457,7 +483,8 @@ const state = {
   unsubVotes: null,
   chatMessages: [],
   chatTeam: null,
-  voteState: { round: null, byCard: new Map(), pass: new Set(), voters: new Set() }
+  voteState: createEmptyVoteState(),
+  voteFinalizingRound: null
 };
 
 const lobbyView = document.getElementById('lobby-view');
@@ -478,6 +505,8 @@ const teamChatMessagesEl = document.getElementById('team-chat-messages');
 const teamChatFormEl = document.getElementById('team-chat-form');
 const teamChatInputEl = document.getElementById('team-chat-input');
 const teamChatSendBtn = document.getElementById('team-chat-send');
+const voteStatusEl = document.getElementById('vote-status');
+const votePassBtn = document.getElementById('vote-pass');
 const clueNumberButtons = Array.from(document.querySelectorAll('[data-clue-number]'));
 if (clueNumberButtons.length) {
   clueNumberButtons.forEach(button => {
@@ -544,6 +573,8 @@ function renderRoomDetail() {
     viewIndicatorEl.textContent = '請加入房間';
     winnerBannerEl.style.display = 'none';
     renderTeamChat();
+    ensureVoteSubscription();
+    attemptFinalizeVote();
     return;
   }
 
@@ -593,6 +624,7 @@ function renderRoomDetail() {
   updateViewIndicator();
   renderBoard();
   renderTeamChat();
+  renderVoteSection();
 }
 
 function renderBoard() {
@@ -604,15 +636,51 @@ function renderBoard() {
     boardScoreEl.innerHTML = '';
     winnerBannerEl.style.display = 'none';
     renderTeamChat();
+    renderVoteSection();
     return;
   }
 
   const currentPlayer = getCurrentPlayer();
+  const voteRound = typeof room?.voteRound === 'number' ? room.voteRound : null;
+  const voteState = state.voteState;
+  const voteActive = Boolean(
+    room &&
+    room.status === 'in-progress' &&
+    room.clueSubmitted &&
+    typeof voteRound === 'number' &&
+    !room.voteResolved &&
+    voteState.round === voteRound
+  );
+
+  const cardVoteCounts = new Map();
+  let maxVotes = 0;
+  if (voteActive) {
+    voteState.byCard.forEach((set, key) => {
+      const index = Number(key);
+      const count = set instanceof Set ? set.size : 0;
+      if (Number.isInteger(index) && count > 0) {
+        cardVoteCounts.set(index, count);
+        if (count > maxVotes) maxVotes = count;
+      }
+    });
+  }
+
   boardGridEl.classList.toggle('captain-view', Boolean(currentPlayer && currentPlayer.isCaptain));
   boardGridEl.classList.toggle('disabled', room.status !== 'in-progress');
+
   boardGridEl.innerHTML = state.cards.map(card => {
-    const revealedClass = card.revealed ? ' revealed' : '';
-    return `<div class="card role-${card.role}${revealedClass}" data-index="${card.index}"><span class="label">${card.word}</span></div>`;
+    const classes = [`card`, `role-${card.role}`];
+    if (card.revealed) classes.push('revealed');
+    if (voteActive && !card.revealed) classes.push('vote-option');
+    if (voteActive && !card.revealed && maxVotes > 0 && cardVoteCounts.get(card.index) === maxVotes) {
+      classes.push('vote-leading');
+    }
+    const voteCount = cardVoteCounts.get(card.index) || 0;
+    const badgeTint = card.role === room.currentTurn ? ' ally' : (card.role === 'assassin' ? ' warning' : '');
+    const voteBadge = voteActive && voteCount > 0
+      ? `<span class="vote-badge${badgeTint}">${voteCount}</span>`
+      : '';
+    return `<div class="${classes.join(' ')}" data-index="${card.index}"><span class="label">${escapeHtml(card.word)}</span>${voteBadge}</div>`;
   }).join('');
 
   updateScoreboard();
@@ -622,6 +690,8 @@ function renderBoard() {
   } else {
     winnerBannerEl.style.display = 'none';
   }
+
+  renderVoteSection();
 }
 
 function updateScoreboard() {
@@ -677,12 +747,16 @@ function cleanupChatSubscription() {
 
 function resetChatState() {
   cleanupChatSubscription();
+  cleanupVoteSubscription();
   state.chatMessages = [];
   state.chatTeam = null;
-  if (teamChatInputEl) teamChatInputEl.value = '';
-    if (teamChatInputEl) teamChatInputEl.disabled = true;
-    renderTeamChat();
+  if (teamChatInputEl) {
+    teamChatInputEl.value = '';
+    teamChatInputEl.disabled = true;
+  }
+  renderTeamChat();
   setClueNumberAvailability(false);
+  renderVoteSection();
 }
 
 function formatTeamChatTimestamp(value) {
@@ -819,6 +893,383 @@ function renderTeamChat() {
   if (teamChatSendBtn) teamChatSendBtn.disabled = true;
   if (teamChatFormEl) teamChatFormEl.classList.toggle('disabled', !allowSend);
   updateTeamChatControls();
+  renderVoteSection();
+}
+
+
+function renderVoteSection() {
+  if (!voteStatusEl || !votePassBtn) return;
+
+  const room = state.roomData;
+  const player = getCurrentPlayer();
+  const voteState = state.voteState;
+  const voteRound = typeof room?.voteRound === 'number' ? room.voteRound : null;
+  const team = room?.currentTurn || null;
+  const eligible = team ? getTeamVoters(team) : [];
+  const eligibleCount = eligible.length;
+  const isMyTurn = Boolean(player && team && player.team === team && !player.isCaptain);
+
+  const voteActive = Boolean(
+    room &&
+    room.status === 'in-progress' &&
+    room.clueSubmitted &&
+    typeof voteRound === 'number' &&
+    !room.voteResolved &&
+    voteState.round === voteRound
+  );
+
+  if (!room) {
+    voteStatusEl.textContent = '尚未加入房間。';
+    votePassBtn.disabled = true;
+    return;
+  }
+
+  if (!voteActive) {
+    let message = '';
+    if (room.status !== 'in-progress') {
+      message = '遊戲尚未開始。';
+    } else if (!room.clueSubmitted) {
+      message = '等待隊長送出線索。';
+    } else if (room.voteResolved) {
+      if (room.voteOutcome === 'pass') {
+        const nextTeam = room.currentTurn ? (room.currentTurn === 'red' ? '紅隊' : '藍隊') : '下一隊';
+        message = `上一次投票：棄權，輪到 ${nextTeam}。`;
+      } else if (typeof room.voteOutcome === 'number') {
+        const card = state.cards.find(item => item.index === room.voteOutcome);
+        const word = card ? card.word : `#${room.voteOutcome}`;
+        message = `上一次投票：翻牌「${word}」。`;
+      } else {
+        message = '投票已完成。';
+      }
+    } else {
+      message = '等待投票開始。';
+    }
+    voteStatusEl.textContent = message;
+    votePassBtn.disabled = true;
+    return;
+  }
+
+  const totalVotes = voteState.voters.size;
+  const passVotes = voteState.pass.size;
+  const parts = [];
+  voteState.byCard.forEach((set, key) => {
+    if (set.size > 0) parts.push(`#${key}:${set.size}`);
+  });
+  if (passVotes > 0) parts.push(`棄權:${passVotes}`);
+  const summary = parts.length ? parts.join('，') : '尚未有投票。';
+  const waiting = Math.max(0, eligibleCount - totalVotes);
+  const header = eligibleCount ? `投票進行中（${totalVotes}/${eligibleCount}）` : '本隊沒有可投票成員。';
+  voteStatusEl.textContent = eligibleCount
+    ? `${header}：${summary}${waiting > 0 ? `，尚有 ${waiting} 人未表態。` : ''}`
+    : '本隊沒有可投票成員，將自動跳過。';
+  votePassBtn.disabled = !(isMyTurn && voteActive);
+}
+
+function ensureVoteSubscription() {
+  const room = state.roomData;
+  const roomId = state.currentRoomId;
+  if (!room || !roomId || room.status !== 'in-progress') {
+    cleanupVoteSubscription();
+    renderVoteSection();
+    return;
+  }
+  const voteRound = typeof room.voteRound === 'number' ? room.voteRound : null;
+  if (!room.clueSubmitted || room.voteResolved || !voteRound) {
+    cleanupVoteSubscription();
+    renderVoteSection();
+    return;
+  }
+  if (state.unsubVotes && state.voteState.round === voteRound) {
+    return;
+  }
+
+  cleanupVoteSubscription();
+  state.voteState = createEmptyVoteState();
+  state.voteState.round = voteRound;
+
+  const votesQuery = query(voteCollection(roomId), where('round', '==', voteRound));
+  state.unsubVotes = onSnapshot(votesQuery, snapshot => {
+    const byCard = new Map();
+    const pass = new Set();
+    const voters = new Set();
+    snapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      if (data.round !== voteRound) return;
+      const playerId = data.playerId || docSnap.id;
+      if (!playerId) return;
+      voters.add(playerId);
+      if (data.choice === 'pass') {
+        pass.add(playerId);
+      } else {
+        const index = Number(data.choice);
+        if (Number.isInteger(index)) {
+          if (!byCard.has(index)) byCard.set(index, new Set());
+          byCard.get(index).add(playerId);
+        }
+      }
+    });
+    state.voteState = { round: voteRound, byCard, pass, voters };
+    renderVoteSection();
+    renderBoard();
+    attemptFinalizeVote();
+  });
+  renderVoteSection();
+}
+
+async function castVote(choice) {
+  const room = state.roomData;
+  const player = getCurrentPlayer();
+  const roomId = state.currentRoomId;
+  if (!room || !player || !roomId) return;
+
+  const voteRound = typeof room.voteRound === 'number' ? room.voteRound : null;
+  if (room.status !== 'in-progress' || !room.clueSubmitted || room.voteResolved || typeof voteRound !== 'number') return;
+  if (!room.currentTurn || player.team !== room.currentTurn || player.isCaptain) return;
+  if (state.voteState.round !== voteRound) return;
+
+  let normalized = choice;
+  if (choice !== 'pass') {
+    normalized = Number(choice);
+    if (!Number.isInteger(normalized)) return;
+    const card = state.cards.find(item => item.index === normalized);
+    if (!card || card.revealed) {
+      logAndAlert('該卡片無法投票。');
+      return;
+    }
+  }
+
+  try {
+    await setDoc(doc(voteCollection(roomId), player.id), {
+      playerId: player.id,
+      playerName: player.name || '',
+      team: player.team,
+      choice: choice === 'pass' ? 'pass' : normalized,
+      round: voteRound,
+      createdAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error('投票失敗', error);
+  }
+}
+
+function submitPass() {
+  castVote('pass');
+}
+
+function attemptFinalizeVote() {
+  const room = state.roomData;
+  if (!room || room.status !== 'in-progress' || !room.clueSubmitted) return;
+  const voteRound = typeof room.voteRound === 'number' ? room.voteRound : null;
+  if (!voteRound || room.voteResolved || state.voteState.round !== voteRound) return;
+
+  const eligible = getTeamVoters(room.currentTurn);
+  const eligibleCount = eligible.length;
+  const totalVotes = state.voteState.voters.size;
+  const passVotes = state.voteState.pass.size;
+
+  const majority = Math.floor(eligibleCount / 2) + 1;
+  let highest = passVotes;
+  state.voteState.byCard.forEach(set => {
+    if (set.size > highest) highest = set.size;
+  });
+
+  if (eligibleCount === 0 || totalVotes >= eligibleCount || highest >= majority) {
+    if (state.voteFinalizingRound === voteRound) return;
+    state.voteFinalizingRound = voteRound;
+    finalizeVote(voteRound).finally(() => {
+      if (state.voteFinalizingRound === voteRound) state.voteFinalizingRound = null;
+    });
+  }
+}
+
+async function finalizeVote(round) {
+  const room = state.roomData;
+  const roomId = state.currentRoomId;
+  if (!room || !roomId) return;
+  const safeRoomId = normalizeRoomId(roomId);
+
+  let passCount = 0;
+  const cardCounts = new Map();
+  const votesSnapshot = await getDocs(query(voteCollection(safeRoomId), where('round', '==', round)));
+  votesSnapshot.forEach(docSnap => {
+    const data = docSnap.data();
+    if (data.round !== round) return;
+    if (data.choice === 'pass') {
+      passCount += 1;
+    } else {
+      const index = Number(data.choice);
+      if (Number.isInteger(index)) {
+        cardCounts.set(index, (cardCounts.get(index) || 0) + 1);
+      }
+    }
+  });
+
+  const tallies = [];
+  cardCounts.forEach((count, index) => tallies.push({ type: 'card', index, count }));
+  tallies.push({ type: 'pass', count: passCount });
+  if (!tallies.length) return;
+
+  const maxCount = Math.max(...tallies.map(item => item.count));
+  const leading = tallies.filter(item => item.count === maxCount && item.count > 0);
+  const choicesPool = leading.length ? leading : tallies;
+  const selected = choicesPool[Math.floor(Math.random() * choicesPool.length)];
+  const tieResolved = choicesPool.length > 1;
+
+  let chatPayload = null;
+
+  await runTransaction(db, async transaction => {
+    const roomRef = doc(db, 'rooms', safeRoomId);
+    const roomSnap = await transaction.get(roomRef);
+    if (!roomSnap.exists()) return;
+    const roomData = roomSnap.data();
+    if (roomData.voteRound !== round || roomData.voteResolved) return;
+
+    const team = roomData.currentTurn;
+    if (!team) return;
+    const updates = { voteRound: round, voteOutcome: selected.type === 'pass' ? 'pass' : selected.index, voteResolved: true };
+
+    if (selected.type === 'pass') {
+      updates.currentTurn = otherTeam(team);
+      updates.guessesRemaining = 0;
+      updates.extraGuessAvailable = false;
+      updates.clueSubmitted = false;
+      updates.clueWord = '';
+      updates.clueNumber = null;
+      updates.clueBy = '';
+      updates.lastClueAt = null;
+      chatPayload = { type: 'pass', team, random: tieResolved };
+    } else {
+      const cardIndex = Number(selected.index);
+      const cardRef = doc(db, 'rooms', safeRoomId, 'cards', String(cardIndex));
+      const cardSnap = await transaction.get(cardRef);
+      if (!cardSnap.exists()) return;
+      const card = cardSnap.data();
+      if (!card.revealed) transaction.update(cardRef, { revealed: true });
+
+      let winner = null;
+      const targetTeam = team;
+      const updatesForRoom = {};
+      let guessesRemaining = typeof roomData.guessesRemaining === 'number' ? roomData.guessesRemaining : 0;
+      let extraGuessAvailable = typeof roomData.extraGuessAvailable === 'boolean' ? roomData.extraGuessAvailable : true;
+      let nextTurn = roomData.currentTurn || targetTeam;
+      let turnChanged = false;
+
+      if (card.role === 'assassin') {
+        winner = otherTeam(targetTeam);
+        turnChanged = true;
+        nextTurn = null;
+      } else if (card.role === 'red') {
+        const next = Math.max(0, (roomData.remainingRed ?? 0) - 1);
+        updatesForRoom.remainingRed = next;
+        if (next === 0) winner = 'red';
+      } else if (card.role === 'blue') {
+        const next = Math.max(0, (roomData.remainingBlue ?? 0) - 1);
+        updatesForRoom.remainingBlue = next;
+        if (next === 0) winner = 'blue';
+      }
+
+      const correctGuess = card.role === targetTeam;
+      const wrongGuess = card.role !== targetTeam && card.role !== 'assassin';
+
+      if (!winner) {
+        if (correctGuess) {
+          guessesRemaining = Math.max(0, guessesRemaining - 1);
+          if (guessesRemaining <= 0) {
+            turnChanged = true;
+            nextTurn = otherTeam(targetTeam);
+            guessesRemaining = 0;
+            extraGuessAvailable = false;
+            updatesForRoom.clueSubmitted = false;
+            updatesForRoom.clueWord = '';
+            updatesForRoom.clueNumber = null;
+            updatesForRoom.clueBy = '';
+            updatesForRoom.lastClueAt = null;
+          }
+        } else if (wrongGuess) {
+          turnChanged = true;
+          nextTurn = otherTeam(targetTeam);
+          guessesRemaining = 0;
+          extraGuessAvailable = false;
+          updatesForRoom.clueSubmitted = false;
+          updatesForRoom.clueWord = '';
+          updatesForRoom.clueNumber = null;
+          updatesForRoom.clueBy = '';
+          updatesForRoom.lastClueAt = null;
+        }
+      }
+
+      if (winner) {
+        updatesForRoom.status = 'finished';
+        updatesForRoom.winner = winner;
+        updatesForRoom.currentTurn = null;
+        updatesForRoom.guessesRemaining = null;
+        updatesForRoom.extraGuessAvailable = null;
+        updatesForRoom.clueSubmitted = false;
+        updatesForRoom.clueWord = '';
+        updatesForRoom.clueNumber = null;
+        updatesForRoom.clueBy = '';
+        updatesForRoom.lastClueAt = null;
+      } else if (turnChanged) {
+        updatesForRoom.currentTurn = nextTurn;
+        updatesForRoom.guessesRemaining = guessesRemaining;
+        updatesForRoom.extraGuessAvailable = extraGuessAvailable;
+      } else {
+        updatesForRoom.guessesRemaining = guessesRemaining;
+        updatesForRoom.extraGuessAvailable = extraGuessAvailable;
+        updates.voteRound = round + 1;
+        updates.voteResolved = false;
+        updates.voteOutcome = null;
+      }
+
+      Object.assign(updates, updatesForRoom);
+      chatPayload = { type: 'card', team, word: card.word || `#${cardIndex}`, role: card.role, index: cardIndex, random: tieResolved };
+    }
+
+    transaction.update(roomRef, updates);
+  });
+
+  await clearVotes(safeRoomId);
+
+  if (chatPayload) {
+    await recordVoteResultMessage(roomId, chatPayload);
+  }
+}
+
+async function recordVoteResultMessage(roomId, payload) {
+  try {
+    let text = '';
+    if (payload.type === 'pass') {
+      const nextTeam = payload.team === 'red' ? '藍隊' : '紅隊';
+      text = `投票結果：棄權，輪到 ${nextTeam}。`;
+      if (payload.random) text += '（同票隨機選出）';
+    } else if (payload.type === 'card') {
+      const roleMap = { red: '紅隊卡', blue: '藍隊卡', neutral: '中立卡', assassin: '刺客' };
+      const roleLabel = roleMap[payload.role] || '卡片';
+      text = `投票結果：翻牌「${payload.word}」（${roleLabel}）。`;
+      if (payload.random) text += '（同票隨機選出）';
+    }
+    await addDoc(roomChatCollection(roomId, payload.team), {
+      text,
+      senderId: 'system-vote',
+      senderName: '投票結果',
+      senderRole: 'vote-result',
+      team: payload.team,
+      createdAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.warn('寫入投票結果訊息失敗', error);
+  }
+}
+
+async function clearVotes(roomId) {
+  try {
+    const refs = await fetchVoteRefs(roomId);
+    if (refs.length) {
+      await Promise.all(refs.map(ref => deleteDoc(ref)));
+    }
+  } catch (error) {
+    console.warn('清除投票紀錄失敗', error);
+  }
 }
 
 function ensureTeamChatSubscription() {
@@ -870,20 +1321,21 @@ async function sendTeamMessage(clueNumber, clueWord) {
     return;
   }
   if (word.split(/\s+/).filter(Boolean).length > 1) {
-    logAndAlert("Clue must be a single word.");
+    logAndAlert('線索必須為單一詞語。');
     return;
   }
   if (!Number.isInteger(number) || number < 1 || number > 10) {
-    logAndAlert('Choose a number between 1 and 10.');
+    logAndAlert('請選擇 1 到 10 的數字。');
     return;
   }
   if (!player.isCaptain) {
-    logAndAlert('Only the captain can send team messages.');
+    logAndAlert('只有隊長可以送出線索。');
     return;
   }
 
   const safeRoomId = normalizeRoomId(roomId);
   const guessesAllowed = number + 1;
+  const voteRefs = await fetchVoteRefs(safeRoomId);
 
   if (teamChatSendBtn) teamChatSendBtn.disabled = true;
   setClueNumberAvailability(false);
@@ -904,9 +1356,16 @@ async function sendTeamMessage(clueNumber, clueWord) {
         clueBy: player.name || '',
         guessesRemaining: guessesAllowed,
         extraGuessAvailable: false,
-        lastClueAt: serverTimestamp()
+        lastClueAt: serverTimestamp(),
+        voteRound: typeof roomData.voteRound === 'number' ? roomData.voteRound + 1 : 1,
+        voteResolved: false,
+        voteOutcome: null
       });
     });
+
+    if (voteRefs.length) {
+      await Promise.all(voteRefs.map(ref => deleteDoc(ref)));
+    }
 
     await addDoc(roomChatCollection(roomId, player.team), {
       text: word,
@@ -926,7 +1385,10 @@ async function sendTeamMessage(clueNumber, clueWord) {
         clueNumber: number,
         clueBy: player.name || '',
         guessesRemaining: guessesAllowed,
-        extraGuessAvailable: false
+        extraGuessAvailable: false,
+        voteRound: typeof state.roomData.voteRound === 'number' ? state.roomData.voteRound + 1 : 1,
+        voteResolved: false,
+        voteOutcome: null
       };
     }
 
@@ -961,6 +1423,7 @@ function cleanupRoomSubscriptions() {
   if (state.unsubPlayers) { state.unsubPlayers(); state.unsubPlayers = null; }
   if (state.unsubCards) { state.unsubCards(); state.unsubCards = null; }
   if (state.unsubChat) { state.unsubChat(); state.unsubChat = null; }
+  cleanupVoteSubscription();
 }
 
 function subscribeToDirectory() {
@@ -1014,6 +1477,8 @@ function subscribeToRoom(roomId) {
     state.roomData = { id: snapshot.id, ...snapshot.data() };
     renderRoomDetail();
     ensureTeamChatSubscription();
+    ensureVoteSubscription();
+    attemptFinalizeVote();
   });
 
   const playersQuery = query(roomCollection(roomId, 'players'), orderBy('joinedAt', 'asc'));
@@ -1026,6 +1491,8 @@ function subscribeToRoom(roomId) {
     }
     renderRoomDetail();
     ensureTeamChatSubscription();
+    ensureVoteSubscription();
+    attemptFinalizeVote();
   });
 
   state.unsubCards = onSnapshot(roomCollection(roomId, 'cards'), snapshot => {
@@ -1038,6 +1505,8 @@ function subscribeToRoom(roomId) {
       };
     }).sort((a, b) => a.index - b.index);
     renderBoard();
+    ensureVoteSubscription();
+    attemptFinalizeVote();
   });
 }
 
@@ -1066,6 +1535,9 @@ async function ensureDefaultRooms() {
         clueNumber: null,
         clueBy: '',
         lastClueAt: null,
+        voteRound: 0,
+        voteResolved: true,
+        voteOutcome: null,
         createdAt: serverTimestamp()
       });
     } else {
@@ -1084,6 +1556,9 @@ async function ensureDefaultRooms() {
       if (!('clueNumber' in data)) updates.clueNumber = null;
       if (!('clueBy' in data)) updates.clueBy = '';
       if (!('lastClueAt' in data)) updates.lastClueAt = null;
+      if (!('voteRound' in data)) updates.voteRound = 0;
+      if (!('voteResolved' in data)) updates.voteResolved = true;
+      if (!('voteOutcome' in data)) updates.voteOutcome = null;
       if (Object.keys(updates).length) await updateDoc(roomRef, updates);
     }
   }));
@@ -1111,6 +1586,16 @@ async function fetchCardRefs(roomId) {
   }
 }
 
+async function fetchVoteRefs(roomId) {
+  try {
+    const snapshot = await getDocs(voteCollection(roomId));
+    return snapshot.docs.map(docSnap => docSnap.ref);
+  } catch (error) {
+    console.warn('讀取投票紀錄失敗', error);
+    return [];
+  }
+}
+
 async function fetchChatRefs(roomId) {
   try {
     const snapshot = await getDocs(roomChatCollection(roomId));
@@ -1131,6 +1616,9 @@ async function resetRoom(roomId) {
     const playersSnap = await getDocs(roomCollection(safeRoomId, 'players'));
     const cardsSnap = await getDocs(roomCollection(safeRoomId, 'cards'));
     const chatRefs = await fetchChatRefs(safeRoomId);
+  const voteRefs = await fetchVoteRefs(safeRoomId);
+  const voteRefs = await fetchVoteRefs(safeRoomId);
+    const voteRefs = await fetchVoteRefs(safeRoomId);
     await runTransaction(db, async transaction => {
       const roomRef = doc(db, 'rooms', safeRoomId);
       const roomSnap = await transaction.get(roomRef);
@@ -1138,6 +1626,9 @@ async function resetRoom(roomId) {
       playersSnap.forEach(docSnap => transaction.delete(docSnap.ref));
       cardsSnap.forEach(docSnap => transaction.delete(docSnap.ref));
       chatRefs.forEach(ref => transaction.delete(ref));
+      voteRefs.forEach(ref => transaction.delete(ref));
+      voteRefs.forEach(ref => transaction.delete(ref));
+      voteRefs.forEach(ref => transaction.delete(ref));
       transaction.set(roomRef, {
         status: 'lobby',
         ownerId: null,
@@ -1154,7 +1645,10 @@ async function resetRoom(roomId) {
         clueWord: '',
         clueNumber: null,
         clueBy: '',
-        lastClueAt: null
+        lastClueAt: null,
+        voteRound: 0,
+        voteResolved: true,
+        voteOutcome: null
       }, { merge: true });
     });
     if (playerStore[safeRoomId]) {
@@ -1301,6 +1795,7 @@ async function startGame() {
   const playerRefs = await fetchPlayerRefs(safeRoomId);
   const cardRefs = await fetchCardRefs(safeRoomId);
   const chatRefs = await fetchChatRefs(safeRoomId);
+  const voteRefs = await fetchVoteRefs(safeRoomId);
 
   try {
     await runTransaction(db, async transaction => {
@@ -1334,6 +1829,7 @@ async function startGame() {
 
       cardRefs.forEach(ref => transaction.delete(ref));
       chatRefs.forEach(ref => transaction.delete(ref));
+      voteRefs.forEach(ref => transaction.delete(ref));
       cards.forEach(card => {
         transaction.set(doc(db, 'rooms', safeRoomId, 'cards', String(card.index)), card);
       });
@@ -1361,7 +1857,10 @@ async function startGame() {
         lastClueAt: null,
         winner: null,
         remainingRed,
-        remainingBlue
+        remainingBlue,
+        voteRound: 0,
+        voteResolved: true,
+        voteOutcome: null
       }, { merge: true });
     });
   } catch (error) {
@@ -1377,6 +1876,7 @@ async function resetGame() {
   const playerRefs = await fetchPlayerRefs(safeRoomId);
   const cardRefs = await fetchCardRefs(safeRoomId);
   const chatRefs = await fetchChatRefs(safeRoomId);
+  const voteRefs = await fetchVoteRefs(safeRoomId);
 
   try {
     await runTransaction(db, async transaction => {
@@ -1391,6 +1891,7 @@ async function resetGame() {
       }
       cardRefs.forEach(ref => transaction.delete(ref));
       chatRefs.forEach(ref => transaction.delete(ref));
+      voteRefs.forEach(ref => transaction.delete(ref));
       transaction.set(roomRef, {
         status: 'lobby',
         winner: null,
@@ -1404,7 +1905,10 @@ async function resetGame() {
         clueWord: '',
         clueNumber: null,
         clueBy: '',
-        lastClueAt: null
+        lastClueAt: null,
+        voteRound: 0,
+        voteResolved: true,
+        voteOutcome: null
       }, { merge: true });
     });
   } catch (error) {
@@ -1523,6 +2027,9 @@ async function revealCard(index) {
         updates.extraGuessAvailable = extraGuessAvailable;
       }
 
+      updates.voteResolved = true;
+      updates.voteOutcome = index;
+      updates.voteRound = typeof room.voteRound === 'number' ? room.voteRound : 0;
       if (Object.keys(updates).length) transaction.update(roomRef, updates);
     });
   } catch (error) {
@@ -1552,6 +2059,7 @@ async function kickPlayer(targetId) {
   const remainingSnapshot = state.players.filter(player => player.id !== targetId);
   const cardRefs = !remainingSnapshot.length ? await fetchCardRefs(safeRoomId) : [];
   const chatRefs = !remainingSnapshot.length ? await fetchChatRefs(safeRoomId) : [];
+  const voteRefs = !remainingSnapshot.length ? await fetchVoteRefs(safeRoomId) : [];
 
   try {
     await runTransaction(db, async transaction => {
@@ -1565,6 +2073,7 @@ async function kickPlayer(targetId) {
       if (targetSnap.id === roomSnap.data().ownerId) throw new Error('不可踢出房主');
 
       transaction.delete(targetRef);
+      transaction.delete(doc(voteCollection(safeRoomId), targetId));
 
       const roomData = roomSnap.data();
       const updates = {};
@@ -1595,6 +2104,7 @@ async function kickPlayer(targetId) {
         updates.clueNumber = null;
         updates.clueBy = '';
         chatRefs.forEach(ref => transaction.delete(ref));
+        voteRefs.forEach(ref => transaction.delete(ref));
         cardRefs.forEach(ref => transaction.delete(ref));
       }
 
@@ -1613,6 +2123,7 @@ async function leaveRoom() {
   const playerRefs = await fetchPlayerRefs(safeRoomId);
   const cardRefs = await fetchCardRefs(safeRoomId);
   const chatRefs = await fetchChatRefs(safeRoomId);
+  const voteRefs = await fetchVoteRefs(safeRoomId);
 
   try {
     await runTransaction(db, async transaction => {
@@ -1628,6 +2139,7 @@ async function leaveRoom() {
       if (!players.some(p => p.id === playerId)) return;
 
       transaction.delete(doc(db, 'rooms', safeRoomId, 'players', playerId));
+      transaction.delete(doc(voteCollection(safeRoomId), playerId));
 
       const remaining = players.filter(p => p.id !== playerId);
       const updates = {
@@ -1658,6 +2170,7 @@ async function leaveRoom() {
         updates.clueNumber = null;
         updates.clueBy = '';
         chatRefs.forEach(ref => transaction.delete(ref));
+        voteRefs.forEach(ref => transaction.delete(ref));
         cardRefs.forEach(ref => transaction.delete(ref));
       }
 
@@ -1711,13 +2224,41 @@ boardGridEl.addEventListener('click', event => {
   const cardEl = event.target.closest('.card');
   if (!cardEl) return;
   const index = Number(cardEl.dataset.index);
-  if (!Number.isNaN(index)) revealCard(index);
+  if (Number.isNaN(index)) return;
+
+  const room = state.roomData;
+  const player = getCurrentPlayer();
+  const voteRound = typeof room?.voteRound === 'number' ? room.voteRound : null;
+  const voteActive = Boolean(
+    room &&
+    room.status === 'in-progress' &&
+    room.clueSubmitted &&
+    typeof voteRound === 'number' &&
+    !room.voteResolved &&
+    state.voteState.round === voteRound &&
+    player &&
+    player.team === room.currentTurn &&
+    !player.isCaptain
+  );
+
+  if (voteActive) {
+    castVote(index);
+    return;
+  }
+
+  revealCard(index);
 });
+
+if (votePassBtn) {
+  votePassBtn.addEventListener('click', () => {
+    submitPass();
+  });
+}
 
 if (teamChatFormEl) {
   teamChatFormEl.addEventListener('submit', event => {
     event.preventDefault();
-    logAndAlert('Tap a number button to send the clue.');
+    logAndAlert('請點選數字按鈕傳送線索。');
   });
 }
 
@@ -1741,6 +2282,11 @@ async function init() {
 }
 
 init();
+
+
+
+
+
 
 
 
