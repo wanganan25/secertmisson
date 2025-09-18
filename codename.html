@@ -325,31 +325,6 @@
       overflow: hidden;
       transition: transform var(--duration), box-shadow var(--duration), filter var(--duration);
     }
-    .card.vote-option { cursor: pointer; }
-
-    .card.vote-leading {
-      transform: translateY(-2px);
-      box-shadow: 0 18px 32px rgba(59,130,246,.35);
-    }
-
-    .card .vote-badge {
-      position: absolute;
-      top: 6px;
-      right: 6px;
-      min-width: 26px;
-      padding: 2px 7px;
-      border-radius: 999px;
-      background: rgba(15,23,42,.78);
-      color: #f8fafc;
-      font-size: .72rem;
-      font-weight: 600;
-      text-align: center;
-      pointer-events: none;
-    }
-
-    .card .vote-badge.ally { background: rgba(16,185,129,.82); }
-    .card .vote-badge.warning { background: rgba(239,68,68,.78); }
-
 
     .card:hover { transform: translateY(-2px); box-shadow: 0 16px 28px rgba(100,116,139,.35); }
 
@@ -419,33 +394,6 @@
       background: rgba(99,102,241,.08);
       border: 1px solid rgba(99,102,241,.2);
     }
-    .vote-controls {
-      margin-top: .6rem;
-      display: flex;
-      flex-wrap: wrap;
-      gap: .75rem;
-      align-items: center;
-      padding: .75rem 1rem;
-      border-radius: 12px;
-      background: rgba(15,23,42,.04);
-      border: 1px dashed rgba(148,163,184,.35);
-    }
-
-    #vote-status {
-      flex: 1 1 220px;
-      margin: 0;
-    }
-
-    #vote-pass {
-      flex-shrink: 0;
-      padding: .55rem 1.25rem;
-    }
-
-    #vote-pass[disabled] {
-      opacity: .45;
-      cursor: not-allowed;
-    }
-
 
     .chat-header {
       display: flex;
@@ -540,22 +488,6 @@
       color: #0f172a;
       box-shadow: none;
     }
-
-    .vote-feed {
-      margin-top: 1rem;
-      padding: .75rem 1rem;
-      border-radius: 12px;
-      background: rgba(79,70,229,.08);
-      color: #312e81;
-      font-size: .9rem;
-      line-height: 1.5;
-      display: none;
-    }
-
-    .vote-feed.active {
-      display: block;
-    }
-
 
     .back-home {
       display: inline-flex;
@@ -675,11 +607,6 @@
                   <button type="button" data-clue-number="10">10</button>
                 </div>
               </div>
-              <div id="vote-controls" class="vote-controls">
-                <div id="vote-status" class="helper-text"></div>
-                <button id="vote-pass" type="button" class="ghost">放棄投票</button>
-              </div>
-              <div id="team-vote-feed" class="vote-feed"></div>
             </div>
           </div>
 
