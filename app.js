@@ -867,7 +867,9 @@ function renderTeamChat() {
     const items = state.chatMessages.map(message => {
       const senderName = escapeHtml(message.senderName || '隊長');
       const roleFlag = message.senderRole || '';
-      const roleLabel = roleFlag === 'red-captain'
+      const roleLabel = roleFlag === 'vote-result'
+        ? '系統訊息'
+        : roleFlag === 'red-captain'
         ? '紅隊隊長'
         : roleFlag === 'blue-captain'
         ? '藍隊隊長'
@@ -1616,8 +1618,6 @@ async function resetRoom(roomId) {
     const playersSnap = await getDocs(roomCollection(safeRoomId, 'players'));
     const cardsSnap = await getDocs(roomCollection(safeRoomId, 'cards'));
     const chatRefs = await fetchChatRefs(safeRoomId);
-  const voteRefs = await fetchVoteRefs(safeRoomId);
-  const voteRefs = await fetchVoteRefs(safeRoomId);
     const voteRefs = await fetchVoteRefs(safeRoomId);
     await runTransaction(db, async transaction => {
       const roomRef = doc(db, 'rooms', safeRoomId);
@@ -1626,8 +1626,6 @@ async function resetRoom(roomId) {
       playersSnap.forEach(docSnap => transaction.delete(docSnap.ref));
       cardsSnap.forEach(docSnap => transaction.delete(docSnap.ref));
       chatRefs.forEach(ref => transaction.delete(ref));
-      voteRefs.forEach(ref => transaction.delete(ref));
-      voteRefs.forEach(ref => transaction.delete(ref));
       voteRefs.forEach(ref => transaction.delete(ref));
       transaction.set(roomRef, {
         status: 'lobby',
@@ -2275,6 +2273,7 @@ async function init() {
     renderRoomList();
     updateViews();
     renderTeamChat();
+    renderVoteSection();
     await attemptResume();
   } catch (error) {
     logAndAlert('初始化 Firebase 失敗', error);
