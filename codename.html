@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>機密代號：默契考驗</title>
+  <title>機密代號｜線上房間</title>
   <style>
     :root {
       color-scheme: light dark;
@@ -541,6 +541,24 @@
       box-shadow: none;
     }
 
+
+    .back-home {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: .75rem 1.4rem;
+      border-radius: 999px;
+      background: var(--accent);
+      color: var(--accent-ink);
+      text-decoration: none;
+      font-weight: 600;
+      transition: opacity var(--duration);
+    }
+
+    .back-home:hover {
+      opacity: .85;
+    }
+
     footer {
       text-align: center;
       padding: 2rem 1rem 3rem;
@@ -549,27 +567,33 @@
   </style>
 </head>
 <body>
+  
+  
   <header>
-    <h1>機密代號：默契考驗</h1>
-    <p>建立房間、邀請隊友一起挑戰 5x5 單字密碼。全部成員確認準備後，房主即可開啟回合，系統會自動挑選隊長並分配紅藍兩隊，全員同步追蹤翻牌進度。</p>
+    <h1>機密代號｜線上房間</h1>
+    <p>建立房間並邀請夥伴挑戰 5x5 詞語推理。隊長給出線索，隊員根據提示翻牌，最先完成己方任務的隊伍獲勝。</p>
   </header>
+
+
+  
+  
   <main>
     <section id="lobby-view" class="view active">
       <div class="panel">
-        <h2><span>01</span>選擇遊戲房間</h2>
+        <h2><span>01</span>建立房間與流程</h2>
         <div class="lobby-grid">
           <div>
-            <h3 style="margin-top:0;">迎新活動準備區</h3>
-            <p class="helper-text">已預先建立四間房間，方便 30 位成員分組；首位進入的玩家會自動成為房主，負責開啟遊戲。</p>
+            <h3 style="margin-top:0;">活動主持小提醒</h3>
+            <p class="helper-text">提前建立房間並分享房號，最多 10 位玩家即可進入。所有操作都在同一頁面完成，方便示範與帶領。</p>
             <ul class="helper-text" style="padding-left:1.2rem;margin-top:.8rem;line-height:1.6;">
-              <li>紅藍比賽雙場同步進行，建議每房 6-8 人。</li>
-              <li>離開房間時會釋出名額，下一位加入者即可接任房主。</li>
-              <li>房主在所有成員按下「準備」後即可開始遊戲。</li>
+              <li>建議 6–8 位玩家同時遊玩，互動節奏最流暢。</li>
+              <li>房主開始遊戲後會自動分隊並指派兩位隊長。</li>
+              <li>輪到某隊時，只有該隊隊長能發出線索，隊員負責討論與翻牌。</li>
             </ul>
           </div>
           <div>
-            <h3 style="margin-top:0;">房間列表</h3>
-            <p class="helper-text">點選要進入的房間並輸入暱稱。若顯示「遊戲進行中」，請等待該局結束。</p>
+            <h3 style="margin-top:0;">可加入的房間</h3>
+            <p class="helper-text">點擊下方房間即可加入；若顯示遊戲進行中，請等待房主重設或開啟新房間。</p>
             <div id="room-list" class="room-list"></div>
           </div>
         </div>
@@ -580,7 +604,7 @@
       <div class="panel">
         <div class="room-header">
           <div>
-            <button id="leave-room" class="ghost" type="button">← 回房間大廳</button>
+            <button id="leave-room" class="ghost" type="button">← 返回大廳</button>
           </div>
           <div>
             <h2 id="room-title">房間</h2>
@@ -601,28 +625,28 @@
           <div class="board-panel">
             <div class="board-header">
               <div>
-                <h3>���Ȧa��</h3>
+                <h3>詞卡面板</h3>
                 <div id="board-score" class="scoreboard"></div>
               </div>
               <div class="right">
-                <div id="view-indicator" class="pill">�|���}�l</div>
+                <div id="view-indicator" class="pill">尚未加入房間</div>
               </div>
             </div>
             <div id="board-grid" class="board"></div>
             <div id="winner-banner" class="winner-banner" style="display:none;"></div>
             <div id="team-chat-panel" class="chat-panel">
               <div class="chat-header">
-                <h3>�����ѫ�</h3>
-                <span id="team-chat-indicator" class="chat-indicator pill">������</span>
+                <h3>隊伍聊天</h3>
+                <span id="team-chat-indicator" class="chat-indicator pill">尚未分隊</span>
               </div>
-              <div id="team-chat-status" class="helper-text">All players can follow the captain&#39;s clues here.</div>
-              <div id="team-chat-messages" class="chat-log empty">���ݤ��t���...</div>
+              <div id="team-chat-status" class="helper-text">請等待房主開始遊戲。</div>
+              <div id="team-chat-messages" class="chat-log empty">等待房主開始遊戲…</div>
               <form id="team-chat-form" class="chat-form">
-                <input id="team-chat-input" type="text" placeholder="Clue word..." autocomplete="off" maxlength="40">
-                <button id="team-chat-send" type="submit" style="display:none;">Send</button>
+                <input id="team-chat-input" type="text" placeholder="線索詞…" autocomplete="off" maxlength="40">
+                <button id="team-chat-send" type="submit" style="display:none;">送出</button>
               </form>
               <div id="team-chat-controls" class="chat-controls">
-                <div class="helper-text">Captains enter a clue word, then tap a number.</div>
+                <div class="helper-text">隊長輸入線索後，請點選對應數字。</div>
                 <div id="clue-number-buttons" class="clue-number-grid">
                   <button type="button" data-clue-number="1">1</button>
                   <button type="button" data-clue-number="2">2</button>
@@ -646,13 +670,20 @@
       </div>
     </section>
   </main>
+
+
+  
+  
   <footer>
-    單頁模擬多人流程，適合活動主持人示範或規劃迎新流程使用。
+    <a class="back-home" href="index.html">返回主頁</a>
   </footer>
+
+
     <script type="module" src="app.js"></script>
 
 </body>
 </html>
+
 
 
 
