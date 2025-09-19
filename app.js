@@ -481,6 +481,7 @@ const flipAgreementEl = document.getElementById('flip-agreement');
 const flipAgreementTextEl = document.getElementById('flip-agreement-text');
 const flipAgreeBtn = document.getElementById('flip-agree');
 const flipCancelBtn = document.getElementById('flip-cancel');
+const flipRejectBtn = document.getElementById('flip-reject');
 const clueNumberButtons = Array.from(document.querySelectorAll('[data-clue-number]'));
 if (clueNumberButtons.length) {
   clueNumberButtons.forEach(button => {
@@ -1013,6 +1014,13 @@ function renderFlipAgreement() {
     flipAgreeBtn.style.display = alreadyApproved ? 'none' : 'inline-flex';
   }
 
+  if (flipRejectBtn) {
+    const showReject = Boolean(sameTeam && player && player.id !== pending.initiatedBy);
+    flipRejectBtn.style.display = showReject ? 'inline-flex' : 'none';
+    flipRejectBtn.disabled = false;
+  }
+
+
   if (flipCancelBtn) {
     const canCancel = Boolean(player && (player.id === pending.initiatedBy || player.isCaptain));
     flipCancelBtn.style.display = canCancel ? 'inline-flex' : 'none';
@@ -1189,6 +1197,33 @@ async function cancelPendingFlip() {
     });
   } catch (error) {
     console.error('取消翻牌請求失敗', error);
+    if (error?.message) logAndAlert(error.message);
+  }
+}
+
+async function rejectPendingFlip() {
+  const room = state.roomData;
+  const player = getCurrentPlayer();
+  const roomId = state.currentRoomId;
+  if (!room || !player || !roomId) return;
+
+  const pending = room.pendingFlip;
+  if (!pending || pending.team !== player.team) return;
+
+  const safeRoomId = normalizeRoomId(roomId);
+
+  try {
+    await runTransaction(db, async transaction => {
+      const roomRef = doc(db, 'rooms', safeRoomId);
+      const roomSnap = await transaction.get(roomRef);
+      if (!roomSnap.exists()) return;
+      const current = roomSnap.data().pendingFlip;
+      if (!current || typeof current.index !== 'number') return;
+      if (current.team !== player.team) throw new Error('你不在此隊伍');
+      transaction.update(roomRef, { pendingFlip: null });
+    });
+  } catch (error) {
+    console.error('不同意翻牌失敗', error);
     if (error?.message) logAndAlert(error.message);
   }
 }
@@ -2014,6 +2049,14 @@ boardGridEl.addEventListener('click', event => {
   requestFlip(index);
 });
 
+if (flipRejectBtn) {
+  flipRejectBtn.addEventListener('click', async () => {
+    flipRejectBtn.disabled = true;
+    await rejectPendingFlip();
+    renderFlipAgreement();
+  });
+}
+
 if (flipAgreeBtn) {
   flipAgreeBtn.addEventListener('click', async () => {
     flipAgreeBtn.disabled = true;
@@ -2057,3 +2100,4 @@ async function init() {
 }
 
 init();
+
