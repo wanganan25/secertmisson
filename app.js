@@ -297,7 +297,6 @@ function roomChatCollection(roomId) {
   const safeId = normalizeRoomId(roomId);
   return collection(db, 'rooms', safeId, 'chat');
 
-}
 
 function logAndAlert(message, error) {
   console.error(message, error || '');
@@ -597,7 +596,6 @@ function renderRoomDetail() {
   renderBoard();
   renderTeamChat();
   renderFlipAgreement();
-}
 
 function renderBoard() {
   const room = state.roomData;
@@ -631,7 +629,6 @@ function renderBoard() {
     winnerBannerEl.style.display = 'none';
   }
   renderFlipAgreement();
-}
 
 function updateScoreboard() {
   if (!state.cards.length) {
@@ -834,11 +831,6 @@ function renderTeamChat() {
   renderFlipAgreement();
 }
 
-
-  } catch (error) {
-    console.warn('清除投票紀錄失敗', error);
-  }
-}
 
 function ensureTeamChatSubscription() {
   if (!teamChatPanelEl) return;
