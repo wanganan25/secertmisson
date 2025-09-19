@@ -1,5 +1,5 @@
-﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 import {
   getFirestore,
   collection,
@@ -12,12 +12,11 @@ import {
   serverTimestamp,
   query,
   orderBy
-} from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyADGfYlLyMB-W5A2JM6uF8VqTiF3LL9lEI",
   authDomain: "secertmisson-19e11.firebaseapp.com",
-  databaseURL: "https://secertmisson-19e11-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "secertmisson-19e11",
   storageBucket: "secertmisson-19e11.firebasestorage.app",
   messagingSenderId: "730645471093",
@@ -28,151 +27,233 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+const ROOM_COLLECTION = "yellowRooms";
+
 const state = {
-  clientId: localStorage.getItem("yellowcard-client-id") || crypto.randomUUID(),
-  nickname: "",
+  clientId: localStorage.getItem("yellow-card-client-id") || crypto.randomUUID(),
+  nickname: localStorage.getItem("yellow-card-nickname") || "",
+  rooms: [],
   roomsUnsub: null,
   roomDocUnsub: null,
   playersUnsub: null,
   submissionsUnsub: null,
-  currentRoomId: null,
+  currentRoomId: localStorage.getItem("yellow-card-active-room") || null,
   currentRoomData: null,
-  playerMap: new Map()
+  playerList: [],
+  playerMap: new Map(),
+  submissionList: [],
+  pendingJoinRoomId: null,
+  toastTimer: null
 };
-localStorage.setItem("yellowcard-client-id", state.clientId);
 
-const nicknameInput = document.getElementById("nickname");
-const roomCardsEl = document.getElementById("room-cards");
-const currentRoomBox = document.getElementById("current-room-box");
-const currentRoomName = document.getElementById("current-room-name");
-const currentRoomInfo = document.getElementById("current-room-info");
-const btnReady = document.getElementById("btn-ready");
+localStorage.setItem("yellow-card-client-id", state.clientId);
+
+const roomGrid = document.getElementById("room-grid");
+const lobbyPanel = document.getElementById("lobby-panel");
+const roomPanel = document.getElementById("room-panel");
+const roomNameEl = document.getElementById("room-name");
+const roomCapacityEl = document.getElementById("room-capacity");
+const roomJudgeEl = document.getElementById("room-judge");
+const playerTbody = document.getElementById("player-tbody");
+const btnBack = document.getElementById("btn-back");
 const btnLeave = document.getElementById("btn-leave");
-const btnStart = document.getElementById("btn-start");
+const btnToggleReady = document.getElementById("btn-toggle-ready");
+const btnResetReady = document.getElementById("btn-reset-ready");
 const btnDrawTopic = document.getElementById("btn-draw-topic");
-const btnRecycleTopic = document.getElementById("btn-recycle-topic");
-const btnResetRoom = document.getElementById("btn-reset-room");
-const statusPanel = document.getElementById("status-panel");
-const playersPanel = document.getElementById("players-panel");
-const hostPanel = document.getElementById("host-panel");
-const playerPanel = document.getElementById("player-panel");
-const gamePhaseEl = document.getElementById("game-phase");
-const judgeInfoEl = document.getElementById("judge-info");
-const topicTextEl = document.getElementById("topic-text");
+const btnPassJudge = document.getElementById("btn-pass-judge");
 const topicRemainingEl = document.getElementById("topic-remaining");
-const playersBody = document.getElementById("players-body");
-const submissionList = document.getElementById("submission-list");
-const submitForm = document.getElementById("submit-form");
-const handSelect = document.getElementById("hand-select");
+const currentTopicEl = document.getElementById("current-topic");
+const activityLogEl = document.getElementById("activity-log");
+const joinDialog = document.getElementById("join-dialog");
+const joinRoomNameEl = document.getElementById("join-room-name");
+const nicknameInput = document.getElementById("nickname-input");
+const nicknameErrorEl = document.getElementById("nickname-error");
+const btnConfirmJoin = document.getElementById("btn-confirm-join");
+const btnCancelJoin = document.getElementById("btn-cancel-join");
+const toastEl = document.getElementById("toast");
 
-nicknameInput.addEventListener("input", () => {
-  state.nickname = nicknameInput.value.trim();
-});
-
-btnReady.addEventListener("click", () => {
-  if (state.currentRoomId) toggleReady();
+btnBack.addEventListener("click", () => {
+  roomPanel.classList.remove("active");
+  lobbyPanel.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
 btnLeave.addEventListener("click", () => {
-  if (state.currentRoomId) leaveRoom(state.currentRoomId);
-});
-
-btnStart.addEventListener("click", () => {
-  if (state.currentRoomId) startRound();
-});
-
-btnDrawTopic.addEventListener("click", drawTopic);
-btnRecycleTopic.addEventListener("click", recycleTopics);
-btnResetRoom.addEventListener("click", resetRoom);
-
-submitForm.addEventListener("submit", (event) => {
-  event.preventDefault();
   if (!state.currentRoomId) return;
-  const word = handSelect.value;
-  if (!word) {
-    alert("目前沒有可提交的詞語");
-    return;
-  }
-  submitHand(word);
+  leaveRoom(state.currentRoomId);
 });
 
-signInAnonymously(auth).catch(console.error);
+btnToggleReady.addEventListener("click", () => {
+  const player = state.playerMap.get(state.clientId);
+  if (!state.currentRoomId || !player) {
+    showToast("尚未加入任何房間");
+    return;
+  }
+  toggleReady(state.currentRoomId, !player.ready);
+});
+
+btnResetReady.addEventListener("click", () => {
+  if (!state.currentRoomId) return;
+  resetReadyState(state.currentRoomId);
+});
+
+btnDrawTopic.addEventListener("click", () => {
+  if (!state.currentRoomId) return;
+  drawTopic(state.currentRoomId);
+});
+
+btnPassJudge.addEventListener("click", () => {
+  if (!state.currentRoomId) return;
+  passJudge(state.currentRoomId);
+});
+
+roomGrid.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-room-id]");
+  if (!button) return;
+  const roomId = button.dataset.roomId;
+  const room = state.rooms.find((r) => r.id === roomId);
+  if (!room) return;
+
+  const alreadyInRoom = room.playerIds && room.playerIds.includes(state.clientId);
+  if (alreadyInRoom) {
+    state.currentRoomId = roomId;
+    localStorage.setItem("yellow-card-active-room", roomId);
+    subscribeToRoom(roomId);
+    roomPanel.classList.add("active");
+    updateRoomPanel();
+    return;
+  }
+
+  if ((room.playerCount || 0) >= (room.capacity || 8)) {
+    showToast("房間已滿員");
+    return;
+  }
+
+  openJoinDialog(roomId, room.name || roomId);
+});
+
+btnConfirmJoin.addEventListener("click", confirmJoin);
+btnCancelJoin.addEventListener("click", closeJoinDialog);
+nicknameInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    confirmJoin();
+  }
+});
+
+signInAnonymously(auth).catch((error) => {
+  console.error("Firebase auth error", error);
+  showToast("登入 Firebase 失敗");
+});
+
 onAuthStateChanged(auth, (user) => {
-  if (user && !state.roomsUnsub) subscribeRooms();
+  if (user && !state.roomsUnsub) {
+    subscribeLobby();
+  }
 });
 
-function subscribeRooms() {
-  const roomsRef = collection(db, "yellowRooms");
+function subscribeLobby() {
+  const roomsRef = collection(db, ROOM_COLLECTION);
   state.roomsUnsub = onSnapshot(roomsRef, (snapshot) => {
-    const rooms = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-    renderRoomCards(rooms);
+    state.rooms = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    renderLobby();
+    ensureRoomSubscription();
   });
 }
 
-function renderRoomCards(rooms) {
-  roomCardsEl.innerHTML = "";
-  rooms.forEach((room) => {
-    const card = document.createElement("article");
-    card.className = "room-card" + (room.id === state.currentRoomId ? " active" : "");
-    const playerCount = Array.isArray(room.playerIds) ? room.playerIds.length : (room.playerCount || 0);
-    const capacity = room.capacity || 8;
-    card.innerHTML = `
-      <div>
-        <div class="room-name">${room.name || room.id}</div>
-        <div class="room-meta">
-          <span>玩家：${playerCount} / ${capacity}</span>
-          <span>題目剩餘：${Array.isArray(room.topicDeck) ? room.topicDeck.length : 0}</span>
-        </div>
-      </div>
-      <div class="badges"></div>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-        <button class="btn-primary" data-action="join">加入房間</button>
-        <button class="btn-ghost" data-action="peek">僅檢視</button>
-      </div>
-    `;
-    const badges = card.querySelector(".badges");
-    if (room.hostId) {
-      badges.appendChild(makeBadge(`房主 ${room.hostNickname || "—"}`, "host"));
-    }
-    if (room.currentTopic) {
-      badges.appendChild(makeBadge("進行中", ""));
-    }
-    card.querySelector('[data-action="join"]').addEventListener("click", () => joinRoom(room.id));
-    card.querySelector('[data-action="peek"]').addEventListener("click", () => watchRoom(room.id, true));
-    roomCardsEl.appendChild(card);
-  });
-}
-
-function makeBadge(text, extra) {
-  const span = document.createElement("span");
-  span.className = "badge" + (extra ? ` ${extra}` : "");
-  span.textContent = text;
-  return span;
-}
-
-async function joinRoom(roomId) {
-  const nickname = (state.nickname || nicknameInput.value || "").trim();
-  if (!nickname) {
-    alert("請先輸入暱稱");
-    nicknameInput.focus();
+function ensureRoomSubscription() {
+  if (state.currentRoomId) {
+    subscribeToRoom(state.currentRoomId);
     return;
   }
+  const storedId = localStorage.getItem("yellow-card-active-room");
+  if (!storedId) return;
+  const target = state.rooms.find((room) => Array.isArray(room.playerIds) && room.playerIds.includes(state.clientId));
+  if (target) {
+    state.currentRoomId = target.id;
+    subscribeToRoom(target.id);
+  } else {
+    localStorage.removeItem("yellow-card-active-room");
+  }
+}
+
+function subscribeToRoom(roomId) {
+  unsubscribeRoomStreams();
+  const roomRef = doc(db, ROOM_COLLECTION, roomId);
+  state.roomDocUnsub = onSnapshot(roomRef, (snapshot) => {
+    if (!snapshot.exists()) {
+      showToast("房間不存在或已被移除");
+      cleanupAfterLeave();
+      return;
+    }
+    state.currentRoomData = { id: roomId, ...snapshot.data() };
+    updateRoomPanel();
+  });
+
+  const playersRef = collection(roomRef, "players");
+  state.playersUnsub = onSnapshot(query(playersRef, orderBy("joinedAt", "asc")), (snapshot) => {
+    state.playerList = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    state.playerMap = new Map(state.playerList.map((player) => [player.id, player]));
+    updateRoomPanel();
+  });
+
+  const submissionsRef = collection(roomRef, "submissions");
+  state.submissionsUnsub = onSnapshot(query(submissionsRef, orderBy("createdAt", "desc")), (snapshot) => {
+    state.submissionList = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    renderSubmissions();
+  });
+}
+
+function unsubscribeRoomStreams() {
+  if (state.roomDocUnsub) {
+    state.roomDocUnsub();
+    state.roomDocUnsub = null;
+  }
+  if (state.playersUnsub) {
+    state.playersUnsub();
+    state.playersUnsub = null;
+  }
+  if (state.submissionsUnsub) {
+    state.submissionsUnsub();
+    state.submissionsUnsub = null;
+  }
+  state.currentRoomData = null;
+  state.playerList = [];
+  state.playerMap = new Map();
+  state.submissionList = [];
+}
+
+async function confirmJoin() {
+  if (!state.pendingJoinRoomId) return;
+  const nickname = nicknameInput.value.trim();
+  if (!nickname) {
+    nicknameErrorEl.style.display = "block";
+    nicknameErrorEl.textContent = "暱稱不可為空。";
+    return;
+  }
+  if (nickname.length < 2) {
+    nicknameErrorEl.style.display = "block";
+    nicknameErrorEl.textContent = "暱稱至少兩個字元。";
+    return;
+  }
+
+  const roomId = state.pendingJoinRoomId;
   try {
     await runTransaction(db, async (tx) => {
-      const roomRef = doc(db, "yellowRooms", roomId);
+      const roomRef = doc(db, ROOM_COLLECTION, roomId);
       const roomSnap = await tx.get(roomRef);
       if (!roomSnap.exists()) throw new Error("房間不存在");
       const data = roomSnap.data();
       const capacity = data.capacity || 8;
       const playerIds = Array.isArray(data.playerIds) ? [...data.playerIds] : [];
-      const already = playerIds.includes(state.clientId);
+      const isAlready = playerIds.includes(state.clientId);
       const playersRef = collection(roomRef, "players");
       const meRef = doc(playersRef, state.clientId);
       const meSnap = await tx.get(meRef);
-      if (!already) {
-        if (playerIds.length >= capacity) throw new Error("房間已滿");
-        const sameName = await getDocs(playersRef);
-        sameName.forEach((docSnap) => {
+
+      if (!isAlready) {
+        if (playerIds.length >= capacity) throw new Error("房間已滿員");
+        const existing = await getDocs(playersRef);
+        existing.forEach((docSnap) => {
           if (docSnap.data().nickname === nickname) {
             throw new Error("房間內已有相同暱稱");
           }
@@ -206,468 +287,514 @@ async function joinRoom(roomId) {
         });
       }
     });
+
     state.nickname = nickname;
-    nicknameInput.value = nickname;
-    await watchRoom(roomId, false);
+    localStorage.setItem("yellow-card-nickname", nickname);
+    state.currentRoomId = roomId;
+    localStorage.setItem("yellow-card-active-room", roomId);
+    subscribeToRoom(roomId);
+    roomPanel.classList.add("active");
+    updateRoomPanel();
+    closeJoinDialog();
   } catch (error) {
     console.error(error);
-    alert(error.message || "加入房間失敗");
+    nicknameErrorEl.style.display = "block";
+    nicknameErrorEl.textContent = error.message || "加入房間失敗";
   }
 }
 
 async function leaveRoom(roomId) {
-  cleanupRoomWatch();
   try {
     await runTransaction(db, async (tx) => {
-      const roomRef = doc(db, "yellowRooms", roomId);
+      const roomRef = doc(db, ROOM_COLLECTION, roomId);
       const roomSnap = await tx.get(roomRef);
       if (!roomSnap.exists()) return;
       const data = roomSnap.data();
-      const playerIds = Array.isArray(data.playerIds) ? [...data.playerIds] : [];
-      const index = playerIds.indexOf(state.clientId);
-      if (index === -1) return;
-      playerIds.splice(index, 1);
+      const playerIds = Array.isArray(data.playerIds) ? data.playerIds.filter((id) => id !== state.clientId) : [];
       const playersRef = collection(roomRef, "players");
-      const meRef = doc(playersRef, state.clientId);
-      const meSnap = await tx.get(meRef);
-      const meData = meSnap.exists() ? meSnap.data() : null;
-      tx.delete(meRef);
-      let hostId = data.hostId || null;
-      let hostNickname = data.hostNickname || null;
-      if (hostId === state.clientId) {
-        hostId = playerIds[0] || null;
-        if (hostId) {
-          const newHostRef = doc(playersRef, hostId);
-          const newHostSnap = await tx.get(newHostRef);
-          if (newHostSnap.exists()) {
-            const newHost = newHostSnap.data();
-            hostNickname = newHost.nickname || null;
-            tx.update(newHostRef, { isHost: true });
-          }
-        } else {
-          hostNickname = null;
-        }
-      }
-      tx.update(roomRef, {
+      tx.delete(doc(playersRef, state.clientId));
+      tx.delete(doc(collection(roomRef, "submissions"), state.clientId));
+
+      const updates = {
         playerIds,
         playerCount: playerIds.length,
-        hostId,
-        hostNickname,
         updatedAt: serverTimestamp()
-      });
-      if (meData && Array.isArray(meData.hand) && meData.hand.length) {
-        const deck = Array.isArray(data.wordDeck) ? [...data.wordDeck] : [];
-        tx.update(roomRef, { wordDeck: [...deck, ...meData.hand] });
+      };
+
+      if (data.hostId === state.clientId) {
+        const nextId = playerIds[0] || null;
+        updates.hostId = nextId;
+        if (nextId) {
+          const nextSnap = await tx.get(doc(playersRef, nextId));
+          updates.hostNickname = nextSnap.exists() ? nextSnap.data().nickname || null : null;
+        } else {
+          updates.hostNickname = null;
+        }
       }
+
+      if (data.judgeId === state.clientId) {
+        const nextJudgeId = playerIds[0] || null;
+        updates.judgeId = nextJudgeId;
+        if (nextJudgeId) {
+          const nextJudgeSnap = await tx.get(doc(playersRef, nextJudgeId));
+          updates.judgeNickname = nextJudgeSnap.exists() ? nextJudgeSnap.data().nickname || null : null;
+        } else {
+          updates.judgeNickname = null;
+        }
+      }
+
+      tx.update(roomRef, updates);
     });
   } catch (error) {
     console.error(error);
-    alert(error.message || "離開房間失敗");
   }
-  updateRoomUI(null, null);
+  cleanupAfterLeave();
+  showToast("已離開房間");
 }
 
-async function toggleReady() {
-  const roomId = state.currentRoomId;
-  if (!roomId) return;
+function cleanupAfterLeave() {
+  unsubscribeRoomStreams();
+  state.currentRoomId = null;
+  state.currentRoomData = null;
+  localStorage.removeItem("yellow-card-active-room");
+  roomPanel.classList.remove("active");
+  renderLobby();
+}
+
+async function toggleReady(roomId, nextReady) {
   const player = state.playerMap.get(state.clientId);
   if (!player) return;
-  await updateDoc(doc(db, "yellowRooms", roomId, "players", state.clientId), {
-    ready: !player.ready,
-    lastActive: serverTimestamp()
-  });
+  try {
+    await updateDoc(doc(db, ROOM_COLLECTION, roomId, "players", state.clientId), {
+      ready: nextReady,
+      lastActive: serverTimestamp()
+    });
+  } catch (error) {
+    console.error(error);
+    showToast("更新狀態失敗");
+  }
 }
 
-async function startRound() {
-  const roomId = state.currentRoomId;
-  const roomData = state.currentRoomData;
-  if (!roomId || !roomData) return;
-  if (roomData.hostId !== state.clientId) {
-    alert("只有房主可以開始回合");
-    return;
-  }
-  const readyPlayers = Array.from(state.playerMap.values()).filter((p) => p.ready);
-  if (!readyPlayers.length) {
-    alert("至少要有一位玩家按下準備");
-    return;
-  }
-  const judgeEntry = readyPlayers[0] || state.playerMap.get(state.clientId);
-  const judgeId = judgeEntry ? judgeEntry.id : state.clientId;
-  const judgeNickname = judgeEntry ? (judgeEntry.nickname || "") : (state.nickname || "");
-  await updateDoc(doc(db, "yellowRooms", roomId), {
-    phase: "running",
-    judgeId,
-    judgeNickname,
-    currentTopic: roomData.currentTopic || "",
-    updatedAt: serverTimestamp()
-  });
-}
-async function drawTopic() {
-  const roomId = state.currentRoomId;
-  const roomData = state.currentRoomData;
-  if (!roomId || !roomData) return;
-  if (roomData.hostId !== state.clientId) {
-    alert("只有房主可以抽題目");
+async function resetReadyState(roomId) {
+  if (!isHost()) {
+    showToast("只有房主可以重置狀態");
     return;
   }
   try {
     await runTransaction(db, async (tx) => {
-      const roomRef = doc(db, "yellowRooms", roomId);
+      const roomRef = doc(db, ROOM_COLLECTION, roomId);
+      const roomSnap = await tx.get(roomRef);
+      if (!roomSnap.exists()) throw new Error("房間不存在");
+      const playersRef = collection(roomRef, "players");
+      const players = await getDocs(playersRef);
+      players.forEach((player) => {
+        tx.update(doc(playersRef, player.id), { ready: false });
+      });
+      tx.update(roomRef, { updatedAt: serverTimestamp() });
+    });
+    showToast("已重置所有玩家狀態");
+  } catch (error) {
+    console.error(error);
+    showToast(error.message || "重置失敗");
+  }
+}
+
+async function drawTopic(roomId) {
+  if (!isHost()) {
+    showToast("只有房主可以抽題目");
+    return;
+  }
+  try {
+    await runTransaction(db, async (tx) => {
+      const roomRef = doc(db, ROOM_COLLECTION, roomId);
       const roomSnap = await tx.get(roomRef);
       if (!roomSnap.exists()) throw new Error("房間不存在");
       const data = roomSnap.data();
-      const deck = Array.isArray(data.topicDeck) ? [...data.topicDeck] : [];
-      if (!deck.length) throw new Error("題庫已空，請先重置題目");
+      let deck = Array.isArray(data.topicDeck) ? [...data.topicDeck] : [];
+      let used = Array.isArray(data.usedTopics) ? [...data.usedTopics] : [];
+      if (!deck.length) {
+        if (!used.length) throw new Error("題庫已空，請先重置題目");
+        deck = shuffle(used);
+        used = [];
+      }
       const topic = deck.shift();
-      const used = Array.isArray(data.usedTopics) ? [...data.usedTopics, topic] : [topic];
-      const judgeId = data.judgeId || state.clientId;
-      const judgeNickname = data.judgeNickname || roomData.hostNickname || state.nickname || "";
+      used.push(topic);
       tx.update(roomRef, {
         topicDeck: deck,
         usedTopics: used,
         currentTopic: topic,
-        phase: "topic",
-        judgeId,
-        judgeNickname,
+        phase: "playing",
         updatedAt: serverTimestamp()
       });
     });
   } catch (error) {
     console.error(error);
-    alert(error.message || "抽題目失敗");
+    showToast(error.message || "抽題目失敗");
   }
 }
 
-async function recycleTopics() {
-  const roomId = state.currentRoomId;
-  const roomData = state.currentRoomData;
-  if (!roomId || !roomData) return;
-  if (roomData.hostId !== state.clientId) {
-    alert("只有房主可以操作");
+async function passJudge(roomId) {
+  if (!isHost()) {
+    showToast("只有房主可以指定裁判");
     return;
   }
-  const used = Array.isArray(roomData.usedTopics) ? [...roomData.usedTopics] : [];
-  const deck = Array.isArray(roomData.topicDeck) ? [...roomData.topicDeck] : [];
-  const merged = shuffle([...deck, ...used]);
-  await updateDoc(doc(db, "yellowRooms", roomId), {
-    topicDeck: merged,
-    usedTopics: [],
-    currentTopic: "",
-    judgeId: null,
-    judgeNickname: "",
-    phase: "idle",
-    updatedAt: serverTimestamp()
-  });
-}
-
-async function resetRoom() {
-  const roomId = state.currentRoomId;
-  const roomData = state.currentRoomData;
-  if (!roomId || !roomData) return;
-  if (roomData.hostId !== state.clientId) {
-    alert("只有房主可以操作");
-    return;
-  }
-  if (!confirm("確定要重設房間？所有玩家與牌組都會清除。")) return;
-  try {
-    await runTransaction(db, async (tx) => {
-      const roomRef = doc(db, "yellowRooms", roomId);
-      const playersRef = collection(roomRef, "players");
-      const submissionsRef = collection(roomRef, "submissions");
-      const players = await getDocs(playersRef);
-      players.forEach((p) => tx.delete(doc(playersRef, p.id)));
-      const submissions = await getDocs(submissionsRef);
-      submissions.forEach((s) => tx.delete(doc(submissionsRef, s.id)));
-      tx.update(roomRef, {
-        playerIds: [],
-        playerCount: 0,
-        hostId: null,
-        hostNickname: null,
-        currentTopic: "",
-        judgeId: null,
-        judgeNickname: "",
-        phase: "idle",
-        usedTopics: [],
-        updatedAt: serverTimestamp()
-      });
-    });
-  } catch (error) {
-    console.error(error);
-    alert(error.message || "重設房間失敗");
-  }
-}
-
-async function submitHand(word) {
-  const roomId = state.currentRoomId;
-  const player = state.playerMap.get(state.clientId);
-  if (!roomId || !player) return;
-  if (!player.hand.includes(word)) {
-    alert("手牌中沒有該詞語");
+  if (!state.playerList.length) {
+    showToast("房間內目前沒有玩家");
     return;
   }
   try {
     await runTransaction(db, async (tx) => {
-      const playerRef = doc(db, "yellowRooms", roomId, "players", state.clientId);
-      const playerSnap = await tx.get(playerRef);
-      if (!playerSnap.exists()) throw new Error("玩家不存在");
-      const data = playerSnap.data();
-      const newHand = (data.hand || []).filter((v) => v !== word);
-      tx.update(playerRef, {
-        hand: newHand,
-        ready: false,
-        lastActive: serverTimestamp()
-      });
-      const roomRef = doc(db, "yellowRooms", roomId);
+      const roomRef = doc(db, ROOM_COLLECTION, roomId);
       const roomSnap = await tx.get(roomRef);
-      const roomData = roomSnap.data();
-      const deck = Array.isArray(roomData.wordDeck) ? [...roomData.wordDeck] : [];
-      const draw = deck.shift();
+      if (!roomSnap.exists()) throw new Error("房間不存在");
+      const data = roomSnap.data();
+      const ordered = state.playerList;
+      const currentIndex = ordered.findIndex((player) => player.id === data.judgeId);
+      const nextPlayer = currentIndex >= 0 ? ordered[(currentIndex + 1) % ordered.length] : ordered[0];
       tx.update(roomRef, {
-        wordDeck: deck,
+        judgeId: nextPlayer.id,
+        judgeNickname: nextPlayer.nickname || null,
         updatedAt: serverTimestamp()
       });
-      if (draw) {
-        newHand.push(draw);
-        tx.update(playerRef, { hand: newHand });
+    });
+    showToast("已指定下一位裁判");
+  } catch (error) {
+    console.error(error);
+    showToast(error.message || "指定裁判失敗");
+  }
+}
+
+async function giveYellowCard(roomId, playerId) {
+  if (!isHost()) {
+    showToast("只有房主可以給黃牌");
+    return;
+  }
+  try {
+    await runTransaction(db, async (tx) => {
+      const playerRef = doc(db, ROOM_COLLECTION, roomId, "players", playerId);
+      const snap = await tx.get(playerRef);
+      if (!snap.exists()) throw new Error("找不到玩家");
+      const data = snap.data();
+      const nextCount = (data.yellowCards || 0) + 1;
+      tx.update(playerRef, { yellowCards: nextCount });
+      if (nextCount >= 3) {
+        tx.update(doc(db, ROOM_COLLECTION, roomId), {
+          phase: "finished",
+          updatedAt: serverTimestamp()
+        });
       }
-      const submissionRef = doc(collection(roomRef, "submissions"), state.clientId);
-      tx.set(submissionRef, {
-        playerId: state.clientId,
-        nickname: data.nickname,
-        word,
-        createdAt: serverTimestamp()
-      });
     });
   } catch (error) {
     console.error(error);
-    alert(error.message || "提交失敗");
+    showToast(error.message || "給黃牌失敗");
   }
 }
 
-async function giveYellowCard(targetId) {
-  const roomId = state.currentRoomId;
-  const roomData = state.currentRoomData;
-  if (!roomId || !roomData) return;
-  if (roomData.hostId !== state.clientId) {
-    alert("只有房主可以給黃牌");
+async function kickPlayer(roomId, playerId) {
+  if (!isHost()) {
+    showToast("只有房主可以移除玩家");
     return;
   }
-  await runTransaction(db, async (tx) => {
-    const playerRef = doc(db, "yellowRooms", roomId, "players", targetId);
-    const snap = await tx.get(playerRef);
-    if (!snap.exists()) throw new Error("找不到玩家");
-    const data = snap.data();
-    const total = (data.yellowCards || 0) + 1;
-    tx.update(playerRef, { yellowCards: total });
-    if (total >= 3) {
-      tx.update(doc(db, "yellowRooms", roomId), {
-        phase: "finished",
+  if (!confirm("確定要請該玩家離開房間嗎？")) return;
+  try {
+    await runTransaction(db, async (tx) => {
+      const roomRef = doc(db, ROOM_COLLECTION, roomId);
+      const roomSnap = await tx.get(roomRef);
+      if (!roomSnap.exists()) throw new Error("房間不存在");
+      const data = roomSnap.data();
+      const playerIds = Array.isArray(data.playerIds) ? data.playerIds.filter((id) => id !== playerId) : [];
+      const playersRef = collection(roomRef, "players");
+      tx.delete(doc(playersRef, playerId));
+      tx.delete(doc(collection(roomRef, "submissions"), playerId));
+
+      const updates = {
+        playerIds,
+        playerCount: playerIds.length,
         updatedAt: serverTimestamp()
-      });
-    }
-  });
+      };
+
+      if (data.hostId === playerId) {
+        const nextId = playerIds[0] || null;
+        updates.hostId = nextId;
+        if (nextId) {
+          const nextSnap = await tx.get(doc(playersRef, nextId));
+          updates.hostNickname = nextSnap.exists() ? nextSnap.data().nickname || null : null;
+        } else {
+          updates.hostNickname = null;
+        }
+      }
+
+      if (data.judgeId === playerId) {
+        const nextJudgeId = playerIds[0] || null;
+        updates.judgeId = nextJudgeId;
+        if (nextJudgeId) {
+          const nextJudgeSnap = await tx.get(doc(playersRef, nextJudgeId));
+          updates.judgeNickname = nextJudgeSnap.exists() ? nextJudgeSnap.data().nickname || null : null;
+        } else {
+          updates.judgeNickname = null;
+        }
+      }
+
+      tx.update(roomRef, updates);
+    });
+    showToast("已請該玩家離開房間");
+  } catch (error) {
+    console.error(error);
+    showToast(error.message || "移除玩家失敗");
+  }
 }
 
-async function kickPlayer(targetId) {
-  const roomId = state.currentRoomId;
-  const roomData = state.currentRoomData;
-  if (!roomId || !roomData) return;
-  if (roomData.hostId !== state.clientId) {
-    alert("只有房主可以踢人");
+function renderLobby() {
+  roomGrid.innerHTML = "";
+  if (!state.rooms.length) {
+    roomGrid.innerHTML = "<p style=\"color:var(--ink-soft);\">尚未建立任何房間。</p>";
     return;
   }
-  if (targetId === state.clientId) return;
-  await runTransaction(db, async (tx) => {
-    const roomRef = doc(db, "yellowRooms", roomId);
-    const snap = await tx.get(roomRef);
-    if (!snap.exists()) return;
-    const data = snap.data();
-    const playerIds = Array.isArray(data.playerIds) ? [...data.playerIds] : [];
-    const index = playerIds.indexOf(targetId);
-    if (index === -1) return;
-    playerIds.splice(index, 1);
-    tx.update(roomRef, {
-      playerIds,
-      playerCount: playerIds.length,
-      updatedAt: serverTimestamp()
-    });
-    tx.delete(doc(roomRef, "players", targetId));
-  });
-}
-
-function cleanupRoomWatch() {
-  if (state.roomDocUnsub) state.roomDocUnsub();
-  if (state.playersUnsub) state.playersUnsub();
-  if (state.submissionsUnsub) state.submissionsUnsub();
-  state.roomDocUnsub = null;
-  state.playersUnsub = null;
-  state.submissionsUnsub = null;
-  state.currentRoomId = null;
-  state.currentRoomData = null;
-  state.playerMap.clear();
-  submissionList.innerHTML = "";
-  playersBody.innerHTML = "";
-  handSelect.innerHTML = "";
-  playerPanel.classList.add("hidden");
-  hostPanel.classList.add("hidden");
-  playersPanel.classList.add("hidden");
-  statusPanel.classList.add("hidden");
-}
-
-async function watchRoom(roomId, previewOnly) {
-  if (!previewOnly && state.currentRoomId === roomId) return;
-  if (!previewOnly) cleanupRoomWatch();
-  const roomRef = doc(db, "yellowRooms", roomId);
-  state.roomDocUnsub = onSnapshot(roomRef, (docSnap) => {
-    if (!docSnap.exists()) {
-      if (!previewOnly) cleanupRoomWatch();
-      return;
-    }
-    const data = docSnap.data();
-    state.currentRoomData = data;
-    if (!previewOnly) {
-      state.currentRoomId = roomId;
-      updateRoomUI(roomId, data);
-    }
-    renderRoomStatus(data);
-  });
-  state.playersUnsub = onSnapshot(query(collection(roomRef, "players"), orderBy("joinedAt", "asc")), (snapshot) => {
-    const list = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-    state.playerMap = new Map(list.map((p) => [p.id, p]));
-    if (!previewOnly && state.currentRoomId === roomId) {
-      renderPlayers(list);
-      renderHandOptions(state.playerMap.get(state.clientId));
-    }
-  });
-  state.submissionsUnsub = onSnapshot(collection(roomRef, "submissions"), (snapshot) => {
-    if (previewOnly || state.currentRoomId !== roomId) return;
-    submissionList.innerHTML = "";
-    snapshot.docs.forEach((docSnap) => {
-      const data = docSnap.data();
-      const item = document.createElement("div");
-      item.className = "room-card";
-      item.style.background = "rgba(239,236,255,.7)";
-      item.innerHTML = `<strong style="font-size:1rem;">匿名投出</strong><span class="subtext">${data.word || "(尚未填寫)"}</span>`;
-      if (state.currentRoomData && state.currentRoomData.hostId === state.clientId) {
-        const btn = document.createElement("button");
-        btn.className = "btn-ghost";
-        btn.textContent = "給予黃牌";
-        btn.addEventListener("click", () => giveYellowCard(data.playerId));
-        item.appendChild(btn);
-      }
-      submissionList.appendChild(item);
-    });
-  });
-  if (!previewOnly) {
-    currentRoomBox.classList.remove("hidden");
-  }
-}
-
-function renderRoomStatus(data) {
-  statusPanel.classList.remove("hidden");
-  gamePhaseEl.textContent = `遊戲狀態：${data.phase || "等待中"}`;
-  judgeInfoEl.textContent = `本局裁判：${data.judgeNickname || "—"}`;
-  topicTextEl.textContent = data.currentTopic || "尚未抽題目";
-  const remaining = Array.isArray(data.topicDeck) ? data.topicDeck.length : 0;
-  topicRemainingEl.textContent = `剩餘題目：${remaining}`;
-}
-
-function renderPlayers(players) {
-  playersPanel.classList.remove("hidden");
-  const room = state.currentRoomData;
-  const isHost = room && room.hostId === state.clientId;
-  hostPanel.classList.toggle("hidden", !isHost);
-  btnStart.classList.toggle("hidden", !isHost);
-  playerPanel.classList.toggle("hidden", !players.some((p) => p.id === state.clientId));
-
-  playersBody.innerHTML = "";
-  players.forEach((player) => {
-    const tr = document.createElement("tr");
-    if (player.id === state.clientId) tr.classList.add("me");
-    if (player.isHost) tr.classList.add("host");
-    tr.innerHTML = `
-      <td>${player.nickname || "(未命名)"}</td>
-      <td>${player.isHost ? "房主" : (player.id === room?.judgeId ? "裁判" : "玩家")}</td>
-      <td>${player.yellowCards || 0}</td>
-      <td>${player.ready ? "✅" : "⏳"}</td>
-      <td>${Array.isArray(player.hand) ? player.hand.length : 0} 張</td>
-      <td data-actions></td>
+  state.rooms.forEach((room) => {
+    const card = document.createElement("article");
+    card.className = "room-card";
+    card.innerHTML = `
+      <div>
+        <h3>${room.name || room.id}</h3>
+        <p style="margin:0;color:var(--ink-soft);font-size:.95rem;">${room.description || "黃牌破冰房"}</p>
+      </div>
+      <div class="room-meta">
+        <span>👥 ${room.playerCount || (room.playerIds ? room.playerIds.length : 0)} / ${room.capacity || 8}</span>
+        <span>👑 ${room.hostNickname || "尚未指定"}</span>
+        <span>⚖️ ${room.judgeNickname || "等候中"}</span>
+      </div>
+      <div>
+        <span class="badge">主題：破冰桌遊</span>
+      </div>
     `;
-    const actionsCell = tr.querySelector("[data-actions]");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "primary";
+    button.dataset.roomId = room.id;
+    const playerIds = Array.isArray(room.playerIds) ? room.playerIds : [];
+    const alreadyInRoom = playerIds.includes(state.clientId);
+    const capacity = room.capacity || 8;
+    const currentCount = room.playerCount || playerIds.length;
+    if (alreadyInRoom) {
+      button.textContent = "回到此房間";
+    } else if (currentCount >= capacity) {
+      button.textContent = "已滿員";
+      button.disabled = true;
+    } else {
+      button.textContent = "加入房間";
+    }
+    card.appendChild(button);
+    roomGrid.appendChild(card);
+  });
+}
+
+function updateRoomPanel() {
+  const roomData = state.currentRoomData;
+  const player = state.playerMap.get(state.clientId);
+  if (!state.currentRoomId || !roomData || !player) {
+    if (!state.currentRoomId || !roomData) {
+      btnToggleReady.disabled = true;
+      btnResetReady.disabled = true;
+      btnDrawTopic.disabled = true;
+      btnPassJudge.disabled = true;
+      btnLeave.disabled = true;
+    }
+  }
+  if (!roomData) {
+    roomPanel.classList.remove("active");
+    renderPlayerTable([]);
+    renderTopic(null);
+    renderSubmissions();
+    return;
+  }
+
+  roomPanel.classList.add("active");
+  const totalPlayers = state.playerList.length;
+  roomNameEl.textContent = roomData.name || state.currentRoomId;
+  roomCapacityEl.textContent = `${totalPlayers} / ${roomData.capacity || 8} 人在場`;
+  roomJudgeEl.textContent = `裁判：${roomData.judgeNickname || "尚未指定"}`;
+
+  btnLeave.disabled = !player;
+  btnToggleReady.disabled = !player;
+  btnToggleReady.textContent = player?.ready ? "取消準備" : "我準備好了";
+  btnResetReady.disabled = !isHost() || !totalPlayers;
+  btnDrawTopic.disabled = !isHost();
+  btnPassJudge.disabled = !isHost() || totalPlayers === 0;
+
+  renderPlayerTable(state.playerList);
+  renderTopic(roomData);
+  renderSubmissions();
+}
+
+function renderPlayerTable(players) {
+  playerTbody.innerHTML = "";
+  if (!players.length) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 5;
+    cell.style.textAlign = "center";
+    cell.style.color = "var(--ink-soft)";
+    cell.style.padding = "1.2rem";
+    cell.textContent = "尚未有玩家加入";
+    row.appendChild(cell);
+    playerTbody.appendChild(row);
+    return;
+  }
+
+  players.forEach((player) => {
+    const row = document.createElement("tr");
+    const role = player.id === state.currentRoomData?.hostId
+      ? "房主"
+      : (player.id === state.currentRoomData?.judgeId ? "裁判" : "玩家");
+    const status = player.ready ? "✅ 準備完成" : "⏳ 等待中";
+    row.innerHTML = `
+      <td>${player.nickname || "未命名"}${player.id === state.clientId ? "（我）" : ""}</td>
+      <td>${role}</td>
+      <td>${player.yellowCards || 0}</td>
+      <td>${status}</td>
+      <td></td>
+    `;
+    const actionsCell = row.querySelector("td:last-child");
+    actionsCell.className = "table-actions";
+
     if (player.id === state.clientId) {
       const btn = document.createElement("button");
-      btn.className = "btn-ghost";
-      btn.textContent = player.ready ? "取消準備" : "我準備好了";
-      btn.addEventListener("click", toggleReady);
+      btn.className = "ghost";
+      btn.textContent = player.ready ? "取消準備" : "我要準備";
+      btn.addEventListener("click", () => toggleReady(state.currentRoomId, !player.ready));
       actionsCell.appendChild(btn);
-    } else if (isHost) {
+    } else if (isHost()) {
+      const yellowBtn = document.createElement("button");
+      yellowBtn.className = "ghost";
+      yellowBtn.textContent = "給黃牌";
+      yellowBtn.addEventListener("click", () => giveYellowCard(state.currentRoomId, player.id));
+      actionsCell.appendChild(yellowBtn);
+
+      const judgeBtn = document.createElement("button");
+      judgeBtn.className = "ghost";
+      judgeBtn.textContent = "設為裁判";
+      judgeBtn.addEventListener("click", () => manualSetJudge(player.id, player.nickname));
+      actionsCell.appendChild(judgeBtn);
+
       const kickBtn = document.createElement("button");
-      kickBtn.className = "btn-ghost";
-      kickBtn.textContent = "踢出";
-      kickBtn.addEventListener("click", () => kickPlayer(player.id));
-      const cardBtn = document.createElement("button");
-      cardBtn.className = "btn-ghost";
-      cardBtn.textContent = "黃牌 +1";
-      cardBtn.addEventListener("click", () => giveYellowCard(player.id));
+      kickBtn.className = "ghost";
+      kickBtn.textContent = "移出";
+      kickBtn.addEventListener("click", () => kickPlayer(state.currentRoomId, player.id));
       actionsCell.appendChild(kickBtn);
-      actionsCell.appendChild(cardBtn);
     }
-    playersBody.appendChild(tr);
-  });
 
-  const count = players.length;
-  const capacity = room?.capacity || 8;
-  currentRoomInfo.textContent = `${count} / ${capacity} 人在線`;
-  currentRoomName.textContent = `目前房間：${room?.name || room?.id || "—"}`;
-}
-
-function renderHandOptions(player) {
-  handSelect.innerHTML = "";
-  if (!player || !Array.isArray(player.hand) || !player.hand.length) {
-    const option = document.createElement("option");
-    option.value = "";
-    option.textContent = player ? "目前沒有手牌" : "尚未加入房間";
-    handSelect.appendChild(option);
-    handSelect.disabled = true;
-    return;
-  }
-  handSelect.disabled = false;
-  player.hand.forEach((word) => {
-    const option = document.createElement("option");
-    option.value = word;
-    option.textContent = word;
-    handSelect.appendChild(option);
+    playerTbody.appendChild(row);
   });
 }
 
-function updateRoomUI(roomId, data) {
-  if (!roomId || !data) {
-    currentRoomBox.classList.add("hidden");
-    btnReady.textContent = "我準備好了";
+function renderTopic(roomData) {
+  if (!roomData) {
+    currentTopicEl.textContent = "尚未加入房間";
+    topicRemainingEl.textContent = "剩餘題目：--";
+    topicRemainingEl.className = "pill";
     return;
   }
-  currentRoomBox.classList.remove("hidden");
-  currentRoomName.textContent = `目前房間：${data.name || roomId}`;
-  const count = Array.isArray(data.playerIds) ? data.playerIds.length : (data.playerCount || 0);
-  const capacity = data.capacity || 8;
-  currentRoomInfo.textContent = `${count} / ${capacity} 人在線`;
-  btnReady.textContent = state.playerMap.get(state.clientId)?.ready ? "取消準備" : "我準備好了";
+  currentTopicEl.textContent = roomData.currentTopic || "尚未抽題目";
+  const remaining = Array.isArray(roomData.topicDeck) ? roomData.topicDeck.length : 0;
+  topicRemainingEl.textContent = `剩餘題目：${remaining}`;
+  topicRemainingEl.className = "pill" + (remaining ? "" : " danger");
+}
+
+function renderSubmissions() {
+  activityLogEl.innerHTML = "";
+  if (!state.currentRoomId || !state.submissionList.length) {
+    const li = document.createElement("li");
+    li.style.color = "var(--ink-soft)";
+    li.textContent = "目前尚無投稿";
+    activityLogEl.appendChild(li);
+    return;
+  }
+
+  state.submissionList.forEach((submission) => {
+    const player = state.playerMap.get(submission.playerId);
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <span class="meta-title">${submission.nickname || player?.nickname || "匿名"}</span>
+      <span>${submission.word || "(未填寫)"}</span>
+    `;
+    if (isHost()) {
+      const button = document.createElement("button");
+      button.className = "ghost";
+      button.style.marginTop = ".35rem";
+      button.textContent = "給這位玩家黃牌";
+      button.addEventListener("click", () => giveYellowCard(state.currentRoomId, submission.playerId));
+      li.appendChild(button);
+    }
+    activityLogEl.appendChild(li);
+  });
+}
+
+function manualSetJudge(playerId, nickname) {
+  if (!isHost()) {
+    showToast("只有房主可以指定裁判");
+    return;
+  }
+  runTransaction(db, async (tx) => {
+    const roomRef = doc(db, ROOM_COLLECTION, state.currentRoomId);
+    const roomSnap = await tx.get(roomRef);
+    if (!roomSnap.exists()) throw new Error("房間不存在");
+    tx.update(roomRef, {
+      judgeId: playerId,
+      judgeNickname: nickname || null,
+      updatedAt: serverTimestamp()
+    });
+  }).catch((error) => {
+    console.error(error);
+    showToast(error.message || "指定裁判失敗");
+  });
+}
+
+function openJoinDialog(roomId, roomName) {
+  state.pendingJoinRoomId = roomId;
+  joinRoomNameEl.textContent = roomName;
+  nicknameInput.value = state.nickname;
+  nicknameErrorEl.style.display = "none";
+  joinDialog.classList.remove("hidden");
+  setTimeout(() => nicknameInput.focus(), 50);
+}
+
+function closeJoinDialog() {
+  state.pendingJoinRoomId = null;
+  joinDialog.classList.add("hidden");
+}
+
+function isHost() {
+  return state.currentRoomData && state.currentRoomData.hostId === state.clientId;
+}
+
+function showToast(message) {
+  if (!toastEl) return;
+  toastEl.textContent = message;
+  toastEl.classList.add("show");
+  if (state.toastTimer) {
+    clearTimeout(state.toastTimer);
+  }
+  state.toastTimer = setTimeout(() => {
+    toastEl.classList.remove("show");
+  }, 3200);
 }
 
 function shuffle(list) {
-  const a = [...list];
-  for (let i = a.length - 1; i > 0; i -= 1) {
+  const array = [...list];
+  for (let i = array.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
+    [array[i], array[j]] = [array[j], array[i]];
   }
-  return a;
+  return array;
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    const cardData = {
-        title: '警告卡',
-        description: '這是一張黃色警告卡。'
-    };
-    const container = document.getElementById('card-container');
-    container.innerHTML = createYellowCard(cardData);
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !joinDialog.classList.contains("hidden")) {
+    closeJoinDialog();
+  }
+});
+
+window.addEventListener("beforeunload", () => {
+  if (state.roomsUnsub) state.roomsUnsub();
+  unsubscribeRoomStreams();
 });

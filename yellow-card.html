@@ -1,913 +1,587 @@
-<!doctype html>
+ï»¿<!doctype html>
 <html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>ºÆ¨g¶ÀµP¤j¬D¾Ô¡U©Ğ¶¡¤jÆU</title>
+  <title>ç˜‹ç‹‚é»ƒç‰Œå¤§æŒ‘æˆ°ï½œè¿æ–°ç ´å†°å°ˆç”¨å¤§å»³</title>
   <style>
     :root {
       color-scheme: light;
-      font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
-      --bg-top: #fff4cc;
-      --bg-bottom: #ffc15e;
-      --panel: rgba(255, 255, 255, 0.96);
-      --accent: #ef476f;
-      --accent-dark: #d9365d;
-      --ink: #17212b;
-      --ink-soft: #44515f;
-      --divider: rgba(17, 24, 39, 0.12);
+      font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --bg: linear-gradient(150deg, #fff8e1 0%, #ffe082 45%, #ffb300 100%);
+      --surface: rgba(255, 255, 255, 0.92);
+      --surface-strong: #ffffff;
+      --ink: #1d1b16;
+      --ink-soft: #584e3b;
+      --accent: #f57f17;
+      --accent-strong: #ef6c00;
+      --accent-soft: rgba(245, 127, 23, .14);
+      --danger: #ef476f;
+      --success: #228b22;
+      --shadow: 0 20px 55px rgba(204, 122, 0, .18);
+      --radius-lg: 28px;
+      --radius-md: 18px;
+      --radius-sm: 12px;
+      --transition: .24s ease;
     }
+
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      padding: clamp(1.5rem, 5vw, 4rem);
-      background: linear-gradient(155deg, var(--bg-top) 0%, var(--bg-bottom) 48%, #ef476f 100%);
+      background: var(--bg);
       color: var(--ink);
     }
-    main {
-      width: min(1200px, 100%);
-      background: var(--panel);
-      border-radius: 30px;
-      box-shadow: 0 32px 78px rgba(23, 33, 43, 0.24);
-      padding: clamp(2.2rem, 5vw, 3.4rem);
-      display: grid;
-      gap: clamp(2rem, 4vw, 3rem);
+
+    header.hero {
+      padding: clamp(3rem, 8vw, 5rem) clamp(1.5rem, 6vw, 5rem);
+      text-align: center;
+      color: var(--ink);
     }
-    header h1 {
-      margin: 0 0 .6rem;
-      font-size: clamp(2.2rem, 5vw, 3.2rem);
+
+    header.hero h1 {
+      margin: 0 0 1.2rem;
+      font-size: clamp(2.6rem, 5vw, 3.6rem);
       letter-spacing: .08em;
+      text-transform: uppercase;
     }
-    header p {
-      margin: 0;
+
+    header.hero p {
+      margin: 0 auto;
+      max-width: 840px;
       line-height: 1.7;
+      font-size: 1.1rem;
       color: var(--ink-soft);
-      max-width: 70ch;
     }
-    section {
-      background: rgba(255, 255, 255, 0.94);
-      border: 1px solid rgba(255, 209, 102, 0.55);
-      border-radius: 26px;
-      padding: clamp(1.4rem, 3.6vw, 2.4rem);
+
+    main {
+      margin: 0 auto clamp(3rem, 6vw, 4rem);
+      padding: 0 clamp(1.2rem, 5vw, 4rem) clamp(3rem, 5vw, 4rem);
+      max-width: 1280px;
       display: grid;
-      gap: 1.2rem;
+      gap: clamp(1.8rem, 3vw, 2.6rem);
     }
-    section h2 {
-      margin: 0;
-      font-size: clamp(1.3rem, 3vw, 1.8rem);
+
+    section.panel {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      padding: clamp(1.8rem, 4vw, 2.6rem);
+      backdrop-filter: blur(6px);
+    }
+
+    section.panel h2 {
+      margin: 0 0 1.2rem;
+      font-size: clamp(1.9rem, 3vw, 2.4rem);
       display: flex;
       align-items: center;
-      gap: .8rem;
+      gap: .75rem;
     }
-    section h2 span {
+
+    section.panel h2 span {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 2.5rem;
-      height: 2.5rem;
+      width: 2.4rem;
+      height: 2.4rem;
       border-radius: 50%;
-      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-      color: #fff;
-      font-size: 1rem;
+      background: var(--accent-soft);
+      color: var(--accent-strong);
       font-weight: 700;
-      letter-spacing: .08em;
+      font-size: 1.05rem;
     }
-    .subtext { font-size: .95rem; color: var(--ink-soft); margin: 0; }
-    input, select, button { font: inherit; }
-    input, select {
-      width: 100%;
-      padding: .7rem 1rem;
-      border-radius: 16px;
-      border: 1px solid rgba(17, 24, 39, 0.18);
-      background: rgba(255, 255, 255, 0.98);
+
+    .grid {
+      display: grid;
+      gap: 1.6rem;
     }
+
+    @media (min-width: 960px) {
+      .grid.two {
+        grid-template-columns: 1.1fr 1fr;
+        align-items: start;
+      }
+    }
+
+    .card {
+      background: var(--surface-strong);
+      border-radius: var(--radius-md);
+      padding: clamp(1.25rem, 3vw, 1.8rem);
+      box-shadow: var(--shadow);
+    }
+
+    .card h3 {
+      margin: 0 0 .6rem;
+      font-size: 1.2rem;
+    }
+
+    .card p {
+      margin: 0;
+      line-height: 1.6;
+      color: var(--ink-soft);
+    }
+
+    .meta-list, .rule-list, .flow-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: .75rem;
+    }
+
+    .meta-list li, .rule-list li, .flow-list li {
+      background: rgba(255, 255, 255, 0.86);
+      border-radius: var(--radius-sm);
+      padding: .85rem 1rem;
+      line-height: 1.6;
+      color: var(--ink-soft);
+      display: grid;
+      gap: .3rem;
+    }
+
+    .meta-title {
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .callout {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
+      border-radius: var(--radius-md);
+      padding: clamp(1.2rem, 3vw, 1.8rem);
+      display: grid;
+      gap: 1rem;
+      box-shadow: var(--shadow);
+    }
+
+    .callout strong {
+      color: var(--accent-strong);
+      letter-spacing: .05em;
+    }
+
+    .lobby {
+      display: grid;
+      gap: clamp(1.5rem, 3vw, 2.2rem);
+    }
+
+    .room-grid {
+      display: grid;
+      gap: clamp(1.2rem, 2vw, 1.6rem);
+    }
+
+    @media (min-width: 680px) {
+      .room-grid {
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      }
+    }
+
+    .room-card {
+      background: var(--surface-strong);
+      border-radius: var(--radius-md);
+      padding: 1.2rem 1.4rem;
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: .6rem;
+      border: 1px solid transparent;
+      transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+    }
+
+    .room-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 30px 60px rgba(180, 90, 0, .25);
+      border-color: rgba(239, 108, 0, .35);
+    }
+
+    .room-card h3 {
+      margin: 0;
+      font-size: 1.25rem;
+    }
+
+    .room-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .4rem .7rem;
+      font-size: .95rem;
+      color: var(--ink-soft);
+    }
+
+    .room-meta span {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: .3rem .7rem;
+      border-radius: 999px;
+      font-size: .78rem;
+      letter-spacing: .04em;
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+    }
+
     button {
+      font: inherit;
       border: none;
       border-radius: 999px;
-      padding: .7rem 1.5rem;
-      font-weight: 600;
+      padding: .65rem 1.3rem;
       cursor: pointer;
+      transition: transform var(--transition), box-shadow var(--transition), background var(--transition);
+    }
+
+    button.primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+      color: #fff;
+      box-shadow: 0 18px 36px rgba(239, 108, 0, .35);
+    }
+
+    button.primary[disabled] {
+      opacity: .45;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    button.primary:not([disabled]):hover {
+      transform: translateY(-2px);
+    }
+
+    button.ghost {
+      background: rgba(29, 27, 22, .08);
+      color: var(--ink);
+    }
+
+    button.ghost:hover {
+      background: rgba(29, 27, 22, .12);
+    }
+
+    .hidden { display: none !important; }
+
+    #room-panel {
+      display: none;
+      flex-direction: column;
+      gap: clamp(1.4rem, 3vw, 2rem);
+    }
+
+    #room-panel.active {
+      display: flex;
+    }
+
+    .room-header {
+      display: grid;
+      gap: 1rem;
+    }
+
+    @media (min-width: 720px) {
+      .room-header {
+        grid-template-columns: 1fr auto;
+        align-items: center;
+      }
+    }
+
+    .status-stack {
+      display: grid;
+      gap: .5rem;
+    }
+
+    .pill {
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      padding: .3rem .7rem;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+      font-size: .85rem;
+      letter-spacing: .05em;
+    }
+
+    .pill.danger { background: rgba(239, 71, 111, .1); color: var(--danger); }
+    .pill.success { background: rgba(34, 139, 34, .1); color: var(--success); }
+
+    .player-table {
+      width: 100%;
+      border-collapse: collapse;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      background: var(--surface-strong);
+    }
+
+    .player-table th, .player-table td {
+      padding: .75rem 1rem;
+      text-align: left;
+      font-size: .95rem;
+      border-bottom: 1px solid rgba(0,0,0,.06);
+    }
+
+    .player-table thead {
+      background: rgba(255,255,255,.75);
+    }
+
+    .player-table tbody tr:nth-child(even) {
+      background: rgba(255, 255, 255, .6);
+    }
+
+    .table-actions {
+      display: flex;
+      flex-wrap: wrap;
       gap: .4rem;
-      transition: transform .16s ease, box-shadow .16s ease, opacity .16s ease;
     }
-    button:hover:not([disabled]) { transform: translateY(-2px); }
-    button:active:not([disabled]) { transform: translateY(1px); }
-    button[disabled] { opacity: .55; cursor: not-allowed; transform: none; box-shadow: none; }
-    .btn-primary {
-      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-      color: #fff;
-      box-shadow: 0 16px 30px rgba(239, 71, 111, 0.32);
+
+    .table-actions button {
+      padding: .45rem .8rem;
+      font-size: .85rem;
+      border-radius: 10px;
     }
-    .btn-ghost {
-      background: rgba(17, 24, 39, 0.08);
-      color: var(--ink);
-      box-shadow: none;
-    }
-    .room-grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
-    .room-card {
-      border-radius: 22px;
-      border: 1px solid rgba(239, 71, 111, 0.2);
-      padding: 1.1rem 1.3rem;
+
+    .topic-card {
+      background: rgba(255, 255, 255, .86);
+      border-left: 4px solid var(--accent-strong);
+      padding: 1rem 1.2rem;
+      border-radius: var(--radius-sm);
+      box-shadow: var(--shadow);
       display: grid;
-      gap: .8rem;
-      background: rgba(255, 255, 255, 0.96);
-      box-shadow: 0 16px 36px rgba(239, 71, 111, 0.2);
-      transition: transform .18s ease, box-shadow .18s ease;
+      gap: .4rem;
     }
-    .room-card.active { transform: translateY(-4px); box-shadow: 0 22px 48px rgba(239, 71, 111, 0.3); border-color: rgba(239, 71, 111, 0.45); }
-    .room-name { font-size: 1.25rem; font-weight: 700; }
-    .room-meta { display: flex; flex-direction: column; gap: .3rem; font-size: .95rem; color: var(--ink-soft); }
-    .badges { display: flex; flex-wrap: wrap; gap: .45rem; }
-    .badge { display: inline-flex; align-items: center; padding: .28rem .7rem; border-radius: 999px; font-size: .8rem; letter-spacing: .05em; background: rgba(17, 24, 39, 0.08); color: var(--ink); }
-    .badge.host { background: rgba(239, 71, 111, 0.18); color: var(--accent-dark); }
-    table { width: 100%; border-collapse: collapse; font-size: .95rem; }
-    th, td { padding: .65rem .8rem; border-bottom: 1px solid var(--divider); text-align: left; }
-    tbody tr.host { background: rgba(239, 71, 111, 0.12); }
-    tbody tr.me { background: rgba(56, 189, 248, 0.18); }
-    .pill { display: inline-flex; align-items: center; padding: .28rem .8rem; border-radius: 999px; background: rgba(17, 24, 39, 0.08); font-size: .78rem; letter-spacing: .04em; }
-    .hidden { display: none !important; }
+
+    .topic-card h4 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .topic-card p {
+      margin: 0;
+      color: var(--ink-soft);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .6rem;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem 1rem 3rem;
+      color: var(--ink-soft);
+    }
+
+    footer a {
+      color: var(--accent-strong);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 15, 15, .45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      z-index: 30;
+    }
+
+    .dialog {
+      background: #fff;
+      border-radius: var(--radius-md);
+      padding: clamp(1.6rem, 4vw, 2rem);
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 30px 80px rgba(0,0,0,.2);
+      display: grid;
+      gap: 1rem;
+    }
+
+    .dialog h3 { margin: 0; }
+
+    .dialog label { font-weight: 600; }
+
+    .dialog input {
+      font: inherit;
+      padding: .7rem 1rem;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,.12);
+      background: #f8fafc;
+    }
+
+    .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: .6rem;
+    }
+
+    .toast {
+      position: fixed;
+      right: clamp(1rem, 3vw, 2rem);
+      bottom: clamp(1rem, 3vw, 2rem);
+      background: #fff;
+      color: var(--ink);
+      border-radius: 14px;
+      padding: 1rem 1.3rem;
+      box-shadow: 0 20px 50px rgba(0,0,0,.18);
+      display: none;
+      z-index: 40;
+      min-width: 240px;
+    }
+
+    .toast.show {
+      display: block;
+      animation: toast-in .6s ease;
+    }
+
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
 <body>
+  <header class="hero">
+    <h1>ç˜‹ç‹‚é»ƒç‰Œå¤§æŒ‘æˆ°</h1>
+    <p>é‹ç”¨ã€Œé»ƒç‰Œã€æ¡ŒéŠç¨æœ‰çš„æƒ¡æé¡Œç›®èˆ‡å¹½é»˜è©èªï¼Œè®“æ–°ç”Ÿèˆ‡å­¸é•·å§å¿«é€Ÿç ´å†°ã€è‡ªåœ¨äº¤æµã€‚åœ¨é€™è£¡å»ºç«‹æˆ¿é–“ã€èª¿åº¦çµ„åˆ¥ã€æŒæ¡é¡Œåº«èˆ‡é»ƒç‰Œç´€éŒ„ï¼Œè¿æ–°æ´»å‹•å¾æ­¤æœ‰ç« å¯å¾ªåˆå……æ»¿ç¬‘è²ã€‚</p>
+  </header>
+
   <main>
-    <header>
-      <h1>ºÆ¨g¶ÀµP¤j¬D¾Ô¡U¦P¨B©Ğ¶¡¤jÆU</h1>
-      <p>ª½±µ³s½u¨ì Firestore ªº yellowRooms ¶°¦X§Y¥iÅã¥Ü©Ò¦³©Ğ¶¡¡C¿é¤J¼ÊºÙ«á¥[¤J©Ğ¶¡¡A²Ä¤@¦ìª±®a·|¦¨¬°©Ğ¥D¡A­t³d¶}§½¡B©âÃD¥Ø»PºŞ²zª±®a¡C</p>
-    </header>
-
-    <section id="room-section">
-      <h2><span>01</span>¿ï¾Ü©Ğ¶¡</h2>
-      <p class="subtext">½Ğ¥ı±q¤U¤è©Ğ¶¡¦Cªí¿ï¾Ü­n¥[¤Jªº©Ğ¶¡¡AµM«á¿é¤J¼ÊºÙ¡C</p>
-      <div id="room-cards" class="room-grid"></div>
-      <div id="nickname-box" class="hidden" style="margin-top:1.2rem;display:grid;gap:1rem;max-width:320px;">
-        <label>§Úªº¼ÊºÙ
-          <input id="nickname" placeholder="¿é¤J¼ÊºÙ">
-        </label>
-        <button id="btn-confirm-join" class="btn-primary">½T»{¥[¤J©Ğ¶¡</button>
-      </div>
-      <div id="current-room-box" class="hidden" style="display:grid;gap:.6rem;">
-        <div>
-          <strong id="current-room-name">¥Ø«e©Ğ¶¡¡G¡X</strong>
-          <p id="current-room-info" class="subtext" style="margin:.25rem 0 0;">©|¥¼¥[¤J©Ğ¶¡</p>
+    <section class="panel" id="overview-panel">
+      <h2><span>01</span>æ´»å‹•æ¦‚è¦½</h2>
+      <div class="grid two">
+        <div class="card">
+          <h3>æ´»å‹•ç›®çš„</h3>
+          <p>é€éè¼•é¬†åˆå……æ»¿é©šå–œçš„é»ƒç‰Œæ¡ŒéŠï¼Œå”åŠ©æ–°ç”Ÿèˆ‡å­¸é•·å§å¿«é€Ÿç†Ÿæ‚‰å½¼æ­¤ã€å»ºç«‹é»˜å¥‘ï¼Œè®“è¿æ–°ç ´å†°ä¸å†å°·å°¬ã€‚</p>
         </div>
-        <div style="display:flex;flex-wrap:wrap;gap:.55rem;">
-          <button id="btn-ready" class="btn-ghost">§Ú·Ç³Æ¦n¤F</button>
-          <button id="btn-leave" class="btn-ghost">Â÷¶}©Ğ¶¡</button>
-          <button id="btn-start" class="btn-ghost hidden">©Ğ¥D¶}©l·s¦^¦X</button>
+        <div class="card">
+          <h3>é©ç”¨å°è±¡</h3>
+          <p>30 ä½é«˜ä¸­è¿æ–°æˆå“¡ï¼ˆå«æ–°ç”Ÿèˆ‡å­¸é•·å§ï¼‰ã€‚å»ºè­°æ¯çµ„é…ç½®å­¸é•·å§æ“”ä»»çµ„é•·ï¼Œå…¨ç¨‹å¸¶å‹•æ°£æ°›èˆ‡ç¯€å¥ã€‚</p>
+        </div>
+        <div class="card">
+          <h3>æ´»å‹•æ‹†è§£</h3>
+          <ul class="flow-list">
+            <li><span class="meta-title">ç¬¬ä¸€éšæ®µï¼ˆ20 åˆ†é˜ï¼‰</span><span>åˆ†çµ„é€²è¡Œæ¡ŒéŠï¼Œç†Ÿæ‚‰è¦å‰‡èˆ‡å½¼æ­¤ã€‚</span></li>
+            <li><span class="meta-title">ç¬¬äºŒéšæ®µï¼ˆ20 åˆ†é˜ï¼‰</span><span>ç¬¬ä¸€æ¬¡å¤§é¢¨å¹é‡æ–°åˆ†çµ„ï¼Œæ“´å±•ç¤¾äº¤åœˆã€‚</span></li>
+            <li><span class="meta-title">ç¬¬ä¸‰éšæ®µï¼ˆ20 åˆ†é˜ï¼‰</span><span>æ–°åˆ†çµ„å†æˆ°ä¸€è¼ªé»ƒç‰Œï¼Œæ„Ÿå—ä¸åŒæ­æª”ç«èŠ±ã€‚</span></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>ç‰©è³‡æ¸…å–®</h3>
+          <ul class="meta-list">
+            <li><span class="meta-title">é¡Œç›®å¡ï¼ˆç´«å¡ï¼‰</span><span>ç´„ 25 å¼µï¼Œéš¨æ™‚è£œå……æ­¡æ¨‚é¡Œåº«ã€‚</span></li>
+            <li><span class="meta-title">è©èªå¡ï¼ˆé»ƒå¡ï¼‰</span><span>ç´„ 500 å¼µï¼Œç”¨ä¾†æ‡‰å°ä»»å‹™å¥å­ã€‚</span></li>
+            <li><span class="meta-title">é»ƒç‰Œç´€éŒ„å¡</span><span>æ¯ä½ç©å®¶ä¸€å¼µï¼Œç´¯è¨ˆé»ƒç‰Œæ•¸é‡ã€‚</span></li>
+            <li><span class="meta-title">ç­†</span><span>è‡³å°‘ 30 æï¼Œè¶³å¤ å…¨é«”ä½¿ç”¨ã€‚</span></li>
+          </ul>
         </div>
       </div>
     </section>
 
-    <section id="status-panel" class="hidden">
-      <h2><span>02</span>©Ğ¶¡ª¬ºA</h2>
-      <p id="game-phase" class="subtext">¹CÀ¸ª¬ºA¡Gµ¥«İ¥[¤J</p>
-      <p id="judge-info" class="subtext">¥»§½µô§P¡G¡X</p>
-      <div class="room-card" style="background:rgba(239,244,255,.55);">
-        <h3 style="margin:0 0 .4rem;">¥Ø«eÃD¥Ø</h3>
-        <p id="topic-text" style="margin:0;line-height:1.6;">©|¥¼©âÃD¥Ø</p>
-        <span id="topic-remaining" class="pill">³Ñ¾lÃD¥Ø¡G--</span>
+    <section class="panel" id="lobby-panel">
+      <h2><span>02</span>æˆ¿é–“å¤§å»³</h2>
+      <div class="lobby">
+        <div class="callout">
+          <strong>è¿æ–°æµç¨‹å°æç¤º</strong>
+          <p>é è¨­å»ºç«‹ 8 å€‹æˆ¿é–“ï¼Œæ¯é–“å¯å®¹ç´ 8 ä½ç©å®¶ã€‚è«‹å…ˆåœ¨å¤§å»³æŒ‘é¸æˆ¿é–“ï¼Œè¼¸å…¥æš±ç¨±å¾Œå³å¯åŠ å…¥ã€‚å»ºè­°æ¯çµ„å®‰æ’ä¸€ä½å­¸é•·å§æ“”ä»»æˆ¿ä¸»ï¼Œè² è²¬è£åˆ¤è¼ªæ›¿èˆ‡é¡Œåº«è£œå……ã€‚</p>
+          <p style="margin:0;color:var(--ink-soft);font-size:.95rem;">æ­¤é é¢å·²èˆ‡ Firebase Firestore é€£ç·šï¼Œæ‰€æœ‰è£ç½®æœƒå³æ™‚åŒæ­¥æˆ¿é–“èˆ‡ç©å®¶ç‹€æ…‹ã€‚</p>
+        </div>
+        <div id="room-grid" class="room-grid"></div>
       </div>
     </section>
 
-    <section id="players-panel" class="hidden">
-      <h2><span>03</span>ª±®a¦Cªí»P¾Ş§@</h2>
-      <div style="overflow-x:auto;">
-        <table>
-          <thead>
-            <tr>
-              <th>ª±®a</th>
-              <th>¨­¤À</th>
-              <th>¶ÀµP</th>
-              <th>·Ç³Æ</th>
-              <th>¤âµP</th>
-              <th>¾Ş§@</th>
-            </tr>
-          </thead>
-          <tbody id="players-body"></tbody>
-        </table>
+    <section class="panel" id="room-panel">
+      <h2><span>03</span>æˆ¿é–“æ§å°</h2>
+      <div class="room-header">
+        <div class="status-stack">
+          <div id="room-name" class="badge">æˆ¿é–“</div>
+          <div id="room-capacity" class="pill">0 / 8 äººåœ¨å ´</div>
+          <div id="room-judge" class="pill">è£åˆ¤ï¼šâ€”</div>
+        </div>
+        <div class="toolbar">
+          <button type="button" class="ghost" id="btn-back">å›åˆ°å¤§å»³</button>
+          <button type="button" class="ghost" id="btn-leave">é›¢é–‹æˆ¿é–“</button>
+        </div>
       </div>
-    </section>
-
-    <section id="host-panel" class="hidden">
-      <h2><span>04</span>©Ğ¥D¡şµô§P¤u¨ã</h2>
-      <div style="display:flex;flex-wrap:wrap;gap:.6rem;">
-        <button id="btn-draw-topic" class="btn-primary">©âÃD¥Ø¥d</button>
-        <button id="btn-recycle-topic" class="btn-ghost">ÃD®w¦^¦¬¨Ã¬~µP</button>
-        <button id="btn-reset-room" class="btn-ghost">­«³]©Ğ¶¡</button>
-      </div>
-      <div style="display:grid;gap:.8rem;">
-        <h3 style="margin:0;">°Î¦W´£¥æ</h3>
-        <div id="submission-list" style="display:grid;gap:.6rem;"></div>
-      </div>
-    </section>
-
-    <section id="player-panel" class="hidden">
-      <h2><span>05</span>´£¥æ§Úªºµü»y</h2>
-      <form id="submit-form" style="display:grid;gap:.8rem;max-width:520px;">
-        <label class="subtext" for="hand-select">±q¤âµP¤¤¿ï¾Ü­n¶ñ¤JÃD¥Øªºµü»y</label>
-        <select id="hand-select"></select>
-        <button type="submit" class="btn-primary">½T»{°e¥X</button>
-      </form>
-    </section>
-
-    <footer>
-      <p>¥ô¦óª±®a²Ö¿n 3 ±i¶ÀµP§Y«Å¥¬µ²§ô¡A¶ÀµP³Ì¤ÖªÌÀò³Ó¡C§¹¦¨¬¡°Ê«á¥iªğ¦^ <a href="index.html">¥D­¶</a>¡C</p>
-    </footer>
-  </main>
-  <div id="card-container"></div>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
-    import {
-      getFirestore,
-      collection,
-      doc,
-      getDocs,
-      onSnapshot,
-      runTransaction,
-      updateDoc,
-      deleteDoc,
-      serverTimestamp,
-      query,
-      orderBy
-    } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyADGfYlLyMB-W5A2JM6uF8VqTiF3LL9lEI",
-      authDomain: "secertmisson-19e11.firebaseapp.com",
-      databaseURL: "https://secertmisson-19e11-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "secertmisson-19e11",
-      storageBucket: "secertmisson-19e11.firebasestorage.app",
-      messagingSenderId: "730645471093",
-      appId: "1:730645471093:web:dacceb7a79256deb06fd3c"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    const state = {
-      clientId: localStorage.getItem("yellowcard-client-id") || crypto.randomUUID(),
-      nickname: "",
-      roomsUnsub: null,
-      roomDocUnsub: null,
-      playersUnsub: null,
-      submissionsUnsub: null,
-      currentRoomId: null,
-      currentRoomData: null,
-      playerMap: new Map()
-    };
-    localStorage.setItem("yellowcard-client-id", state.clientId);
-
-    const nicknameInput = document.getElementById("nickname");
-    const roomCardsEl = document.getElementById("room-cards");
-    const currentRoomBox = document.getElementById("current-room-box");
-    const currentRoomName = document.getElementById("current-room-name");
-    const currentRoomInfo = document.getElementById("current-room-info");
-    const btnReady = document.getElementById("btn-ready");
-    const btnLeave = document.getElementById("btn-leave");
-    const btnStart = document.getElementById("btn-start");
-    const btnDrawTopic = document.getElementById("btn-draw-topic");
-    const btnRecycleTopic = document.getElementById("btn-recycle-topic");
-    const btnResetRoom = document.getElementById("btn-reset-room");
-    const statusPanel = document.getElementById("status-panel");
-    const playersPanel = document.getElementById("players-panel");
-    const hostPanel = document.getElementById("host-panel");
-    const playerPanel = document.getElementById("player-panel");
-    const gamePhaseEl = document.getElementById("game-phase");
-    const judgeInfoEl = document.getElementById("judge-info");
-    const topicTextEl = document.getElementById("topic-text");
-    const topicRemainingEl = document.getElementById("topic-remaining");
-    const playersBody = document.getElementById("players-body");
-    const submissionList = document.getElementById("submission-list");
-    const submitForm = document.getElementById("submit-form");
-    const handSelect = document.getElementById("hand-select");
-    const nicknameBox = document.getElementById("nickname-box");
-    const btnConfirmJoin = document.getElementById("btn-confirm-join");
-    let pendingRoomId = null;
-
-    nicknameInput.addEventListener("input", () => {
-      state.nickname = nicknameInput.value.trim();
-    });
-
-    btnConfirmJoin.addEventListener("click", () => {
-      const nickname = nicknameInput.value.trim();
-      if (!pendingRoomId || !nickname) {
-        alert("½Ğ¿é¤J¼ÊºÙ");
-        return;
-      }
-      state.nickname = nickname;
-      joinRoom(pendingRoomId);
-      nicknameBox.classList.add("hidden");
-      pendingRoomId = null;
-    });
-
-    btnReady.addEventListener("click", () => {
-      if (state.currentRoomId) toggleReady();
-    });
-
-    btnLeave.addEventListener("click", () => {
-      if (state.currentRoomId) leaveRoom(state.currentRoomId);
-    });
-
-    btnStart.addEventListener("click", () => {
-      if (state.currentRoomId) startRound();
-    });
-
-    btnDrawTopic.addEventListener("click", drawTopic);
-    btnRecycleTopic.addEventListener("click", recycleTopics);
-    btnResetRoom.addEventListener("click", resetRoom);
-
-    submitForm.addEventListener("submit", (event) => {
-      event.preventDefault();
-      if (!state.currentRoomId) return;
-      const word = handSelect.value;
-      if (!word) {
-        alert("¥Ø«e¨S¦³¥i´£¥æªºµü»y");
-        return;
-      }
-      submitHand(word);
-    });
-
-    signInAnonymously(auth).catch(console.error);
-    onAuthStateChanged(auth, (user) => {
-      if (user && !state.roomsUnsub) subscribeRooms();
-    });
-
-    function subscribeRooms() {
-      const roomsRef = collection(db, "yellowRooms");
-      state.roomsUnsub = onSnapshot(roomsRef, (snapshot) => {
-        const rooms = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-        renderRoomCards(rooms);
-      });
-    }
-
-    function renderRoomCards(rooms) {
-      roomCardsEl.innerHTML = "";
-      rooms.forEach((room) => {
-        const card = document.createElement("article");
-        card.className = "room-card" + (room.id === state.currentRoomId ? " active" : "");
-        const playerCount = Array.isArray(room.playerIds) ? room.playerIds.length : (room.playerCount || 0);
-        const capacity = room.capacity || 8;
-        card.innerHTML = `
-          <div>
-            <div class="room-name">${room.name || room.id}</div>
-            <div class="room-meta">
-              <span>ª±®a¡G${playerCount} / ${capacity}</span>
-              <span>ÃD¥Ø³Ñ¾l¡G${Array.isArray(room.topicDeck) ? room.topicDeck.length : 0}</span>
+      <div class="grid two">
+        <div class="card">
+          <h3>ç©å®¶åå–®</h3>
+          <div id="player-table-wrapper" class="table-wrapper">
+            <table class="player-table">
+              <thead>
+                <tr>
+                  <th>ç©å®¶</th>
+                  <th>èº«åˆ†</th>
+                  <th>é»ƒç‰Œ</th>
+                  <th>ç‹€æ…‹</th>
+                  <th>æ“ä½œ</th>
+                </tr>
+              </thead>
+              <tbody id="player-tbody">
+                <tr><td colspan="5" style="text-align:center;color:var(--ink-soft);padding:1.2rem;">å°šæœªæœ‰ç©å®¶åŠ å…¥</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="toolbar">
+            <button type="button" class="primary" id="btn-toggle-ready">æˆ‘æº–å‚™å¥½äº†</button>
+            <button type="button" class="ghost" id="btn-reset-ready">å…¨éƒ¨é‡ç½®æº–å‚™</button>
+          </div>
+        </div>
+        <div class="grid" style="gap:1.2rem;">
+          <div class="card">
+            <h3>è£åˆ¤èˆ‡é¡Œåº«</h3>
+            <div class="topic-card" id="topic-card">
+              <h4>ç›®å‰é¡Œç›®</h4>
+              <p id="current-topic">å°šæœªæŠ½é¡Œç›®</p>
+              <span id="topic-remaining" class="pill">å‰©é¤˜é¡Œç›®ï¼š25</span>
             </div>
+            <div class="toolbar" style="margin-top:1rem;">
+              <button type="button" class="primary" id="btn-draw-topic">æŠ½é¡Œç›®å¡</button>
+              <button type="button" class="ghost" id="btn-pass-judge">ä¸‹ä¸€ä½è£åˆ¤</button>
+            </div>
+            <p style="margin-top:1rem;color:var(--ink-soft);font-size:.9rem;">ç¬¬ä¸€è¼ªå»ºè­°ç”±å­¸é•·å§æ“”ä»»è£åˆ¤ï¼Œä¹‹å¾Œæ”¹ç”±ä¸Šä¸€å›åˆçš„é»ƒç‰Œå¾—ä¸»æ¥çºŒã€‚ä¸»æŒäººå¯éš¨æ™‚è£œå……é¡Œåº«ã€‚</p>
           </div>
-          <div class="badges"></div>
-          <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-            <button class="btn-primary" data-action="join">¥[¤J©Ğ¶¡</button>
-            <button class="btn-ghost" data-action="peek">¶ÈÀËµø</button>
+          <div class="card">
+            <h3>æŠ•ç¨¿èˆ‡æ´»å‹•ç´€éŒ„</h3>
+            <ul class="rule-list" id="activity-log" style="max-height:260px;overflow:auto;"></ul>
           </div>
-        `;
-        const badges = card.querySelector(".badges");
-        if (room.hostId) {
-          badges.appendChild(makeBadge(`©Ğ¥D ${room.hostNickname || "¡X"}`, "host"));
-        }
-        if (room.currentTopic) {
-          badges.appendChild(makeBadge("¶i¦æ¤¤", ""));
-        }
-        card.querySelector('[data-action="join"]').addEventListener("click", () => {
-          pendingRoomId = room.id;
-          nicknameBox.classList.remove("hidden");
-          nicknameInput.value = "";
-          nicknameInput.focus();
-        });
-        card.querySelector('[data-action="peek"]').addEventListener("click", () => watchRoom(room.id, true));
-        roomCardsEl.appendChild(card);
-      });
-    }
+        </div>
+      </div>
+    </section>
 
-    function makeBadge(text, extra) {
-      const span = document.createElement("span");
-      span.className = "badge" + (extra ? ` ${extra}` : "");
-      span.textContent = text;
-      return span;
-    }
+    <section class="panel" id="rules-panel">
+      <h2><span>04</span>é»ƒç‰Œæ¡ŒéŠèª¿æ•´ç‰ˆè¦å‰‡</h2>
+      <ul class="rule-list">
+        <li><span class="meta-title">ç™¼ç‰Œ</span><span>æ¯ä½ç©å®¶èµ·å§‹ç²å¾— 13 å¼µè©èªå¡ï¼Œå‡ºç‰Œå¾Œç«‹å³å¾ç‰Œåº«è£œæ»¿ã€‚</span></li>
+        <li><span class="meta-title">è£åˆ¤</span><span>æ¯å›åˆè¼ªæ›è£åˆ¤ï¼Œç¬¬ä¸€è¼ªç”±æˆ¿ä¸»æˆ–çµ„é•·æ“”ä»»ï¼Œä¹‹å¾Œç”±é»ƒç‰Œå¾—ä¸»æ¥æ£’ã€‚</span></li>
+        <li><span class="meta-title">å‡ºé¡Œ</span><span>è£åˆ¤æŠ½ 1 å¼µé¡Œç›®å¡ä¸¦æœ—è®€é¡Œç›®ï¼Œç‡Ÿé€ æƒ…å¢ƒèˆ‡ç¯€å¥ã€‚</span></li>
+        <li><span class="meta-title">ç©å®¶å‡ºç‰Œ</span><span>æ‰€æœ‰éè£åˆ¤çš„ç©å®¶å„è‡ªé¸å‡ºæœ€æœ‰æ¢—æˆ–æœ€ä¸åˆç†çš„è©èªå¡ï¼Œé¢æœä¸‹äº¤çµ¦è£åˆ¤ã€‚</span></li>
+        <li><span class="meta-title">è©•åˆ†</span><span>è£åˆ¤æ´—ç‰Œå¾Œé€ä¸€åµŒå…¥é¡Œç›®å¥å­ï¼Œé¸å‡ºæœ€å·®å‹æˆ–æœ€çˆ†ç¬‘çš„çµ„åˆï¼Œè©²ç©å®¶ç²å¾—ä¸€å¼µé»ƒç‰Œã€‚</span></li>
+        <li><span class="meta-title">éŠæˆ²çµæŸ</span><span>ä»»ä¸€ç©å®¶ç´¯ç© 3 å¼µé»ƒç‰Œç«‹å³çµæŸï¼Œé»ƒç‰Œæœ€å°‘è€…ç²å‹ã€‚</span></li>
+      </ul>
+    </section>
+  </main>
 
-    async function joinRoom(roomId) {
-      const nickname = (state.nickname || nicknameInput.value || "").trim();
-      if (!nickname) {
-        alert("½Ğ¥ı¿é¤J¼ÊºÙ");
-        nicknameInput.focus();
-        return;
-      }
-      try {
-        await runTransaction(db, async (tx) => {
-          const roomRef = doc(db, "yellowRooms", roomId);
-          const roomSnap = await tx.get(roomRef);
-          if (!roomSnap.exists()) throw new Error("©Ğ¶¡¤£¦s¦b");
-          const data = roomSnap.data();
-          const capacity = data.capacity || 8;
-          const playerIds = Array.isArray(data.playerIds) ? [...data.playerIds] : [];
-          const already = playerIds.includes(state.clientId);
-          const playersRef = collection(roomRef, "players");
-          const meRef = doc(playersRef, state.clientId);
-          const meSnap = await tx.get(meRef);
-          if (!already) {
-            if (playerIds.length >= capacity) throw new Error("©Ğ¶¡¤wº¡");
-            const sameName = await getDocs(playersRef);
-            sameName.forEach((docSnap) => {
-              if (docSnap.data().nickname === nickname) {
-                throw new Error("©Ğ¶¡¤º¤w¦³¬Û¦P¼ÊºÙ");
-              }
-            });
-            playerIds.push(state.clientId);
-            const isHost = !data.hostId;
-            const wordDeck = Array.isArray(data.wordDeck) ? [...data.wordDeck] : [];
-            const drawCount = Math.min(13, wordDeck.length);
-            const hand = wordDeck.splice(0, drawCount);
-            tx.update(roomRef, {
-              playerIds,
-              playerCount: playerIds.length,
-              hostId: isHost ? state.clientId : (data.hostId || null),
-              hostNickname: isHost ? nickname : (data.hostNickname || null),
-              wordDeck,
-              updatedAt: serverTimestamp()
-            });
-            tx.set(meRef, {
-              nickname,
-              hand,
-              yellowCards: 0,
-              ready: false,
-              isHost,
-              joinedAt: serverTimestamp(),
-              lastActive: serverTimestamp()
-            });
-          } else {
-            tx.update(meRef, {
-              nickname,
-              lastActive: serverTimestamp()
-            });
-          }
-        });
-        state.nickname = nickname;
-        nicknameInput.value = nickname;
-        await watchRoom(roomId, false);
-      } catch (error) {
-        console.error(error);
-        alert(error.message || "¥[¤J©Ğ¶¡¥¢±Ñ");
-      }
-    }
+  <footer>
+    <p>å®Œæˆä¸€è¼ªæŒ‘æˆ°å¾Œè¨˜å¾—å›åˆ° <a href="index.html">è¿æ–°ä¸»é </a>ï¼Œå®‰æ’ä¸‹ä¸€æ®µæ—…ç¨‹ã€‚</p>
+  </footer>
 
-    async function leaveRoom(roomId) {
-      cleanupRoomWatch();
-      try {
-        await runTransaction(db, async (tx) => {
-          const roomRef = doc(db, "yellowRooms", roomId);
-          const roomSnap = await tx.get(roomRef);
-          if (!roomSnap.exists()) return;
-          const data = roomSnap.data();
-          const playerIds = Array.isArray(data.playerIds) ? [...data.playerIds] : [];
-          const index = playerIds.indexOf(state.clientId);
-          if (index === -1) return;
-          playerIds.splice(index, 1);
-          const playersRef = collection(roomRef, "players");
-          const meRef = doc(playersRef, state.clientId);
-          const meSnap = await tx.get(meRef);
-          const meData = meSnap.exists() ? meSnap.data() : null;
-          tx.delete(meRef);
-          let hostId = data.hostId || null;
-          let hostNickname = data.hostNickname || null;
-          if (hostId === state.clientId) {
-            hostId = playerIds[0] || null;
-            if (hostId) {
-              const newHostRef = doc(playersRef, hostId);
-              const newHostSnap = await tx.get(newHostRef);
-              if (newHostSnap.exists()) {
-                const newHost = newHostSnap.data();
-                hostNickname = newHost.nickname || null;
-                tx.update(newHostRef, { isHost: true });
-              }
-            } else {
-              hostNickname = null;
-            }
-          }
-          tx.update(roomRef, {
-            playerIds,
-            playerCount: playerIds.length,
-            hostId,
-            hostNickname,
-            updatedAt: serverTimestamp()
-          });
-          if (meData && Array.isArray(meData.hand) && meData.hand.length) {
-            const deck = Array.isArray(data.wordDeck) ? [...data.wordDeck] : [];
-            tx.update(roomRef, { wordDeck: [...deck, ...meData.hand] });
-          }
-        });
-      } catch (error) {
-        console.error(error);
-        alert(error.message || "Â÷¶}©Ğ¶¡¥¢±Ñ");
-      }
-      updateRoomUI(null, null);
-    }
+  <div id="join-dialog" class="backdrop hidden" role="dialog" aria-modal="true">
+    <div class="dialog">
+      <h3>åŠ å…¥æˆ¿é–“</h3>
+      <p id="join-room-name" style="margin:0;color:var(--ink-soft);">â€”</p>
+      <label for="nickname-input">è«‹è¼¸å…¥æš±ç¨±</label>
+      <input id="nickname-input" type="text" maxlength="12" placeholder="ä¾‹ï¼šå°åµã€é˜¿å“²" autocomplete="off">
+      <div id="nickname-error" style="color:var(--danger);font-size:.9rem;display:none;">æš±ç¨±ä¸å¯ç‚ºç©ºï¼Œä¹Ÿä¸èƒ½é‡è¤‡ã€‚</div>
+      <div class="dialog-actions">
+        <button type="button" class="ghost" id="btn-cancel-join">å–æ¶ˆ</button>
+        <button type="button" class="primary" id="btn-confirm-join">åŠ å…¥</button>
+      </div>
+    </div>
+  </div>
 
-    async function toggleReady() {
-      const roomId = state.currentRoomId;
-      if (!roomId) return;
-      const player = state.playerMap.get(state.clientId);
-      if (!player) return;
-      await updateDoc(doc(db, "yellowRooms", roomId, "players", state.clientId), {
-        ready: !player.ready,
-        lastActive: serverTimestamp()
-      });
-    }
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-    async function startRound() {
-      const roomId = state.currentRoomId;
-      const roomData = state.currentRoomData;
-      if (!roomId || !roomData) return;
-      if (roomData.hostId !== state.clientId) {
-        alert("¥u¦³©Ğ¥D¥i¥H¶}©l¦^¦X");
-        return;
-      }
-      const readyPlayers = Array.from(state.playerMap.values()).filter((p) => p.ready);
-      if (!readyPlayers.length) {
-        alert("¦Ü¤Ö­n¦³¤@¦ìª±®a«ö¤U·Ç³Æ");
-        return;
-      }
-      const judgeEntry = readyPlayers[0] || state.playerMap.get(state.clientId);
-      const judgeId = judgeEntry ? judgeEntry.id : state.clientId;
-      const judgeNickname = judgeEntry ? (judgeEntry.nickname || "") : (state.nickname || "");
-      await updateDoc(doc(db, "yellowRooms", roomId), {
-        phase: "running",
-        judgeId,
-        judgeNickname,
-        currentTopic: roomData.currentTopic || "",
-        updatedAt: serverTimestamp()
-      });
-    }
-    async function drawTopic() {
-      const roomId = state.currentRoomId;
-      const roomData = state.currentRoomData;
-      if (!roomId || !roomData) return;
-      if (roomData.hostId !== state.clientId) {
-        alert("¥u¦³©Ğ¥D¥i¥H©âÃD¥Ø");
-        return;
-      }
-      try {
-        await runTransaction(db, async (tx) => {
-          const roomRef = doc(db, "yellowRooms", roomId);
-          const roomSnap = await tx.get(roomRef);
-          if (!roomSnap.exists()) throw new Error("©Ğ¶¡¤£¦s¦b");
-          const data = roomSnap.data();
-          const deck = Array.isArray(data.topicDeck) ? [...data.topicDeck] : [];
-          if (!deck.length) throw new Error("ÃD®w¤wªÅ¡A½Ğ¥ı­«¸mÃD¥Ø");
-          const topic = deck.shift();
-          const used = Array.isArray(data.usedTopics) ? [...data.usedTopics, topic] : [topic];
-          const judgeId = data.judgeId || state.clientId;
-          const judgeNickname = data.judgeNickname || roomData.hostNickname || state.nickname || "";
-          tx.update(roomRef, {
-            topicDeck: deck,
-            usedTopics: used,
-            currentTopic: topic,
-            phase: "topic",
-            judgeId,
-            judgeNickname,
-            updatedAt: serverTimestamp()
-          });
-        });
-      } catch (error) {
-        console.error(error);
-        alert(error.message || "©âÃD¥Ø¥¢±Ñ");
-      }
-    }
-
-    async function recycleTopics() {
-      const roomId = state.currentRoomId;
-      const roomData = state.currentRoomData;
-      if (!roomId || !roomData) return;
-      if (roomData.hostId !== state.clientId) {
-        alert("¥u¦³©Ğ¥D¥i¥H¾Ş§@");
-        return;
-      }
-      const used = Array.isArray(roomData.usedTopics) ? [...roomData.usedTopics] : [];
-      const deck = Array.isArray(roomData.topicDeck) ? [...roomData.topicDeck] : [];
-      const merged = shuffle([...deck, ...used]);
-      await updateDoc(doc(db, "yellowRooms", roomId), {
-        topicDeck: merged,
-        usedTopics: [],
-        currentTopic: "",
-        judgeId: null,
-        judgeNickname: "",
-        phase: "idle",
-        updatedAt: serverTimestamp()
-      });
-    }
-
-    async function resetRoom() {
-      const roomId = state.currentRoomId;
-      const roomData = state.currentRoomData;
-      if (!roomId || !roomData) return;
-      if (roomData.hostId !== state.clientId) {
-        alert("¥u¦³©Ğ¥D¥i¥H¾Ş§@");
-        return;
-      }
-      if (!confirm("½T©w­n­«³]©Ğ¶¡¡H©Ò¦³ª±®a»PµP²Õ³£·|²M°£¡C")) return;
-      try {
-        await runTransaction(db, async (tx) => {
-          const roomRef = doc(db, "yellowRooms", roomId);
-          const playersRef = collection(roomRef, "players");
-          const submissionsRef = collection(roomRef, "submissions");
-          const players = await getDocs(playersRef);
-          players.forEach((p) => tx.delete(doc(playersRef, p.id)));
-          const submissions = await getDocs(submissionsRef);
-          submissions.forEach((s) => tx.delete(doc(submissionsRef, s.id)));
-          tx.update(roomRef, {
-            playerIds: [],
-            playerCount: 0,
-            hostId: null,
-            hostNickname: null,
-            currentTopic: "",
-            judgeId: null,
-            judgeNickname: "",
-            phase: "idle",
-            usedTopics: [],
-            updatedAt: serverTimestamp()
-          });
-        });
-      } catch (error) {
-        console.error(error);
-        alert(error.message || "­«³]©Ğ¶¡¥¢±Ñ");
-      }
-    }
-
-    async function submitHand(word) {
-      const roomId = state.currentRoomId;
-      const player = state.playerMap.get(state.clientId);
-      if (!roomId || !player) return;
-      if (!player.hand.includes(word)) {
-        alert("¤âµP¤¤¨S¦³¸Óµü»y");
-        return;
-      }
-      try {
-        await runTransaction(db, async (tx) => {
-          const playerRef = doc(db, "yellowRooms", roomId, "players", state.clientId);
-          const playerSnap = await tx.get(playerRef);
-          if (!playerSnap.exists()) throw new Error("ª±®a¤£¦s¦b");
-          const data = playerSnap.data();
-          const newHand = (data.hand || []).filter((v) => v !== word);
-          tx.update(playerRef, {
-            hand: newHand,
-            ready: false,
-            lastActive: serverTimestamp()
-          });
-          const roomRef = doc(db, "yellowRooms", roomId);
-          const roomSnap = await tx.get(roomRef);
-          const roomData = roomSnap.data();
-          const deck = Array.isArray(roomData.wordDeck) ? [...roomData.wordDeck] : [];
-          const draw = deck.shift();
-          tx.update(roomRef, {
-            wordDeck: deck,
-            updatedAt: serverTimestamp()
-          });
-          if (draw) {
-            newHand.push(draw);
-            tx.update(playerRef, { hand: newHand });
-          }
-          const submissionRef = doc(collection(roomRef, "submissions"), state.clientId);
-          tx.set(submissionRef, {
-            playerId: state.clientId,
-            nickname: data.nickname,
-            word,
-            createdAt: serverTimestamp()
-          });
-        });
-      } catch (error) {
-        console.error(error);
-        alert(error.message || "´£¥æ¥¢±Ñ");
-      }
-    }
-
-    async function giveYellowCard(targetId) {
-      const roomId = state.currentRoomId;
-      const roomData = state.currentRoomData;
-      if (!roomId || !roomData) return;
-      if (roomData.hostId !== state.clientId) {
-        alert("¥u¦³©Ğ¥D¥i¥Hµ¹¶ÀµP");
-        return;
-      }
-      await runTransaction(db, async (tx) => {
-        const playerRef = doc(db, "yellowRooms", roomId, "players", targetId);
-        const snap = await tx.get(playerRef);
-        if (!snap.exists()) throw new Error("§ä¤£¨ìª±®a");
-        const data = snap.data();
-        const total = (data.yellowCards || 0) + 1;
-        tx.update(playerRef, { yellowCards: total });
-        if (total >= 3) {
-          tx.update(doc(db, "yellowRooms", roomId), {
-            phase: "finished",
-            updatedAt: serverTimestamp()
-          });
-        }
-      });
-    }
-
-    async function kickPlayer(targetId) {
-      const roomId = state.currentRoomId;
-      const roomData = state.currentRoomData;
-      if (!roomId || !roomData) return;
-      if (roomData.hostId !== state.clientId) {
-        alert("¥u¦³©Ğ¥D¥i¥H½ğ¤H");
-        return;
-      }
-      if (targetId === state.clientId) return;
-      await runTransaction(db, async (tx) => {
-        const roomRef = doc(db, "yellowRooms", roomId);
-        const snap = await tx.get(roomRef);
-        if (!snap.exists()) return;
-        const data = snap.data();
-        const playerIds = Array.isArray(data.playerIds) ? [...data.playerIds] : [];
-        const index = playerIds.indexOf(targetId);
-        if (index === -1) return;
-        playerIds.splice(index, 1);
-        tx.update(roomRef, {
-          playerIds,
-          playerCount: playerIds.length,
-          updatedAt: serverTimestamp()
-        });
-        tx.delete(doc(roomRef, "players", targetId));
-      });
-    }
-
-    function cleanupRoomWatch() {
-      if (state.roomDocUnsub) state.roomDocUnsub();
-      if (state.playersUnsub) state.playersUnsub();
-      if (state.submissionsUnsub) state.submissionsUnsub();
-      state.roomDocUnsub = null;
-      state.playersUnsub = null;
-      state.submissionsUnsub = null;
-      state.currentRoomId = null;
-      state.currentRoomData = null;
-      state.playerMap.clear();
-      submissionList.innerHTML = "";
-      playersBody.innerHTML = "";
-      handSelect.innerHTML = "";
-      playerPanel.classList.add("hidden");
-      hostPanel.classList.add("hidden");
-      playersPanel.classList.add("hidden");
-      statusPanel.classList.add("hidden");
-    }
-
-    async function watchRoom(roomId, previewOnly) {
-      if (!previewOnly && state.currentRoomId === roomId) return;
-      if (!previewOnly) cleanupRoomWatch();
-      const roomRef = doc(db, "yellowRooms", roomId);
-      state.roomDocUnsub = onSnapshot(roomRef, (docSnap) => {
-        if (!docSnap.exists()) {
-          if (!previewOnly) cleanupRoomWatch();
-          return;
-        }
-        const data = docSnap.data();
-        state.currentRoomData = data;
-        if (!previewOnly) {
-          state.currentRoomId = roomId;
-          updateRoomUI(roomId, data);
-        }
-        renderRoomStatus(data);
-      });
-      state.playersUnsub = onSnapshot(query(collection(roomRef, "players"), orderBy("joinedAt", "asc")), (snapshot) => {
-        const list = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-        state.playerMap = new Map(list.map((p) => [p.id, p]));
-        if (!previewOnly && state.currentRoomId === roomId) {
-          renderPlayers(list);
-          renderHandOptions(state.playerMap.get(state.clientId));
-        }
-      });
-      state.submissionsUnsub = onSnapshot(collection(roomRef, "submissions"), (snapshot) => {
-        if (previewOnly || state.currentRoomId !== roomId) return;
-        submissionList.innerHTML = "";
-        snapshot.docs.forEach((docSnap) => {
-          const data = docSnap.data();
-          const item = document.createElement("div");
-          item.className = "room-card";
-          item.style.background = "rgba(239,236,255,.7)";
-          item.innerHTML = `<strong style="font-size:1rem;">°Î¦W§ë¥X</strong><span class="subtext">${data.word || "(©|¥¼¶ñ¼g)"}</span>`;
-          if (state.currentRoomData && state.currentRoomData.hostId === state.clientId) {
-            const btn = document.createElement("button");
-            btn.className = "btn-ghost";
-            btn.textContent = "µ¹¤©¶ÀµP";
-            btn.addEventListener("click", () => giveYellowCard(data.playerId));
-            item.appendChild(btn);
-          }
-          submissionList.appendChild(item);
-        });
-      });
-      if (!previewOnly) {
-        currentRoomBox.classList.remove("hidden");
-      }
-    }
-
-    function renderRoomStatus(data) {
-      statusPanel.classList.remove("hidden");
-      gamePhaseEl.textContent = `¹CÀ¸ª¬ºA¡G${data.phase || "µ¥«İ¤¤"}`;
-      judgeInfoEl.textContent = `¥»§½µô§P¡G${data.judgeNickname || "¡X"}`;
-      topicTextEl.textContent = data.currentTopic || "©|¥¼©âÃD¥Ø";
-      const remaining = Array.isArray(data.topicDeck) ? data.topicDeck.length : 0;
-      topicRemainingEl.textContent = `³Ñ¾lÃD¥Ø¡G${remaining}`;
-    }
-
-    function renderPlayers(players) {
-      playersPanel.classList.remove("hidden");
-      const room = state.currentRoomData;
-      const isHost = room && room.hostId === state.clientId;
-      hostPanel.classList.toggle("hidden", !isHost);
-      btnStart.classList.toggle("hidden", !isHost);
-      playerPanel.classList.toggle("hidden", !players.some((p) => p.id === state.clientId));
-
-      playersBody.innerHTML = "";
-      players.forEach((player) => {
-        const tr = document.createElement("tr");
-        if (player.id === state.clientId) tr.classList.add("me");
-        if (player.isHost) tr.classList.add("host");
-        tr.innerHTML = `
-          <td>${player.nickname || "(¥¼©R¦W)"}</td>
-          <td>${player.isHost ? "©Ğ¥D" : (player.id === room?.judgeId ? "µô§P" : "ª±®a")}</td>
-          <td>${player.yellowCards || 0}</td>
-          <td>${player.ready ? "?" : "?"}</td>
-          <td>${Array.isArray(player.hand) ? player.hand.length : 0} ±i</td>
-          <td data-actions></td>
-        `;
-        const actionsCell = tr.querySelector("[data-actions]");
-        if (player.id === state.clientId) {
-          const btn = document.createElement("button");
-          btn.className = "btn-ghost";
-          btn.textContent = player.ready ? "¨ú®ø·Ç³Æ" : "§Ú·Ç³Æ¦n¤F";
-          btn.addEventListener("click", toggleReady);
-          actionsCell.appendChild(btn);
-        } else if (isHost) {
-          const kickBtn = document.createElement("button");
-          kickBtn.className = "btn-ghost";
-          kickBtn.textContent = "½ğ¥X";
-          kickBtn.addEventListener("click", () => kickPlayer(player.id));
-          const cardBtn = document.createElement("button");
-          cardBtn.className = "btn-ghost";
-          cardBtn.textContent = "¶ÀµP +1";
-          cardBtn.addEventListener("click", () => giveYellowCard(player.id));
-          actionsCell.appendChild(kickBtn);
-          actionsCell.appendChild(cardBtn);
-        }
-        playersBody.appendChild(tr);
-      });
-
-      const count = players.length;
-      const capacity = room?.capacity || 8;
-      currentRoomInfo.textContent = `${count} / ${capacity} ¤H¦b½u`;
-      currentRoomName.textContent = `¥Ø«e©Ğ¶¡¡G${room?.name || room?.id || "¡X"}`;
-    }
-
-    function renderHandOptions(player) {
-      handSelect.innerHTML = "";
-      if (!player || !Array.isArray(player.hand) || !player.hand.length) {
-        const option = document.createElement("option");
-        option.value = "";
-        option.textContent = player ? "¥Ø«e¨S¦³¤âµP" : "©|¥¼¥[¤J©Ğ¶¡";
-        handSelect.appendChild(option);
-        handSelect.disabled = true;
-        return;
-      }
-      handSelect.disabled = false;
-      player.hand.forEach((word) => {
-        const option = document.createElement("option");
-        option.value = word;
-        option.textContent = word;
-        handSelect.appendChild(option);
-      });
-    }
-
-    function updateRoomUI(roomId, data) {
-      if (!roomId || !data) {
-        currentRoomBox.classList.add("hidden");
-        btnReady.textContent = "§Ú·Ç³Æ¦n¤F";
-        return;
-      }
-      currentRoomBox.classList.remove("hidden");
-      currentRoomName.textContent = `¥Ø«e©Ğ¶¡¡G${data.name || roomId}`;
-      const count = Array.isArray(data.playerIds) ? data.playerIds.length : (data.playerCount || 0);
-      const capacity = data.capacity || 8;
-      currentRoomInfo.textContent = `${count} / ${capacity} ¤H¦b½u`;
-      btnReady.textContent = state.playerMap.get(state.clientId)?.ready ? "¨ú®ø·Ç³Æ" : "§Ú·Ç³Æ¦n¤F";
-    }
-
-    function shuffle(list) {
-      const a = [...list];
-      for (let i = a.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [a[i], a[j]] = [a[j], a[i]];
-      }
-      return a;
-    }
-  </script>
   <script type="module" src="app-yellow.js"></script>
 </body>
 </html>
-
