@@ -394,7 +394,40 @@
       background: rgba(99,102,241,.08);
       border: 1px solid rgba(99,102,241,.2);
     }
-
+    .hidden { display: none !important; }
+    .flip-agreement {
+      display: none;
+      padding: .85rem 1rem;
+      border-radius: 12px;
+      background: rgba(37,99,235,.1);
+      border: 1px dashed rgba(37,99,235,.35);
+      color: #1d4ed8;
+      font-size: .9rem;
+      line-height: 1.55;
+    }
+    .flip-agreement.active {
+      display: flex;
+      flex-direction: column;
+      gap: .75rem;
+    }
+    .flip-actions {
+      display: flex;
+      gap: .6rem;
+      flex-wrap: wrap;
+    }
+    #flip-agree {
+      background: linear-gradient(135deg,#2563eb,#1d4ed8);
+      color: #fff;
+      border: none;
+    }
+    #flip-agree:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+    }
+    #flip-cancel {
+      background: rgba(148,163,184,.3);
+      color: #0f172a;
+    }
     .chat-header {
       display: flex;
       align-items: center;
@@ -607,6 +640,13 @@
                   <button type="button" data-clue-number="10">10</button>
                 </div>
               </div>
+              <div id="flip-agreement" class="flip-agreement hidden">
+                <div id="flip-agreement-text" class="helper-text"></div>
+                <div class="flip-actions">
+                  <button id="flip-agree" type="button">同意翻牌</button>
+                  <button id="flip-cancel" type="button" class="ghost">取消請求</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -626,10 +666,3 @@
 
 </body>
 </html>
-
-
-
-
-
-
-
