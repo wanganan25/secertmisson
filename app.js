@@ -296,6 +296,8 @@ function roomCollection(roomId, ...segments) {
 function roomChatCollection(roomId) {
   const safeId = normalizeRoomId(roomId);
   return collection(db, 'rooms', safeId, 'chat');
+}
+
 
 
 function logAndAlert(message, error) {
@@ -596,6 +598,8 @@ function renderRoomDetail() {
   renderBoard();
   renderTeamChat();
   renderFlipAgreement();
+}
+
 
 function renderBoard() {
   const room = state.roomData;
@@ -629,7 +633,7 @@ function renderBoard() {
     winnerBannerEl.style.display = 'none';
   }
   renderFlipAgreement();
-
+}
 function updateScoreboard() {
   if (!state.cards.length) {
     boardScoreEl.innerHTML = '';
