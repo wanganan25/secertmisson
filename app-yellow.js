@@ -140,10 +140,17 @@ nicknameInput.addEventListener("keydown", (event) => {
   }
 });
 
-signInAnonymously(auth).catch((error) => {
-  console.error("Firebase auth error", error);
-  showToast("登入 Firebase 失敗");
-});
+signInAnonymously(auth)
+  .then(() => {
+    console.info("Firebase anonymous auth established");
+  })
+  .catch((error) => {
+    console.warn("Firebase auth error", error);
+    showToast("匿名登入未啟用，改為公開連線模式");
+    if (!state.roomsUnsub) {
+      subscribeLobby();
+    }
+  });
 
 onAuthStateChanged(auth, (user) => {
   if (user && !state.roomsUnsub) {
@@ -798,3 +805,4 @@ window.addEventListener("beforeunload", () => {
   if (state.roomsUnsub) state.roomsUnsub();
   unsubscribeRoomStreams();
 });
+
