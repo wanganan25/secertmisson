@@ -43,7 +43,8 @@ const state = {
   playerMap: new Map(),
   submissionList: [],
   pendingJoinRoomId: null,
-  toastTimer: null
+  toastTimer: null,
+  viewMode: localStorage.getItem("yellow-card-active-room") ? "room" : "lobby"
 };
 
 localStorage.setItem("yellow-card-client-id", state.clientId);
@@ -58,6 +59,7 @@ const playerTbody = document.getElementById("player-tbody");
 const btnBack = document.getElementById("btn-back");
 const btnLeave = document.getElementById("btn-leave");
 const btnToggleReady = document.getElementById("btn-toggle-ready");
+const btnStartGame = document.getElementById("btn-start-game");
 const btnResetReady = document.getElementById("btn-reset-ready");
 const btnDrawTopic = document.getElementById("btn-draw-topic");
 const btnPassJudge = document.getElementById("btn-pass-judge");
@@ -71,9 +73,11 @@ const nicknameErrorEl = document.getElementById("nickname-error");
 const btnConfirmJoin = document.getElementById("btn-confirm-join");
 const btnCancelJoin = document.getElementById("btn-cancel-join");
 const toastEl = document.getElementById("toast");
+const heroEl = document.querySelector("header.hero");
 
 btnBack.addEventListener("click", () => {
-  roomPanel.classList.remove("active");
+  state.viewMode = "lobby";
+  showLobbyView();
   lobbyPanel.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
@@ -96,6 +100,8 @@ btnResetReady.addEventListener("click", () => {
   resetReadyState(state.currentRoomId);
 });
 
+btnStartGame?.addEventListener("click", startGame);
+
 btnDrawTopic.addEventListener("click", () => {
   if (!state.currentRoomId) return;
   drawTopic(state.currentRoomId);
@@ -116,9 +122,10 @@ roomGrid.addEventListener("click", (event) => {
   const alreadyInRoom = room.playerIds && room.playerIds.includes(state.clientId);
   if (alreadyInRoom) {
     state.currentRoomId = roomId;
+    state.viewMode = "room";
     localStorage.setItem("yellow-card-active-room", roomId);
     subscribeToRoom(roomId);
-    roomPanel.classList.add("active");
+    showRoomView();
     updateRoomPanel();
     return;
   }
@@ -177,9 +184,13 @@ function ensureRoomSubscription() {
   const target = state.rooms.find((room) => Array.isArray(room.playerIds) && room.playerIds.includes(state.clientId));
   if (target) {
     state.currentRoomId = target.id;
+    state.viewMode = "room";
     subscribeToRoom(target.id);
+    showRoomView();
   } else {
+    state.viewMode = "lobby";
     localStorage.removeItem("yellow-card-active-room");
+    showLobbyView();
   }
 }
 
@@ -208,6 +219,12 @@ function subscribeToRoom(roomId) {
     state.submissionList = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
     renderSubmissions();
   });
+
+  if (state.viewMode === "room") {
+    showRoomView();
+  } else {
+    showLobbyView();
+  }
 }
 
 function unsubscribeRoomStreams() {
@@ -235,11 +252,6 @@ async function confirmJoin() {
   if (!nickname) {
     nicknameErrorEl.style.display = "block";
     nicknameErrorEl.textContent = "暱稱不可為空。";
-    return;
-  }
-  if (nickname.length < 2) {
-    nicknameErrorEl.style.display = "block";
-    nicknameErrorEl.textContent = "暱稱至少兩個字元。";
     return;
   }
 
@@ -298,9 +310,10 @@ async function confirmJoin() {
     state.nickname = nickname;
     localStorage.setItem("yellow-card-nickname", nickname);
     state.currentRoomId = roomId;
+    state.viewMode = "room";
     localStorage.setItem("yellow-card-active-room", roomId);
     subscribeToRoom(roomId);
-    roomPanel.classList.add("active");
+    showRoomView();
     updateRoomPanel();
     closeJoinDialog();
   } catch (error) {
@@ -363,8 +376,9 @@ function cleanupAfterLeave() {
   unsubscribeRoomStreams();
   state.currentRoomId = null;
   state.currentRoomData = null;
+  state.viewMode = "lobby";
   localStorage.removeItem("yellow-card-active-room");
-  roomPanel.classList.remove("active");
+  showLobbyView();
   renderLobby();
 }
 
@@ -470,6 +484,78 @@ async function passJudge(roomId) {
     showToast(error.message || "指定裁判失敗");
   }
 }
+async function startGame() {
+  const roomId = state.currentRoomId;
+  const roomData = state.currentRoomData;
+  if (!roomId || !roomData) return;
+  if (!isHost()) {
+    showToast("只有房主可以開始遊戲");
+    return;
+  }
+  const players = state.playerList;
+  if (!players.length) {
+    showToast("目前沒有玩家可以開始");
+    return;
+  }
+  const notReady = players.filter((player) => !player.ready);
+  if (notReady.length) {
+    showToast("還有人沒有按下我準備好了");
+    return;
+  }
+  try {
+    await runTransaction(db, async (tx) => {
+      const roomRef = doc(db, ROOM_COLLECTION, roomId);
+      const roomSnap = await tx.get(roomRef);
+      if (!roomSnap.exists()) throw new Error("房間不存在");
+      const data = roomSnap.data();
+      const playerIds = Array.isArray(data.playerIds) ? [...data.playerIds] : [];
+      if (!playerIds.length) throw new Error("房間內沒有玩家");
+      const playersRef = collection(roomRef, "players");
+      let deck = Array.isArray(data.wordDeck) ? [...data.wordDeck] : [];
+      const judgeId = playerIds[Math.floor(Math.random() * playerIds.length)];
+      let judgeNickname = null;
+      for (const playerId of playerIds) {
+        const playerRef = doc(playersRef, playerId);
+        const playerSnap = await tx.get(playerRef);
+        if (!playerSnap.exists()) continue;
+        const playerData = playerSnap.data();
+        const hand = Array.isArray(playerData.hand) ? [...playerData.hand] : [];
+        const needed = Math.max(0, 13 - hand.length);
+        if (needed > 0) {
+          if (deck.length < needed) {
+            throw new Error("詞語卡不足，無法補齊 13 張手牌");
+          }
+          hand.push(...deck.splice(0, needed));
+        }
+        if (playerId === judgeId) {
+          judgeNickname = playerData.nickname || null;
+        }
+        tx.update(playerRef, {
+          hand,
+          ready: false,
+          lastActive: serverTimestamp()
+        });
+      }
+      tx.update(roomRef, {
+        judgeId,
+        judgeNickname,
+        wordDeck: deck,
+        currentTopic: "",
+        phase: "in_game",
+        updatedAt: serverTimestamp()
+      });
+    });
+    await clearSubmissions(roomId);
+    state.viewMode = "room";
+    showRoomView();
+    showToast("遊戲開始！已指派裁判並補滿手牌");
+  } catch (error) {
+    console.error(error);
+    showToast(error.message || "開始遊戲失敗");
+  }
+}
+
+
 
 async function giveYellowCard(roomId, playerId) {
   if (!isHost()) {
@@ -550,6 +636,37 @@ async function kickPlayer(roomId, playerId) {
     showToast(error.message || "移除玩家失敗");
   }
 }
+async function clearSubmissions(roomId) {
+  try {
+    const submissionsRef = collection(doc(db, ROOM_COLLECTION, roomId), "submissions");
+    const existing = await getDocs(submissionsRef);
+    const removals = existing.docs.map((docSnap) => deleteDoc(docSnap.ref));
+    await Promise.all(removals);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+
+
+function showLobbyView() {
+  heroEl?.classList.remove("hidden");
+  lobbyPanel?.classList.remove("hidden");
+  roomPanel.classList.remove("active");
+}
+
+function showRoomView() {
+  heroEl?.classList.add("hidden");
+  lobbyPanel?.classList.add("hidden");
+  roomPanel.classList.add("active");
+}
+
+if (state.viewMode === "room") {
+  showRoomView();
+} else {
+  showLobbyView();
+}
+
 
 function renderLobby() {
   roomGrid.innerHTML = "";
@@ -608,15 +725,26 @@ function updateRoomPanel() {
     }
   }
   if (!roomData) {
-    roomPanel.classList.remove("active");
+    if (state.viewMode === "room") {
+      showRoomView();
+    } else {
+      showLobbyView();
+    }
     renderPlayerTable([]);
     renderTopic(null);
     renderSubmissions();
     return;
   }
 
-  roomPanel.classList.add("active");
+  if (state.viewMode === "room") {
+    showRoomView();
+  } else {
+    showLobbyView();
+  }
+
   const totalPlayers = state.playerList.length;
+  const allReady = totalPlayers > 0 && state.playerList.every((player) => player.ready);
+  const enoughPlayers = totalPlayers >= 2;
   roomNameEl.textContent = roomData.name || state.currentRoomId;
   roomCapacityEl.textContent = `${totalPlayers} / ${roomData.capacity || 8} 人在場`;
   roomJudgeEl.textContent = `裁判：${roomData.judgeNickname || "尚未指定"}`;
@@ -627,6 +755,10 @@ function updateRoomPanel() {
   btnResetReady.disabled = !isHost() || !totalPlayers;
   btnDrawTopic.disabled = !isHost();
   btnPassJudge.disabled = !isHost() || totalPlayers === 0;
+  if (btnStartGame) {
+    btnStartGame.classList.toggle("hidden", !isHost());
+    btnStartGame.disabled = !isHost() || !allReady || !enoughPlayers;
+  }
 
   renderPlayerTable(state.playerList);
   renderTopic(roomData);
@@ -711,6 +843,7 @@ function renderSubmissions() {
   activityLogEl.innerHTML = "";
   if (!state.currentRoomId || !state.submissionList.length) {
     const li = document.createElement("li");
+    li.className = "card";
     li.style.color = "var(--ink-soft)";
     li.textContent = "目前尚無投稿";
     activityLogEl.appendChild(li);
@@ -720,6 +853,7 @@ function renderSubmissions() {
   state.submissionList.forEach((submission) => {
     const player = state.playerMap.get(submission.playerId);
     const li = document.createElement("li");
+    li.className = "card";
     li.innerHTML = `
       <span class="meta-title">${submission.nickname || player?.nickname || "匿名"}</span>
       <span>${submission.word || "(未填寫)"}</span>
@@ -805,4 +939,6 @@ window.addEventListener("beforeunload", () => {
   if (state.roomsUnsub) state.roomsUnsub();
   unsubscribeRoomStreams();
 });
+
+
 

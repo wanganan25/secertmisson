@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>瘋狂黃牌大挑戰｜迎新破冰專用大廳</title>
+  <title>瘋狂黃牌大挑戰｜迎新房間大廳</title>
   <style>
     :root {
       color-scheme: light;
@@ -32,6 +32,8 @@
       min-height: 100vh;
       background: var(--bg);
       color: var(--ink);
+      display: flex;
+      flex-direction: column;
     }
 
     header.hero {
@@ -49,13 +51,14 @@
 
     header.hero p {
       margin: 0 auto;
-      max-width: 840px;
+      max-width: 720px;
       line-height: 1.7;
       font-size: 1.1rem;
       color: var(--ink-soft);
     }
 
     main {
+      flex: 1;
       margin: 0 auto clamp(3rem, 6vw, 4rem);
       padding: 0 clamp(1.2rem, 5vw, 4rem) clamp(3rem, 5vw, 4rem);
       max-width: 1280px;
@@ -92,16 +95,21 @@
       font-size: 1.05rem;
     }
 
+    .lobby {
+      display: grid;
+      gap: clamp(1.5rem, 3vw, 2.2rem);
+    }
+
+    .room-grid {
+      display: grid;
+      gap: clamp(1.2rem, 2vw, 1.6rem);
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
     .grid {
       display: grid;
       gap: 1.6rem;
-    }
-
-    @media (min-width: 960px) {
-      .grid.two {
-        grid-template-columns: 1.1fr 1fr;
-        align-items: start;
-      }
     }
 
     .card {
@@ -122,52 +130,11 @@
       color: var(--ink-soft);
     }
 
-    .meta-list, .rule-list, .flow-list {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-      display: grid;
-      gap: .75rem;
-    }
-
-    .meta-list li, .rule-list li, .flow-list li {
-      background: rgba(255, 255, 255, 0.86);
-      border-radius: var(--radius-sm);
-      padding: .85rem 1rem;
-      line-height: 1.6;
-      color: var(--ink-soft);
-      display: grid;
-      gap: .3rem;
-    }
-
     .meta-title {
       font-weight: 700;
       color: var(--ink);
     }
 
-    .callout {
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.7));
-      border-radius: var(--radius-md);
-      padding: clamp(1.2rem, 3vw, 1.8rem);
-      display: grid;
-      gap: 1rem;
-      box-shadow: var(--shadow);
-    }
-
-    .callout strong {
-      color: var(--accent-strong);
-      letter-spacing: .05em;
-    }
-
-    .lobby {
-      display: grid;
-      gap: clamp(1.5rem, 3vw, 2.2rem);
-    }
-
-    .room-grid {
-      display: grid;
-      gap: clamp(1.2rem, 2vw, 1.6rem);
-    }
 
     @media (min-width: 680px) {
       .room-grid {
@@ -443,55 +410,19 @@
 <body>
   <header class="hero">
     <h1>瘋狂黃牌大挑戰</h1>
-    <p>運用「黃牌」桌遊獨有的惡搞題目與幽默詞語，讓新生與學長姐快速破冰、自在交流。在這裡建立房間、調度組別、掌握題庫與黃牌紀錄，迎新活動從此有章可循又充滿笑聲。</p>
+    <p>歡迎進入黃牌迎新房間大廳。這裡已連線 Firebase Firestore，可即時掌握房間名額、裁判與題庫狀態。</p>
   </header>
 
   <main>
-    <section class="panel" id="overview-panel">
-      <h2><span>01</span>活動概覽</h2>
-      <div class="grid two">
-        <div class="card">
-          <h3>活動目的</h3>
-          <p>透過輕鬆又充滿驚喜的黃牌桌遊，協助新生與學長姐快速熟悉彼此、建立默契，讓迎新破冰不再尷尬。</p>
-        </div>
-        <div class="card">
-          <h3>適用對象</h3>
-          <p>30 位高中迎新成員（含新生與學長姐）。建議每組配置學長姐擔任組長，全程帶動氣氛與節奏。</p>
-        </div>
-        <div class="card">
-          <h3>活動拆解</h3>
-          <ul class="flow-list">
-            <li><span class="meta-title">第一階段（20 分鐘）</span><span>分組進行桌遊，熟悉規則與彼此。</span></li>
-            <li><span class="meta-title">第二階段（20 分鐘）</span><span>第一次大風吹重新分組，擴展社交圈。</span></li>
-            <li><span class="meta-title">第三階段（20 分鐘）</span><span>新分組再戰一輪黃牌，感受不同搭檔火花。</span></li>
-          </ul>
-        </div>
-        <div class="card">
-          <h3>物資清單</h3>
-          <ul class="meta-list">
-            <li><span class="meta-title">題目卡（紫卡）</span><span>約 25 張，隨時補充歡樂題庫。</span></li>
-            <li><span class="meta-title">詞語卡（黃卡）</span><span>約 500 張，用來應對任務句子。</span></li>
-            <li><span class="meta-title">黃牌紀錄卡</span><span>每位玩家一張，累計黃牌數量。</span></li>
-            <li><span class="meta-title">筆</span><span>至少 30 枝，足夠全體使用。</span></li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
     <section class="panel" id="lobby-panel">
-      <h2><span>02</span>房間大廳</h2>
+      <h2><span>01</span>房間大廳</h2>
       <div class="lobby">
-        <div class="callout">
-          <strong>迎新流程小提示</strong>
-          <p>預設建立 8 個房間，每間可容納 8 位玩家。請先在大廳挑選房間，輸入暱稱後即可加入。建議每組安排一位學長姐擔任房主，負責裁判輪替與題庫補充。</p>
-          <p style="margin:0;color:var(--ink-soft);font-size:.95rem;">此頁面已與 Firebase Firestore 連線，所有裝置會即時同步房間與玩家狀態。</p>
-        </div>
-        <div id="room-grid" class="room-grid"></div>
+        <div class="room-grid" id="room-grid"></div>
       </div>
     </section>
 
     <section class="panel" id="room-panel">
-      <h2><span>03</span>房間控台</h2>
+      <h2><span>02</span>房間控台</h2>
       <div class="room-header">
         <div class="status-stack">
           <div id="room-name" class="badge">房間</div>
@@ -503,29 +434,28 @@
           <button type="button" class="ghost" id="btn-leave">離開房間</button>
         </div>
       </div>
-      <div class="grid two">
-        <div class="card">
+      <div class="toolbar" style="justify-content:flex-start;margin-bottom:1rem;">
+        <button type="button" class="primary" id="btn-toggle-ready">我準備好了</button>
+        <button type="button" class="primary hidden" id="btn-start-game">開始遊戲</button>
+        <button type="button" class="ghost" id="btn-reset-ready">全部重置準備</button>
+      </div>
+      <div class="grid" style="gap:1.6rem;">
+        <div class="card" style="overflow-x:auto;">
           <h3>玩家名單</h3>
-          <div id="player-table-wrapper" class="table-wrapper">
-            <table class="player-table">
-              <thead>
-                <tr>
-                  <th>玩家</th>
-                  <th>身分</th>
-                  <th>黃牌</th>
-                  <th>狀態</th>
-                  <th>操作</th>
-                </tr>
-              </thead>
-              <tbody id="player-tbody">
-                <tr><td colspan="5" style="text-align:center;color:var(--ink-soft);padding:1.2rem;">尚未有玩家加入</td></tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="toolbar">
-            <button type="button" class="primary" id="btn-toggle-ready">我準備好了</button>
-            <button type="button" class="ghost" id="btn-reset-ready">全部重置準備</button>
-          </div>
+          <table class="player-table">
+            <thead>
+              <tr>
+                <th>玩家</th>
+                <th>身分</th>
+                <th>黃牌</th>
+                <th>狀態</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="player-tbody">
+              <tr><td colspan="5" style="text-align:center;color:var(--ink-soft);padding:1.2rem;">尚未有玩家加入</td></tr>
+            </tbody>
+          </table>
         </div>
         <div class="grid" style="gap:1.2rem;">
           <div class="card">
@@ -539,31 +469,19 @@
               <button type="button" class="primary" id="btn-draw-topic">抽題目卡</button>
               <button type="button" class="ghost" id="btn-pass-judge">下一位裁判</button>
             </div>
-            <p style="margin-top:1rem;color:var(--ink-soft);font-size:.9rem;">第一輪建議由學長姐擔任裁判，之後改由上一回合的黃牌得主接續。主持人可隨時補充題庫。</p>
+            <p style="margin-top:1rem;color:var(--ink-soft);font-size:.9rem;">房主可隨時調整裁判與題庫，抽題前請確認所有玩家都已準備。</p>
           </div>
           <div class="card">
-            <h3>投稿與活動紀錄</h3>
-            <ul class="rule-list" id="activity-log" style="max-height:260px;overflow:auto;"></ul>
+            <h3>投稿列表</h3>
+            <ul class="room-grid" id="activity-log" style="gap:.8rem;max-height:260px;overflow:auto;"></ul>
           </div>
         </div>
       </div>
     </section>
-
-    <section class="panel" id="rules-panel">
-      <h2><span>04</span>黃牌桌遊調整版規則</h2>
-      <ul class="rule-list">
-        <li><span class="meta-title">發牌</span><span>每位玩家起始獲得 13 張詞語卡，出牌後立即從牌庫補滿。</span></li>
-        <li><span class="meta-title">裁判</span><span>每回合輪換裁判，第一輪由房主或組長擔任，之後由黃牌得主接棒。</span></li>
-        <li><span class="meta-title">出題</span><span>裁判抽 1 張題目卡並朗讀題目，營造情境與節奏。</span></li>
-        <li><span class="meta-title">玩家出牌</span><span>所有非裁判的玩家各自選出最有梗或最不合理的詞語卡，面朝下交給裁判。</span></li>
-        <li><span class="meta-title">評分</span><span>裁判洗牌後逐一嵌入題目句子，選出最差勁或最爆笑的組合，該玩家獲得一張黃牌。</span></li>
-        <li><span class="meta-title">遊戲結束</span><span>任一玩家累積 3 張黃牌立即結束，黃牌最少者獲勝。</span></li>
-      </ul>
-    </section>
   </main>
 
   <footer>
-    <p>完成一輪挑戰後記得回到 <a href="index.html">迎新主頁</a>，安排下一段旅程。</p>
+    <p>完成挑戰後，可返回 <a href="index.html">迎新主頁</a> 或切換其他互動任務。</p>
   </footer>
 
   <div id="join-dialog" class="backdrop hidden" role="dialog" aria-modal="true">
@@ -585,3 +503,12 @@
   <script type="module" src="app-yellow.js"></script>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
