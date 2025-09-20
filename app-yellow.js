@@ -1342,7 +1342,7 @@ async function discardSelectedCard(element) {
   }
 }
 
-function syncTopicAssignmentsWithHand"() {
+function syncTopicAssignmentsWithHand() {
   if (!Array.isArray(state.myHand)) {
     state.usedHandKeys = new Set();
     state.topicAssignments = new Map();
