@@ -42,8 +42,7 @@ const state = {
   playerList: [],
   playerMap: new Map(),
   submissionList: [],
-  pendingJoinRoomId: null,
-  toastTimer: null,
+  pendingJoinRoomI  myHand: [],
   viewMode: localStorage.getItem("yellow-card-active-room") ? "room" : "lobby"
 };
 
@@ -74,6 +73,10 @@ const btnConfirmJoin = document.getElementById("btn-confirm-join");
 const btnCancelJoin = document.getElementById("btn-cancel-join");
 const toastEl = document.getElementById("toast");
 const heroEl = document.querySelector("header.hero");
+const handCard = document.getElementById("hand-card");
+const handCountEl = document.getElementById("hand-count");
+const handListEl = document.getElementById("hand-list");
+const handEmptyEl = document.getElementById("hand-empty");
 
 btnBack.addEventListener("click", () => {
   state.viewMode = "lobby";
@@ -209,9 +212,31 @@ function subscribeToRoom(roomId) {
 
   const playersRef = collection(roomRef, "players");
   state.playersUnsub = onSnapshot(query(playersRef, orderBy("joinedAt", "asc")), (snapshot) => {
-    state.playerList = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-    state.playerMap = new Map(state.playerList.map((player) => [player.id, player]));
+    const list = [];
+    state.myHand = [];
+    snapshot.docs.forEach((docSnap) => {
+      const data = docSnap.data() || {};
+      const hand = Array.isArray(data.hand) ? [...data.hand] : [];
+      const entry = {
+        id: docSnap.id,
+        nickname: data.nickname || "",
+        yellowCards: data.yellowCards || 0,
+        ready: !!data.ready,
+        isHost: !!data.isHost,
+        joinedAt: data.joinedAt,
+        lastActive: data.lastActive,
+        handCount: hand.length
+      };
+      if (docSnap.id === state.clientId) {
+        state.myHand = hand;
+        entry.hand = hand;
+      }
+      list.push(entry);
+    });
+    state.playerList = list;
+    state.playerMap = new Map(list.map((player) => [player.id, player]));
     updateRoomPanel();
+    renderHand();
   });
 
   const submissionsRef = collection(roomRef, "submissions");
@@ -244,6 +269,8 @@ function unsubscribeRoomStreams() {
   state.playerList = [];
   state.playerMap = new Map();
   state.submissionList = [];
+  state.myHand = [];
+  renderHand();
 }
 
 async function confirmJoin() {
