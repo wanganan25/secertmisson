@@ -822,36 +822,51 @@ async function startGame() {
       const playerIds = Array.isArray(data.playerIds) ? [...data.playerIds] : [];
       if (!playerIds.length) throw new Error("房間內沒有玩家");
       const playersRef = collection(roomRef, "players");
-      let deck = Array.isArray(data.wordDeck) ? [...data.wordDeck] : [];
-      const requiredCards = playerIds.length * 13;
-      if (deck.length < requiredCards) {
-        deck = ensureWordSupply(deck, requiredCards + 20);
-      }
-      const judgeId = playerIds[Math.floor(Math.random() * playerIds.length)];
-      let judgeNickname = null;
+      const participantEntries = [];
       for (const playerId of playerIds) {
         const playerRef = doc(playersRef, playerId);
         const playerSnap = await tx.get(playerRef);
         if (!playerSnap.exists()) continue;
-        const playerData = playerSnap.data();
-        const hand = Array.isArray(playerData.hand) ? [...playerData.hand] : [];
+        participantEntries.push({
+          id: playerId,
+          ref: playerRef,
+          data: playerSnap.data() || {}
+        });
+      }
+      if (!participantEntries.length) {
+        throw new Error("房間沒有可用玩家");
+      }
+      let deck = Array.isArray(data.wordDeck) ? [...data.wordDeck] : [];
+      const requiredCards = participantEntries.length * 13;
+      if (deck.length < requiredCards) {
+        deck = ensureWordSupply(deck, requiredCards + 20);
+      }
+      const judgeEntry = participantEntries[Math.floor(Math.random() * participantEntries.length)];
+      const judgeId = judgeEntry.id;
+      const judgeNickname = judgeEntry.data.nickname || null;
+      const playerUpdates = [];
+      participantEntries.forEach((entry) => {
+        const hand = Array.isArray(entry.data.hand) ? [...entry.data.hand] : [];
         const needed = Math.max(0, 13 - hand.length);
         if (needed > 0) {
           if (deck.length < needed) {
-            throw new Error("詞語卡不足，無法補齊 13 張手牌");
+            throw new Error("牌庫字數不足，無法補齊 13 張手牌");
           }
           hand.push(...deck.splice(0, needed));
         }
-        if (playerId === judgeId) {
-          judgeNickname = playerData.nickname || null;
-        }
-        tx.update(playerRef, {
-          hand,
-          pendingDiscard: 0,
-          ready: false,
-          lastActive: serverTimestamp()
+        playerUpdates.push({
+          ref: entry.ref,
+          payload: {
+            hand,
+            pendingDiscard: 0,
+            ready: false,
+            lastActive: serverTimestamp()
+          }
         });
-      }
+      });
+      playerUpdates.forEach((update) => {
+        tx.update(update.ref, update.payload);
+      });
       tx.update(roomRef, {
         judgeId,
         judgeNickname,
