@@ -863,17 +863,21 @@ async function clearSubmissions(roomId) {
 
 
 function showLobbyView() {
-  heroEl?.classList.remove("hidden");
-  lobbyPanel?.classList.remove("hidden");
-  roomPanel?.classList.remove("active");
-  roomPanel?.classList.add("hidden");
+  if (heroEl) heroEl.classList.remove("hidden");
+  if (lobbyPanel) lobbyPanel.classList.remove("hidden");
+  if (roomPanel) {
+    roomPanel.classList.remove("active");
+    roomPanel.classList.add("hidden");
+  }
 }
 
 function showRoomView() {
-  heroEl?.classList.add("hidden");
-  lobbyPanel?.classList.add("hidden");
-  roomPanel?.classList.remove("hidden");
-  roomPanel?.classList.add("active");
+  if (heroEl) heroEl.classList.add("hidden");
+  if (lobbyPanel) lobbyPanel.classList.add("hidden");
+  if (roomPanel) {
+    roomPanel.classList.remove("hidden");
+    roomPanel.classList.add("active");
+  }
 }
 
 if (state.viewMode === "room") {
