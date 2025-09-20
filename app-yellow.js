@@ -1,4 +1,4 @@
-﻿import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 import {
   getFirestore,
@@ -99,7 +99,11 @@ const heroEl = document.querySelector("header.hero");
 const handCard = document.getElementById("hand-card");
 const handCountEl = document.getElementById("hand-count");
 const handListEl = document.getElementById("hand-list");
-const handEmptyEl = document.getElementById("hand-empty");\nconst supplyWordInput = document.getElementById("input-new-word");\nconst supplyTopicInput = document.getElementById("input-new-topic");\nconst btnAddWord = document.getElementById("btn-add-word");\nconst btnAddTopic = document.getElementById("btn-add-topic");
+const handEmptyEl = document.getElementById("hand-empty");
+const supplyWordInput = document.getElementById("input-new-word");
+const supplyTopicInput = document.getElementById("input-new-topic");
+const btnAddWord = document.getElementById("btn-add-word");
+const btnAddTopic = document.getElementById("btn-add-topic");
 
 btnBack.addEventListener("click", () => {
   state.viewMode = "lobby";
