@@ -3,360 +3,310 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>瘋狂黃牌大挑戰 | 房間大廳</title>
+  <title>迎新黃卡大廳</title>
   <style>
     :root {
-      --bg-top: #fff4cc;
-      --bg-bottom: #ffc15e;
-      --card-bg: rgba(255, 255, 255, 0.96);
-      --text-primary: #17212b;
-      --text-secondary: #44515f;
+      --bg-top: #fff7d6;
+      --bg-bottom: #ffd166;
+      --panel: rgba(255, 255, 255, 0.94);
+      --panel-strong: #ffffff;
+      --text-strong: #1d1b16;
+      --text-soft: #5f5538;
       --accent: #ef476f;
-      --accent-dark: #d9365d;
-      --accent-soft: rgba(239, 71, 111, 0.12);
-      --border: rgba(255, 255, 255, 0.7);
-      --shadow: 0 30px 70px rgba(23, 33, 43, 0.18);
+      --accent-soft: rgba(239, 71, 111, 0.16);
+      --shadow: 0 30px 70px rgba(239, 71, 111, 0.18);
       font-family: "Noto Sans TC", "Microsoft JhengHei", system-ui, sans-serif;
       color-scheme: light;
     }
+
     * { box-sizing: border-box; }
+
     body {
       margin: 0;
       min-height: 100vh;
-      background: linear-gradient(160deg, var(--bg-top) 0%, var(--bg-bottom) 48%, #ef476f 100%);
-      color: var(--text-primary);
-    }
-    .page {
-      min-height: 100vh;
+      background: linear-gradient(160deg, var(--bg-top) 0%, var(--bg-bottom) 55%, #f77f00 100%);
+      color: var(--text-strong);
       display: flex;
       flex-direction: column;
-      gap: clamp(2.4rem, 6vw, 3.6rem);
-      padding: clamp(1.5rem, 5vw, 4rem);
     }
-    header.hero {
-      background: var(--card-bg);
-      border-radius: 28px;
-      padding: clamp(2rem, 6vw, 3.5rem);
-      box-shadow: var(--shadow);
+
+    .page {
+      flex: 1;
       display: grid;
-      gap: 1rem;
+      gap: 2rem;
+      padding: clamp(1.5rem, 5vw, 3.5rem);
     }
+
+    header.hero {
+      background: var(--panel);
+      border-radius: 26px;
+      padding: clamp(1.8rem, 5vw, 3rem);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      text-align: center;
+    }
+
     header.hero h1 {
       margin: 0;
       font-size: clamp(2.2rem, 5vw, 3.2rem);
       letter-spacing: .08em;
     }
-    header.hero p {
-      margin: 0;
-      line-height: 1.7;
-      color: var(--text-secondary);
-      max-width: 64ch;
-    }
-    .rooms-section {
-      display: grid;
-      gap: 1.6rem;
-    }
-    .rooms-section > h2 {
-      margin: 0;
-      font-size: 1.9rem;
-      letter-spacing: .06em;
-    }
-    .topic-blank {
-      display: inline-flex;
-      align-items: center;
-      padding: 0 .35rem;
-      border-bottom: 2px dashed rgba(239, 71, 111, 0.6);
-      cursor: pointer;
-      transition: background-color .2s ease, color .2s ease;
-    }
-
-    .topic-blank.filled {
-      background: var(--accent-soft);
-      border-bottom-color: var(--accent);
-    }
 
     .ghost-link {
       display: inline-flex;
+      justify-content: center;
       align-items: center;
-      padding: .55rem .95rem;
+      padding: .6rem 1rem;
       border-radius: 18px;
-      border: 1px solid rgba(17, 24, 39, 0.18);
-      color: var(--text-primary);
+      border: 1px solid rgba(23, 33, 43, .15);
       text-decoration: none;
-      background: rgba(255, 255, 255, 0.7);
+      color: inherit;
+      background: rgba(255, 255, 255, .7);
       font-weight: 600;
-      transition: background-color .2s ease, color .2s ease;
     }
 
-    .ghost-link:hover {
-      background: rgba(255, 255, 255, 0.9);
-    }
-
-    .topic-blank:hover {
-      background: rgba(239, 71, 111, 0.18);
-    }
-
-    .rooms-grid {
+    main {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: clamp(1.6rem, 4vw, 2.2rem);
+    }
+
+    section.panel {
+      background: var(--panel);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: clamp(1.6rem, 4vw, 2.6rem);
+      display: grid;
+      gap: 1.6rem;
+    }
+
+    .lobby {
+      display: grid;
       gap: 1.4rem;
     }
-    .room-card {
-      position: relative;
-      border-radius: 22px;
-      padding: 1.6rem;
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      box-shadow: 0 18px 40px rgba(23, 33, 43, 0.16);
-      display: flex;
-      flex-direction: column;
-      gap: 1.2rem;
-    }
-    .room-card header {
-      display: flex;
-      flex-direction: column;
-      gap: .25rem;
-    }
-    .room-card h3 {
-      margin: 0;
-      font-size: 1.3rem;
-    }
-    .room-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: .95rem;
-      color: var(--text-secondary);
-    }
-    .room-meta span {
-      display: inline-flex;
-      align-items: center;
-      gap: .3rem;
-    }
-    .player-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
+
+    .supply-card {
+      background: var(--panel-strong);
+      border-radius: 18px;
+      padding: clamp(1.2rem, 3vw, 1.8rem);
+      box-shadow: var(--shadow);
       display: grid;
-      gap: .8rem;
+      gap: 1rem;
     }
-    .player-item {
-      padding: .75rem .85rem;
-      border-radius: 16px;
-      background: rgba(17, 24, 39, 0.04);
+
+    .supply-form {
       display: grid;
-      gap: .4rem;
-    }
-    .player-top {
-      display: flex;
+      gap: .75rem;
+      grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
-      justify-content: space-between;
-      gap: .5rem;
     }
-    .player-name {
-      font-weight: 600;
+
+    .supply-form input {
+      font: inherit;
+      padding: .6rem .85rem;
+      border-radius: 12px;
+      border: 1px solid rgba(23, 33, 43, .16);
+      background: rgba(255, 255, 255, .95);
     }
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      padding: .2rem .65rem;
-      border-radius: 999px;
-      font-size: .75rem;
-      letter-spacing: .08em;
-    }
-    .badge-host {
-      background: var(--accent);
-      color: #fff;
-    }
-    .badge-judge {
-      background: rgba(255, 193, 94, 0.3);
-      color: #9d5b12;
-    }
-    .player-status {
-      display: flex;
-      flex-wrap: wrap;
-      gap: .6rem;
-      font-size: .85rem;
-      color: var(--text-secondary);
-    }
-    .player-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: .5rem;
-    }
+
     button {
       font: inherit;
       cursor: pointer;
       border: none;
       border-radius: 999px;
-      padding: .55rem 1.2rem;
+      padding: .6rem 1.2rem;
       font-weight: 600;
-      transition: transform .18s ease, box-shadow .18s ease;
+      transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease;
     }
-    button:focus-visible {
-      outline: 3px solid rgba(239, 71, 111, 0.35);
-      outline-offset: 2px;
+
+    .primary { background: var(--accent); color: #fff; }
+    .ghost { background: rgba(255, 255, 255, .75); color: var(--text-strong); border: 1px solid rgba(23,33,43,.12); }
+    .ghost:hover { background: rgba(255,255,255,.95); }
+
+    .rooms-grid {
+      display: grid;
+      gap: 1.2rem;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     }
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-      box-shadow: 0 12px 26px rgba(239, 71, 111, 0.3);
+
+    .room-card {
+      background: var(--panel-strong);
+      border-radius: 18px;
+      padding: 1.2rem 1.4rem;
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: .8rem;
     }
-    .btn-primary:hover { transform: translateY(-1px); }
-    .btn-secondary {
-      background: rgba(23, 33, 43, 0.06);
-      color: var(--text-primary);
-    }
-    .btn-danger {
-      background: rgba(239, 71, 111, 0.15);
-      color: var(--accent-dark);
-    }
-    .room-actions {
+
+    .room-card h3 { margin: 0; }
+    .room-meta { display: grid; gap: .3rem; color: var(--text-soft); font-size: .92rem; }
+
+    #room-panel.hidden { display: none; }
+    #hand-card.hidden { display: none; }
+
+    .room-header {
       display: flex;
-      flex-direction: column;
-      gap: .6rem;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 1rem;
     }
-    .room-footer {
-      margin-top: auto;
-      padding-top: .6rem;
-      border-top: 1px dashed rgba(23, 33, 43, 0.12);
-      display: grid;
-      gap: .6rem;
-      font-size: .9rem;
-      color: var(--text-secondary);
-    }
-    .room-footer strong {
-      color: var(--text-primary);
-      letter-spacing: .06em;
-    }
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.45);
-      display: grid;
-      place-items: center;
-      padding: 1.5rem;
-      z-index: 100;
-    }
-    .modal {
-      width: min(420px, 100%);
-      background: #fff;
-      border-radius: 20px;
-      padding: 2rem;
-      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.3);
-      display: grid;
-      gap: 1.1rem;
-    }
-    .modal h2 { margin: 0; font-size: 1.4rem; }
-    .modal label {
-      font-weight: 600;
-      display: grid;
-      gap: .4rem;
-      color: var(--text-primary);
-    }
-    .modal input {
-      font: inherit;
-      padding: .75rem 1rem;
-      border-radius: 12px;
-      border: 1px solid rgba(17, 24, 39, 0.18);
-    }
-    .modal p {
-      margin: 0;
-      line-height: 1.6;
-      color: var(--text-secondary);
-      font-size: .9rem;
-    }
-    .modal-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: .6rem;
-    }
+
+    .status-stack { display: grid; gap: .4rem; }
+    .badge, .pill { display: inline-flex; align-items: center; padding: .25rem .75rem; border-radius: 999px; }
+    .badge { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+    .pill { background: rgba(23,33,43,.08); }
+    .pill.danger { background: rgba(239,71,111,.15); color: var(--accent); }
+
+    table.player-table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+    table.player-table th, table.player-table td { padding: .6rem .4rem; border-bottom: 1px solid rgba(23,33,43,.12); text-align: left; }
+    table.player-table th { background: rgba(255,255,255,.5); font-weight: 600; }
+
+    .table-actions { display: flex; flex-wrap: wrap; gap: .4rem; }
+
+    #activity-log { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+    #activity-log .card { background: rgba(255,255,255,.85); border-radius: 12px; padding: .65rem .8rem; box-shadow: inset 0 0 0 1px rgba(23,33,43,.08); display: grid; gap: .3rem; }
+
+    .topic-card { background: rgba(255,255,255,.85); border-radius: 14px; padding: 1rem 1.2rem; box-shadow: inset 0 0 0 1px rgba(23,33,43,.08); }
+    .topic-card h4 { margin: 0 0 .5rem; letter-spacing: .08em; color: var(--text-soft); }
+
+    .topic-blank { display: inline-flex; align-items: center; padding: 0 .4rem; border-bottom: 2px dashed rgba(239,71,111,.6); cursor: pointer; transition: background-color .2s ease; }
+    .topic-blank.filled { background: var(--accent-soft); }
+    .topic-blank:hover { background: rgba(239,71,111,.18); }
+
+    #hand-card .card { background: var(--panel-strong); border-radius: 16px; padding: 1.2rem; box-shadow: var(--shadow); }
+    #hand-list { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: .6rem; }
+    #hand-list .card { background: rgba(255,255,255,.85); border-radius: 12px; padding: .65rem .8rem; box-shadow: inset 0 0 0 1px rgba(23,33,43,.1); }
+
     .hidden { display: none !important; }
+
+    #toast { position: fixed; left: 50%; bottom: 1.8rem; transform: translateX(-50%) translateY(160%); background: rgba(17,24,39,.92); color:#fff; padding:.6rem 1.2rem; border-radius:999px; font-size:.95rem; transition: transform .28s ease, opacity .28s ease; opacity:0; }
+    #toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(17,24,39,.45); display: none; place-items: center; padding: 1.5rem; z-index: 40; }
+    .modal-backdrop:not(.hidden) { display: grid; }
+    .modal { background: #fff; border-radius: 20px; padding: clamp(1.6rem, 5vw, 2.2rem); width: min(420px, 100%); display: grid; gap: 1rem; box-shadow: var(--shadow); }
+    .modal label { display: grid; gap: .4rem; font-weight: 600; }
+    .modal input { font: inherit; padding: .7rem .9rem; border-radius: 12px; border: 1px solid rgba(17,24,39,.18); }
+    .modal-actions { display: flex; justify-content: flex-end; gap: .6rem; }
+
     @media (max-width: 720px) {
-      .player-item { padding: .65rem .7rem; }
-      .player-actions { flex-direction: column; }
-      .modal { padding: 1.6rem; }
-    }
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-        scroll-behavior: auto !important;
-      }
+      .supply-form { grid-template-columns: 1fr; }
+      .room-header { flex-direction: column; align-items: stretch; }
+      table.player-table th, table.player-table td { font-size: .85rem; }
     }
   </style>
 </head>
 <body>
   <div class="page">
     <header class="hero">
-      <h1>活動大廳</h1>
-      <div style="margin-top:1.2rem;">
-        <a class="ghost-link" href="https://wanganan25.github.io/secertmisson/">返回首頁</a>
-      </div>
+      <h1>迎新黃卡大廳</h1>
+      <a class="ghost-link" href="https://wanganan25.github.io/secertmisson/">返回首頁</a>
     </header>
 
-    <section class="rooms-section">
-      <h2>可加入的房間</h2>
-      <div class="rooms-grid" id="room-grid"></div>
-    </section>
+    <main>
+      <section class="panel" id="lobby-panel">
+        <div class="lobby">
+          <div class="supply-card">
+            <h2 style="margin:0">補充卡片</h2>
+            <p class="subtext" style="margin:0;color:var(--text-soft);">新增卡片會同步到所有房間的牌庫，並自動加入後備清單。</p>
+            <div class="supply-form">
+              <input id="input-new-word" type="text" maxlength="32" placeholder="輸入新的黃卡字詞">
+              <button id="btn-add-word" class="primary" type="button">新增黃卡</button>
+              <input id="input-new-topic" type="text" maxlength="80" placeholder="輸入新的紫卡題目">
+              <button id="btn-add-topic" class="ghost" type="button">新增紫卡</button>
+            </div>
+          </div>
+
+          <div class="rooms-grid" id="room-grid"></div>
+        </div>
+      </section>
+
+      <section class="panel hidden" id="room-panel">
+        <div class="room-header">
+          <div class="status-stack">
+            <div id="room-name" class="badge">房間名稱</div>
+            <div id="room-capacity" class="pill">0 / 0 人在線</div>
+            <div id="room-judge" class="pill">裁判：待指定</div>
+          </div>
+          <div class="room-actions" style="gap:.6rem;align-items:flex-end;">
+            <button id="btn-back" class="ghost" type="button">返回大廳</button>
+            <button id="btn-leave" class="ghost" type="button">離開房間</button>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;gap:.6rem;">
+          <button id="btn-toggle-ready" class="primary" type="button">我準備好了</button>
+          <button id="btn-start-game" class="primary hidden" type="button">開始遊戲</button>
+          <button id="btn-reset-ready" class="ghost" type="button">重設狀態</button>
+        </div>
+
+        <div style="display:grid;gap:1.4rem;">
+          <div style="overflow-x:auto;background:var(--panel-strong);border-radius:16px;padding:1rem;box-shadow:var(--shadow);">
+            <h3 style="margin-top:0;">玩家列表</h3>
+            <table class="player-table">
+              <thead>
+                <tr>
+                  <th>玩家</th>
+                  <th>身份</th>
+                  <th>黃牌</th>
+                  <th>手牌</th>
+                  <th>狀態</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="player-tbody">
+                <tr><td colspan="6" style="text-align:center;color:var(--text-soft);padding:1rem;">尚未有玩家加入</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));">
+            <div class="topic-card">
+              <h4>目前題目</h4>
+              <p id="current-topic">尚未抽題</p>
+              <span id="topic-remaining" class="pill">剩餘題目：--</span>
+              <p style="margin-top:.8rem;color:var(--text-soft);font-size:.9rem;">題目會在遊戲開始、給黃牌或輪換裁判時自動抽換。</p>
+            </div>
+            <div style="background:var(--panel-strong);border-radius:16px;padding:1rem;box-shadow:var(--shadow);">
+              <h3 style="margin-top:0;">活動紀錄</h3>
+              <ul id="activity-log" style="max-height:240px;overflow:auto;"></ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel hidden" id="hand-card">
+        <h2 style="margin-top:0;">我的黃卡</h2>
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;">
+            <h3 style="margin:0;">手牌數</h3>
+            <span id="hand-count" class="badge">0 張</span>
+          </div>
+          <div id="hand-empty" class="subtext" style="margin-top:.8rem;color:var(--text-soft);">目前沒有黃卡。</div>
+          <ul id="hand-list"></ul>
+        </div>
+      </section>
+    </main>
   </div>
 
-  <div class="modal-backdrop hidden" id="join-backdrop" role="presentation">
-    <form class="modal" id="join-form" aria-modal="true" aria-labelledby="join-form-title">
+  <div class="modal-backdrop hidden" id="join-dialog" role="dialog" aria-modal="true">
+    <form class="modal" id="join-form" aria-labelledby="join-form-title">
       <h2 id="join-form-title">加入房間</h2>
-      <p id="join-room-name" class="subtext" style="margin:0;color:var(--text-secondary);"></p>
-      <p id="join-form-hint">請輸入暱稱後加入。若您已在其他房間，將自動移動到新的房間。</p>
+      <p id="join-room-name" class="subtext" style="margin:0;color:var(--text-soft);"></p>
+      <p id="join-form-hint" style="margin:0;color:var(--text-soft);font-size:.9rem;">輸入暱稱即可加入，已在其他房間的話會自動移動過來。</p>
       <label for="nickname-input">暱稱
         <input id="nickname-input" name="nickname" maxlength="16" autocomplete="off" required>
       </label>
       <p class="error-text hidden" id="join-error" role="alert"></p>
       <div class="modal-actions">
-        <button type="button" class="btn-secondary" id="btn-cancel-join">取消</button>
-        <button type="button" class="btn-primary" id="btn-confirm-join">加入房間</button>
+        <button type="button" class="ghost" id="btn-cancel-join">取消</button>
+        <button type="button" class="primary" id="btn-confirm-join">加入房間</button>
       </div>
     </form>
   </div>
 
-  <template id="player-template">
-    <li class="player-item">
-      <div class="player-top">
-        <span class="player-name"></span>
-        <span class="player-badges"></span>
-      </div>
-      <div class="player-status"></div>
-      <div class="player-actions"></div>
-    </li>
-  </template>
-  <!-- app-yellow.js will handle room rendering and realtime logic. The previous inline script was removed
-       to avoid duplicate/conflicting logic. The following placeholder elements exist so that
-       app-yellow.js can find expected DOM nodes via getElementById without errors. -->
-
-  <div id="current-room-box" class="hidden" aria-live="polite">
-    <h2 id="current-room-name"></h2>
-    <div id="current-room-info"></div>
-    <div id="status-panel"></div>
-    <div id="players-panel">
-      <div id="players-body"></div>
-    </div>
-    <div id="host-panel"></div>
-    <div id="player-panel"></div>
-    <div id="game-phase"></div>
-    <div id="judge-info"></div>
-    <div id="current-topic"></div>
-    <div id="topic-remaining"></div>
-    <ul id="submission-list"></ul>
-    <form id="submit-form">
-      <select id="hand-select"></select>
-      <button type="submit">提交</button>
-    </form>
-    <div style="display:flex;gap:.5rem;margin-top:.75rem">
-      <button id="btn-ready" class="btn-primary" type="button">準備</button>
-      <button id="btn-leave" class="btn-secondary" type="button">離開</button>
-      <button id="btn-start" class="btn-primary" type="button">開始</button>
-      <button id="btn-reset-room" class="btn-danger" type="button">重設</button>
-    </div>
-  </div>
+  <div id="toast" role="status" aria-live="polite"></div>
 
   <script type="module" src="./app-yellow.js"></script>
 </body>
