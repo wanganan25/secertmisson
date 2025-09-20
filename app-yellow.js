@@ -72,6 +72,7 @@ const state = {
   topicFillValues: [],
   topicAssignments: new Map(),
   usedHandKeys: new Set(),
+  myDiscardPool: [],
   pendingDiscard: 0,
   discardMode: false,
   viewMode: localStorage.getItem("yellow-card-active-room") ? "room" : "lobby"
@@ -497,9 +498,8 @@ function subscribeToRoom(roomId) {
       if (docSnap.id === state.clientId) {
         state.myHand = hand;
         state.pendingDiscard = entry.pendingDiscard;
-        if (state.pendingDiscard <= 0) {
-          state.discardMode = false;
-        }
+        // if there are pending discards, force discard mode so clicks will discard instead of filling topic
+        state.discardMode = state.pendingDiscard > 0;
         entry.hand = hand;
       }
       list.push(entry);
@@ -776,6 +776,11 @@ async function drawTopic(roomId, options = {}) {
               pendingDiscard: (playerData.pendingDiscard || 0) + extras.length,
               lastActive: serverTimestamp()
             });
+            // log activity: player received extras (treated as draw of extra cards)
+            tx.update(roomRef, {
+              recentActivities: arrayUnion(`${playerData.nickname || '匿名'} 收到 ${extras.length} 張補牌`),
+              updatedAt: serverTimestamp()
+            });
           }
         }
       }
@@ -946,6 +951,7 @@ async function resetRoom(roomId) {
         usedTopics: [],
         currentTopic: "",
         phase: "",
+        recentActivities: [],
         updatedAt: serverTimestamp()
       });
     });
@@ -1374,6 +1380,18 @@ function renderTopic(roomData) {
 
 function renderSubmissions() {
   activityLogEl.innerHTML = "";
+  // render recent activities (e.g., draw events)
+  const recent = Array.isArray(state.currentRoomData?.recentActivities) ? state.currentRoomData.recentActivities.slice(-10) : [];
+  if (recent.length) {
+    recent.forEach((act) => {
+      const actLi = document.createElement("li");
+      actLi.className = "card activity-note";
+      actLi.style.fontSize = "0.9rem";
+      actLi.style.opacity = "0.9";
+      actLi.textContent = act;
+      activityLogEl.appendChild(actLi);
+    });
+  }
   if (!state.currentRoomId || !state.submissionList.length) {
     const li = document.createElement("li");
     li.className = "card";
@@ -1535,6 +1553,16 @@ async function submitTopic(event) {
     // 同步 UI
     renderHand();
     updateTopicDisplay();
+    // log activity: anonymized submission event
+    try {
+      const roomRef = doc(db, ROOM_COLLECTION, state.currentRoomId);
+      const submissionsRef = collection(roomRef, "submissions");
+      const existing = await getDocs(submissionsRef);
+      const count = existing.size || 0;
+      await updateDoc(roomRef, { recentActivities: arrayUnion(`有玩家提交了答案（目前 ${count} 則投稿）`), updatedAt: serverTimestamp() });
+    } catch (err) {
+      console.error("log submission activity failed", err);
+    }
     showToast("已提交手牌，等待裁判評選");
   } catch (error) {
     console.error(error);
