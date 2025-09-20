@@ -88,8 +88,6 @@ const btnLeave = document.getElementById("btn-leave");
 const btnToggleReady = document.getElementById("btn-toggle-ready");
 const btnStartGame = document.getElementById("btn-start-game");
 const btnResetReady = document.getElementById("btn-reset-ready");
-const btnDrawTopic = document.getElementById("btn-draw-topic");
-const btnPassJudge = document.getElementById("btn-pass-judge");
 const topicRemainingEl = document.getElementById("topic-remaining");
 const currentTopicEl = document.getElementById("current-topic") || document.getElementById("topic-text");
 const activityLogEl = document.getElementById("activity-log");
@@ -136,16 +134,6 @@ btnResetReady.addEventListener("click", () => {
 });
 
 btnStartGame?.addEventListener("click", startGame);
-
-btnDrawTopic.addEventListener("click", () => {
-  if (!state.currentRoomId) return;
-  drawTopic(state.currentRoomId);
-});
-
-btnPassJudge.addEventListener("click", () => {
-  if (!state.currentRoomId) return;
-  passJudge(state.currentRoomId);
-});
 
 btnAddWord?.addEventListener("click", handleAddWord);
 btnAddTopic?.addEventListener("click", handleAddTopic);
@@ -602,11 +590,13 @@ async function resetReadyState(roomId) {
   }
 }
 
-async function drawTopic(roomId) {
-  if (!isHost()) {
-    showToast("只有房主可以抽題目");
+async function drawTopic(roomId, options = {}) {
+  const { force = false, silent = false } = options;
+  if (!force && !isHost()) {
+    showToast("只有主持人可以抽題");
     return;
   }
+  let pickedTopic = null;
   try {
     await runTransaction(db, async (tx) => {
       const roomRef = doc(db, ROOM_COLLECTION, roomId);
@@ -623,53 +613,26 @@ async function drawTopic(roomId) {
           used = [];
         }
       }
-      if (!deck.length) throw new Error("題庫已空，請先補充題目");
-      const topic = deck.shift();
-      used.push(topic);
+      if (!deck.length) throw new Error("題庫不足，請先補充題目");
+      pickedTopic = deck.shift();
+      used.push(pickedTopic);
       tx.update(roomRef, {
         topicDeck: deck,
         usedTopics: used,
-        currentTopic: topic,
+        currentTopic: pickedTopic,
         phase: "playing",
         updatedAt: serverTimestamp()
       });
     });
   } catch (error) {
     console.error(error);
-    showToast(error.message || "抽題目失敗");
+    if (!silent) {
+      showToast(error.message || "抽題失敗");
+    }
   }
+  return pickedTopic;
 }
 
-async function passJudge(roomId) {
-  if (!isHost()) {
-    showToast("只有房主可以指定裁判");
-    return;
-  }
-  if (!state.playerList.length) {
-    showToast("房間內目前沒有玩家");
-    return;
-  }
-  try {
-    await runTransaction(db, async (tx) => {
-      const roomRef = doc(db, ROOM_COLLECTION, roomId);
-      const roomSnap = await tx.get(roomRef);
-      if (!roomSnap.exists()) throw new Error("房間不存在");
-      const data = roomSnap.data();
-      const ordered = state.playerList;
-      const currentIndex = ordered.findIndex((player) => player.id === data.judgeId);
-      const nextPlayer = currentIndex >= 0 ? ordered[(currentIndex + 1) % ordered.length] : ordered[0];
-      tx.update(roomRef, {
-        judgeId: nextPlayer.id,
-        judgeNickname: nextPlayer.nickname || null,
-        updatedAt: serverTimestamp()
-      });
-    });
-    showToast("已指定下一位裁判");
-  } catch (error) {
-    console.error(error);
-    showToast(error.message || "指定裁判失敗");
-  }
-}
 async function startGame() {
   const roomId = state.currentRoomId;
   const roomData = state.currentRoomData;
@@ -736,6 +699,7 @@ async function startGame() {
       });
     });
     await clearSubmissions(roomId);
+    await drawTopic(roomId, { force: true });
     state.viewMode = "room";
     showRoomView();
     showToast("遊戲開始！已指派裁判並補滿手牌");
@@ -798,15 +762,16 @@ async function resetRoom(roomId) {
 
 async function giveYellowCard(roomId, playerId) {
   if (!isHost()) {
-    showToast("只有房主可以給黃牌");
+    showToast("只有主持人可以發黃牌");
     return;
   }
+  let shouldDrawNextTopic = false;
   try {
     await runTransaction(db, async (tx) => {
       const roomRef = doc(db, ROOM_COLLECTION, roomId);
       const playerRef = doc(db, ROOM_COLLECTION, roomId, "players", playerId);
       const snap = await tx.get(playerRef);
-      if (!snap.exists()) throw new Error("找不到玩家");
+      if (!snap.exists()) throw new Error("找不到該玩家");
       const data = snap.data();
       const nextCount = (data.yellowCards || 0) + 1;
       tx.update(playerRef, { yellowCards: nextCount });
@@ -817,12 +782,17 @@ async function giveYellowCard(roomId, playerId) {
       };
       if (nextCount >= 3) {
         roomUpdates.phase = "finished";
+      } else {
+        shouldDrawNextTopic = true;
       }
       tx.update(roomRef, roomUpdates);
     });
+    if (shouldDrawNextTopic) {
+      await drawTopic(roomId, { force: true });
+    }
   } catch (error) {
     console.error(error);
-    showToast(error.message || "給黃牌失敗");
+    showToast(error.message || "發黃牌失敗");
   }
 }
 
@@ -974,8 +944,6 @@ function updateRoomPanel() {
     if (!state.currentRoomId || !roomData) {
       btnToggleReady.disabled = true;
       btnResetReady.disabled = true;
-      btnDrawTopic.disabled = true;
-      btnPassJudge.disabled = true;
       btnLeave.disabled = true;
     }
   }
@@ -1009,8 +977,6 @@ function updateRoomPanel() {
   btnToggleReady.disabled = !player;
   btnToggleReady.textContent = player?.ready ? "取消準備" : "我準備好了";
   btnResetReady.disabled = !isHost() || !totalPlayers;
-  btnDrawTopic.disabled = !isHost();
-  btnPassJudge.disabled = !isHost() || totalPlayers === 0;
   if (btnStartGame) {
     btnStartGame.classList.toggle("hidden", !isHost());
     btnStartGame.disabled = !isHost() || !allReady || !enoughPlayers;
@@ -1285,6 +1251,11 @@ function setTopicTemplate(rawTopic) {
     state.topicFillValues = [];
     state.topicAssignments = new Map();
     state.usedHandKeys = new Set();
+    updateTopicDisplay();
+    renderHand();
+    return;
+  }
+  if (rawTopic === state.topicTemplate) {
     updateTopicDisplay();
     renderHand();
     return;
