@@ -1559,20 +1559,15 @@ async function submitTopic(event) {
       // 新增 submission doc（使用 playerId 作為 doc id，避免重複投稿）
       tx.set(doc(submissionsRef, state.clientId), payload);
       tx.update(playerRef, { hand, lastActive: serverTimestamp() });
+      // 同步把匿名活動紀錄寫入 room（確保投稿與活動紀錄同時提交）
+      const msg = `匿名提交：${filledTopic}（出牌：${chosenWord}）`;
+      tx.update(roomRef, { recentActivities: arrayUnion(msg), updatedAt: serverTimestamp() });
     });
     // 本地更新 state
     state.myHand = state.myHand.filter((_, idx) => idx !== selectedIndex);
     // 同步 UI
     renderHand();
     updateTopicDisplay();
-    // log activity: 匿名顯示『紫卡 + 黃卡』，例：匿名提交：紫卡「...」（出牌：黃卡）
-    try {
-      const roomRef = doc(db, ROOM_COLLECTION, state.currentRoomId);
-      const msg = `匿名提交：${filledTopic}（出牌：${chosenWord}）`;
-      await updateDoc(roomRef, { recentActivities: arrayUnion(msg), updatedAt: serverTimestamp() });
-    } catch (err) {
-      console.error("log submission activity failed", err);
-    }
     showToast("已提交手牌，等待裁判評選");
   } catch (error) {
     console.error(error);
