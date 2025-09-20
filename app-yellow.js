@@ -78,8 +78,6 @@ const state = {
   pendingDiscard: 0,
   discardMode: false,
   // judge vote flow state
-  judgeConfirmingVote: false,
-  pendingJudgeSelection: null,
   viewMode: localStorage.getItem("yellow-card-active-room") ? "room" : "lobby"
 };
 
@@ -969,54 +967,42 @@ async function resetRoom(roomId) {
 }
 
 async function giveYellowCard(roomId, playerId) {
-  // Only judge may award a yellow card during discard phase (or playing)
   if (!isCurrentUserJudge()) {
-    showToast("只有裁判可以頒發黃牌");
+    showToast("只有裁判可以給黃牌");
     return;
   }
+  let outcome = null;
   try {
-    await runTransaction(db, async (tx) => {
+    outcome = await runTransaction(db, async (tx) => {
       const roomRef = doc(db, ROOM_COLLECTION, roomId);
       const roomSnap = await tx.get(roomRef);
       if (!roomSnap.exists()) throw new Error("房間不存在");
       const roomData = roomSnap.data() || {};
       const playersRef = collection(roomRef, "players");
-      // server-side validation: ensure caller is current judge
       if ((roomData.judgeId || null) !== state.clientId) {
-        throw new Error("只有裁判可以頒發黃牌");
+        throw new Error("只有當前裁判才能給黃牌");
       }
-      const targetPlayerRef = doc(playersRef, playerId);
-
-      // ensure all non-judge players have completed discarding (pendingDiscard === 0)
       const playerIds = Array.isArray(roomData.playerIds) ? [...roomData.playerIds] : [];
       const nonJudgeIds = playerIds.filter((id) => id !== roomData.judgeId);
-      for (const pid of nonJudgeIds) {
-        const pRef = doc(playersRef, pid);
-        const pSnapCheck = await tx.get(pRef);
-        if (!pSnapCheck.exists()) continue;
-        const pDataCheck = pSnapCheck.data() || {};
-        if ((Number(pDataCheck.pendingDiscard) || 0) > 0) {
-          throw new Error("尚有玩家尚未完成棄牌，裁判請耐心等待");
-        }
+      const submissionsRef = collection(roomRef, "submissions");
+      const submissionsSnap = await tx.get(submissionsRef);
+      if (nonJudgeIds.length && submissionsSnap.size < nonJudgeIds.length) {
+        throw new Error("仍有玩家尚未出牌");
       }
-      const targetSnap = await tx.get(targetPlayerRef);
-      if (!targetSnap.exists()) throw new Error("找不到被給予黃牌的玩家");
+      const targetRef = doc(playersRef, playerId);
+      const targetSnap = await tx.get(targetRef);
+      if (!targetSnap.exists()) throw new Error("找不到該玩家");
       const targetData = targetSnap.data() || {};
       const nextCount = (targetData.yellowCards || 0) + 1;
+      tx.update(targetRef, { yellowCards: nextCount });
 
-      // increment yellow card for target
-      tx.update(targetPlayerRef, { yellowCards: nextCount });
-
-      // reset pendingDiscard for all players and clamp hands back to the baseline size
-      const playerIdsAfter = Array.isArray(roomData.playerIds) ? [...roomData.playerIds] : [];
       let wordDeck = Array.isArray(roomData.wordDeck) ? [...roomData.wordDeck] : [];
-      for (const pid of playerIdsAfter) {
+      for (const pid of playerIds) {
         const pref = doc(playersRef, pid);
-        const pSnap = await tx.get(pref);
-        if (!pSnap.exists()) continue;
-        const pData = pSnap.data() || {};
-        const hand = Array.isArray(pData.hand) ? [...pData.hand] : [];
-        // if a player has more than the baseline hand size, randomly discard the extras back to the word deck
+        const psnap = await tx.get(pref);
+        if (!psnap.exists()) continue;
+        const pdata = psnap.data() || {};
+        const hand = Array.isArray(pdata.hand) ? [...pdata.hand] : [];
         if (hand.length > INITIAL_HAND_SIZE) {
           const excess = hand.length - INITIAL_HAND_SIZE;
           for (let i = 0; i < excess; i += 1) {
@@ -1028,46 +1014,43 @@ async function giveYellowCard(roomId, playerId) {
         tx.update(pref, { pendingDiscard: 0, hand, lastActive: serverTimestamp() });
       }
 
-      // collect submissions and return words to wordDeck
-      const submissionsRef = collection(roomRef, "submissions");
-      const subsSnap = await tx.get(submissionsRef);
-      subsSnap.forEach((sdoc) => {
+      submissionsSnap.forEach((sdoc) => {
         const sdata = sdoc.data() || {};
         const w = typeof sdata.word === "string" ? sdata.word.trim() : "";
         if (w) wordDeck.push(w);
         tx.delete(doc(submissionsRef, sdoc.id));
       });
 
-      // set new judge to the player who received the yellow card
-      const roomUpdates = {
+      const reachedLimit = nextCount >= 3;
+      tx.update(roomRef, {
         judgeId: playerId,
         judgeNickname: targetData.nickname || null,
         wordDeck,
-        // clear activity log at end of round
-        recentActivities: [],
+        recentActivities: arrayUnion(裁判給予  黃牌，目前累積  張),
+        phase: reachedLimit ? "finished" : "in_game",
         updatedAt: serverTimestamp()
-      };
-      // if someone reached 3 yellow cards, end game
-      if (nextCount >= 3) {
-        roomUpdates.phase = "finished";
-      } else {
-        roomUpdates.phase = "in_game";
-      }
+      });
 
-      tx.update(roomRef, roomUpdates);
+      return { reachedLimit, nextCount, targetNickname: targetData.nickname || "" };
     });
-
-    // after transaction, draw next topic (if not finished)
-    const currentRoom = state.currentRoomData || {};
-    if ((currentRoom.phase || "") !== "finished") {
-      await drawTopic(roomId, { force: true });
-      showToast("已頒發黃牌，進入下一回合");
-    } else {
-      showToast("遊戲結束：有人達到 3 張黃牌");
-    }
   } catch (error) {
     console.error(error);
-    showToast(error.message || "發黃牌失敗");
+    showToast(error.message || "給黃牌失敗");
+    return;
+  }
+
+  if (!outcome) return;
+  if (outcome.reachedLimit) {
+    showToast("遊戲結束，已有玩家累積三張黃牌");
+    return;
+  }
+
+  try {
+    await drawTopic(roomId, { force: true });
+    showToast(${outcome.targetNickname || "該玩家"} 成為新裁判，開始下一輪);
+  } catch (err) {
+    console.error(err);
+    showToast("已給黃牌，但抽題發生錯誤，請稍候再試");
   }
 }
 
@@ -1377,127 +1360,60 @@ function renderTopic(roomData) {
 
 function renderSubmissions() {
   activityLogEl.innerHTML = "";
-  // render recent activities (e.g., draw events)
-  const recent = Array.isArray(state.currentRoomData?.recentActivities) ? state.currentRoomData.recentActivities.slice(-10) : [];
+  const recent = Array.isArray(state.currentRoomData?.recentActivities)
+    ? state.currentRoomData.recentActivities.slice(-10)
+    : [];
   if (recent.length) {
     recent.forEach((act) => {
-      const actLi = document.createElement("li");
-      actLi.className = "card activity-note";
-      actLi.style.fontSize = "0.9rem";
-      actLi.style.opacity = "0.9";
-      actLi.textContent = act;
-      activityLogEl.appendChild(actLi);
+      const item = document.createElement("li");
+      item.className = "card activity-note";
+      item.style.fontSize = "0.9rem";
+      item.style.opacity = "0.9";
+      item.textContent = act;
+      activityLogEl.appendChild(item);
     });
   }
   if (!state.currentRoomId || !state.submissionList.length) {
-    const li = document.createElement("li");
-    li.className = "card";
-    li.style.color = "var(--ink-soft)";
-    li.textContent = "目前尚無投稿";
-    activityLogEl.appendChild(li);
+    const empty = document.createElement("li");
+    empty.className = "card";
+    empty.style.color = "var(--ink-soft)";
+    empty.textContent = "目前尚無投稿";
+    activityLogEl.appendChild(empty);
     return;
   }
 
-  // determine if all active players have submitted
   const room = state.currentRoomData || {};
   const playerIds = Array.isArray(room.playerIds) ? room.playerIds : [];
   const judgeId = room.judgeId || null;
   const activePlayers = playerIds.filter((id) => id !== judgeId);
-  const allSubmitted = state.submissionList.length >= activePlayers.length && activePlayers.length > 0;
-  // determine if all non-judge players have finished discarding (pendingDiscard === 0)
-  const allDiscarded = allSubmitted && activePlayers.every((pid) => {
-    const p = state.playerMap.get(pid);
-    return p && Number(p.pendingDiscard) === 0;
-  });
+  const allSubmitted = activePlayers.length > 0 && state.submissionList.length >= activePlayers.length;
 
-  // DEBUG: help identify why judge vote button may not appear in UI
-  try {
-    console.debug("renderSubmissions:", {
-      isJudge: Boolean(isCurrentUserJudge()),
-      submissionCount: state.submissionList.length,
-      activePlayersCount: activePlayers.length,
-      allSubmitted,
-      allDiscarded
-    });
-  } catch (e) {
-    // ignore
-  }
-
-  // judge toolbar: toggle into vote-selection mode (only for judge)
-  if (isCurrentUserJudge()) {
-    const toolbar = document.createElement('li');
-    toolbar.className = 'card';
-    toolbar.style.display = 'flex';
-    toolbar.style.justifyContent = 'flex-end';
-    toolbar.style.gap = '.6rem';
-
-    const confirmVoteBtn = document.createElement('button');
-    confirmVoteBtn.className = 'primary';
-    confirmVoteBtn.textContent = state.judgeConfirmingVote ? '取消投票' : '確定投票';
-    // disable until submissions are ready and discards complete
-    if (!allSubmitted) {
-      confirmVoteBtn.disabled = true;
-      confirmVoteBtn.title = '尚未收齊所有投稿';
-    } else if (!allDiscarded) {
-      confirmVoteBtn.disabled = true;
-      confirmVoteBtn.title = '尚有玩家尚未完成棄牌';
-    }
-    confirmVoteBtn.addEventListener('click', () => {
-      state.judgeConfirmingVote = !state.judgeConfirmingVote;
-      if (!state.judgeConfirmingVote) state.pendingJudgeSelection = null;
-      renderSubmissions();
-    });
-    toolbar.appendChild(confirmVoteBtn);
-    activityLogEl.appendChild(toolbar);
-  }
-
-  // render anonymous submissions; when judgeConfirmingVote is true, show per-submission '選擇此答案' button
   state.submissionList.forEach((submission) => {
-    const li = document.createElement('li');
-    li.className = 'card';
-    const filled = submission.filledTopic || '(未填寫紫卡)';
-    const word = submission.word || '(未出黃卡)';
+    const li = document.createElement("li");
+    li.className = "card";
+    const filled = submission.filledTopic || '(尚未填題)';
+    const word = submission.word || '(未提供字詞)';
     li.innerHTML = `
       <span class="meta-title">匿名投稿</span>
       <div style="font-size:0.95rem;color:var(--ink-strong);margin-top:.25rem;">${filled}</div>
       <div style="margin-top:.35rem;color:var(--ink-muted);">出牌：${word}</div>
     `;
     if (isCurrentUserJudge()) {
-      if (state.judgeConfirmingVote) {
-        const pickBtn = document.createElement('button');
-        pickBtn.className = 'primary';
-        pickBtn.style.marginTop = '.35rem';
-        pickBtn.textContent = '選擇此答案';
-        pickBtn.addEventListener('click', () => {
-          const preview = `${filled}\n出牌：${word}`;
-          openConfirmVote(submission.id || submission.playerId, preview);
-        });
-        li.appendChild(pickBtn);
+      const button = document.createElement('button');
+      button.className = 'primary';
+      button.style.marginTop = '.35rem';
+      button.textContent = '給這個答案黃牌';
+      if (!allSubmitted) {
+        button.disabled = true;
+        button.title = '還有玩家尚未出牌';
       } else {
-        // non-selection mode: keep previous hint/button behavior
-        const button = document.createElement('button');
-        button.className = 'ghost';
-        button.style.marginTop = '.35rem';
-        if (allDiscarded) {
-          button.textContent = '給這個答案黃牌';
-          button.disabled = false;
-          button.title = '選擇此答案給予黃牌';
-          button.addEventListener('click', () => giveYellowCard(state.currentRoomId, submission.playerId));
-        } else if (allSubmitted) {
-          button.textContent = '等待玩家完成棄牌';
-          button.disabled = true;
-          button.title = '尚有玩家尚未完成棄牌，裁判請耐心等待';
-        } else {
-          button.textContent = '尚未收齊投稿';
-          button.disabled = true;
-          button.title = '尚未收齊所有投稿，投稿完成後會顯示投票按鈕';
-        }
-        li.appendChild(button);
+        button.addEventListener('click', () => giveYellowCard(state.currentRoomId, submission.playerId));
       }
+      li.appendChild(button);
     }
     activityLogEl.appendChild(li);
   });
-  // update submit controls (disable for players who already submitted)
+
   updateSubmitControls();
 }
 
@@ -1612,18 +1528,7 @@ function closeConfirmSubmit() {
   confirmSubmitBackdrop.classList.add("hidden");
 }
 
-function openConfirmVote(submissionId, previewText) {
-  // prepare vote selection state
-  state.judgeConfirmingVote = true;
-  state.pendingJudgeSelection = submissionId;
-  if (confirmVotePreview) confirmVotePreview.textContent = previewText || "您要投票給這個匿名投稿嗎？";
-  if (confirmVoteBackdrop) confirmVoteBackdrop.classList.remove('hidden');
-}
 
-function closeConfirmVote() {
-  state.judgeConfirmingVote = false;
-  state.pendingJudgeSelection = null;
-  if (confirmVoteBackdrop) confirmVoteBackdrop.classList.add('hidden');
 }
 
 confirmSubmitCancel?.addEventListener("click", () => {
@@ -1638,11 +1543,9 @@ confirmSubmitOk?.addEventListener("click", async () => {
   closeConfirmSubmit();
 });
 
-confirmVoteCancel?.addEventListener('click', () => {
   closeConfirmVote();
 });
 
-confirmVoteOk?.addEventListener('click', async () => {
   const subId = state.pendingJudgeSelection;
   if (!subId) return closeConfirmVote();
   try {
@@ -2148,4 +2051,7 @@ btnConfirmPlay?.addEventListener("click", () => {
   }
   openConfirmSubmit(selectedIndex, word, filledTopic);
 });
+
+
+
 
