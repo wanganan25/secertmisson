@@ -776,11 +776,7 @@ async function drawTopic(roomId, options = {}) {
               pendingDiscard: (playerData.pendingDiscard || 0) + extras.length,
               lastActive: serverTimestamp()
             });
-            // log activity: player received extras (treated as draw of extra cards)
-            tx.update(roomRef, {
-              recentActivities: arrayUnion(`${playerData.nickname || '匿名'} 收到 ${extras.length} 張補牌`),
-              updatedAt: serverTimestamp()
-            });
+            // NOTE: 不再記錄補牌到 recentActivities（依使用者要求）
           }
         }
       }
@@ -1834,6 +1830,7 @@ async function manualSetJudge(playerId, nickname) {
     return;
   }
   try {
+    let finished = false;
     await runTransaction(db, async (tx) => {
       const playerRef = doc(db, ROOM_COLLECTION, roomId, "players", playerId);
       const snap = await tx.get(playerRef);
@@ -1873,13 +1870,25 @@ async function manualSetJudge(playerId, nickname) {
       if (nextCount >= 3) {
         roomUpdates.phase = "finished";
         tx.update(roomRef, roomUpdates);
+        finished = true;
         return;
       }
 
-      // 將裁判設定並標記需要抽題
-      shouldDrawNextTopic = true;
+      // 將裁判設定
       tx.update(roomRef, roomUpdates);
     });
+    // after successful transaction, if game not finished, clear submissions and draw next topic
+    if (!finished) {
+      try {
+        await clearSubmissions(roomId);
+        await drawTopic(roomId, { force: true });
+        showToast("已指定裁判並抽題");
+      } catch (err) {
+        console.error("draw after manualSetJudge failed", err);
+      }
+    } else {
+      showToast("已指定裁判；遊戲結束（該玩家黃牌達上限）。");
+    }
   } catch (error) {
     console.error(error);
     showToast(error.message || "指定裁判失敗");
