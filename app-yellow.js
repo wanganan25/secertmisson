@@ -865,13 +865,15 @@ async function clearSubmissions(roomId) {
 function showLobbyView() {
   heroEl?.classList.remove("hidden");
   lobbyPanel?.classList.remove("hidden");
-  roomPanel.classList.remove("active");
+  roomPanel?.classList.remove("active");
+  roomPanel?.classList.add("hidden");
 }
 
 function showRoomView() {
   heroEl?.classList.add("hidden");
   lobbyPanel?.classList.add("hidden");
-  roomPanel.classList.add("active");
+  roomPanel?.classList.remove("hidden");
+  roomPanel?.classList.add("active");
 }
 
 if (state.viewMode === "room") {
@@ -887,6 +889,7 @@ function renderLobby() {
   } else {
     showLobbyView();
   }
+  if (!roomGrid) return;
   roomGrid.innerHTML = "";
   if (!state.rooms.length) {
     roomGrid.innerHTML = "<p style=\"color:var(--ink-soft);\">尚未建立任何房間。</p>";
