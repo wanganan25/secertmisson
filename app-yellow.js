@@ -280,9 +280,9 @@ roomGrid?.addEventListener("click", (event) => {
   openJoinDialog(roomId, room.name || roomId);
 });
 
-btnConfirmJoin.addEventListener("click", confirmJoin);
-btnCancelJoin.addEventListener("click", closeJoinDialog);
-nicknameInput.addEventListener("keydown", (event) => {
+btnConfirmJoin?.addEventListener("click", confirmJoin);
+btnCancelJoin?.addEventListener("click", closeJoinDialog);
+nicknameInput?.addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     event.preventDefault();
     confirmJoin();
