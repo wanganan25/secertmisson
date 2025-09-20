@@ -1417,10 +1417,13 @@ function renderSubmissions() {
   state.submissionList.forEach((submission) => {
     const li = document.createElement("li");
     li.className = "card";
-    // anonymous title
+    // anonymous title - show filled purple topic + yellow card
+    const filled = submission.filledTopic || "(未填寫紫卡)";
+    const word = submission.word || "(未出黃卡)";
     li.innerHTML = `
       <span class="meta-title">匿名投稿</span>
-      <span>${submission.word || "(未填寫)"}</span>
+      <div style="font-size:0.95rem;color:var(--ink-strong);margin-top:.25rem;">${filled}</div>
+      <div style="margin-top:.35rem;color:var(--ink-muted);">出牌：${word}</div>
     `;
     // only show award button to the judge and only after all submissions received and all players have discarded
     if (isJudge()) {
@@ -1523,11 +1526,17 @@ async function submitTopic(event) {
     showToast("選擇的手牌無效");
     return;
   }
-  // 構造 submission 資料
+  // 組出填好的紫卡文字（以目前的 topicSegments + topicFillValues）
+  let filledTopic = state.topicTemplate || "";
+  if (Array.isArray(state.topicSegments) && state.topicSegments.length) {
+    filledTopic = state.topicSegments.map((seg, i) => seg + (state.topicFillValues[i] || "______")).join("");
+  }
+
+  // 構造 submission 資料（不在 payload 中放暱稱以保持匿名性）
   const payload = {
     playerId: state.clientId,
-    nickname: state.nickname || "",
     word: chosenWord,
+    filledTopic,
     createdAt: serverTimestamp()
   };
   try {
@@ -1553,13 +1562,11 @@ async function submitTopic(event) {
     // 同步 UI
     renderHand();
     updateTopicDisplay();
-    // log activity: anonymized submission event
+    // log activity: 匿名顯示『紫卡 + 黃卡』，例：匿名提交：紫卡「...」（出牌：黃卡）
     try {
       const roomRef = doc(db, ROOM_COLLECTION, state.currentRoomId);
-      const submissionsRef = collection(roomRef, "submissions");
-      const existing = await getDocs(submissionsRef);
-      const count = existing.size || 0;
-      await updateDoc(roomRef, { recentActivities: arrayUnion(`有玩家提交了答案（目前 ${count} 則投稿）`), updatedAt: serverTimestamp() });
+      const msg = `匿名提交：${filledTopic}（出牌：${chosenWord}）`;
+      await updateDoc(roomRef, { recentActivities: arrayUnion(msg), updatedAt: serverTimestamp() });
     } catch (err) {
       console.error("log submission activity failed", err);
     }
