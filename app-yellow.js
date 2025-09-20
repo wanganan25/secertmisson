@@ -42,7 +42,9 @@ const state = {
   playerList: [],
   playerMap: new Map(),
   submissionList: [],
-  pendingJoinRoomI  myHand: [],
+  pendingJoinRoomId: null,
+  toastTimer: null,
+  myHand: [],
   viewMode: localStorage.getItem("yellow-card-active-room") ? "room" : "lobby"
 };
 
@@ -966,6 +968,8 @@ window.addEventListener("beforeunload", () => {
   if (state.roomsUnsub) state.roomsUnsub();
   unsubscribeRoomStreams();
 });
+
+
 
 
 
