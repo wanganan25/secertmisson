@@ -66,6 +66,11 @@ const state = {
   pendingJoinRoomId: null,
   toastTimer: null,
   myHand: [],
+  topicTemplate: "",
+  topicSegments: [],
+  topicFillValues: [],
+  topicAssignments: new Map(),
+  usedHandKeys: new Set(),
   viewMode: localStorage.getItem("yellow-card-active-room") ? "room" : "lobby"
 };
 
@@ -86,7 +91,7 @@ const btnResetReady = document.getElementById("btn-reset-ready");
 const btnDrawTopic = document.getElementById("btn-draw-topic");
 const btnPassJudge = document.getElementById("btn-pass-judge");
 const topicRemainingEl = document.getElementById("topic-remaining");
-const currentTopicEl = document.getElementById("current-topic");
+const currentTopicEl = document.getElementById("current-topic") || document.getElementById("topic-text");
 const activityLogEl = document.getElementById("activity-log");
 const joinDialog = document.getElementById("join-dialog");
 const joinRoomNameEl = document.getElementById("join-room-name");
@@ -416,7 +421,13 @@ function unsubscribeRoomStreams() {
   state.playerMap = new Map();
   state.submissionList = [];
   state.myHand = [];
+  state.topicTemplate = "";
+  state.topicSegments = [];
+  state.topicFillValues = [];
+  state.topicAssignments = new Map();
+  state.usedHandKeys = new Set();
   renderHand();
+  updateTopicDisplay();
 }
 
 async function confirmJoin() {
@@ -1075,12 +1086,17 @@ function renderPlayerTable(players) {
 
 function renderTopic(roomData) {
   if (!roomData) {
+    setTopicTemplate("");
     currentTopicEl.textContent = "尚未加入房間";
     topicRemainingEl.textContent = "剩餘題目：--";
     topicRemainingEl.className = "pill";
     return;
   }
-  currentTopicEl.textContent = roomData.currentTopic || "尚未抽題目";
+  const topicText = roomData.currentTopic || "";
+  setTopicTemplate(topicText);
+  if (!topicText) {
+    currentTopicEl.textContent = "尚未抽題";
+  }
   const remaining = Array.isArray(roomData.topicDeck) ? roomData.topicDeck.length : 0;
   topicRemainingEl.textContent = `剩餘題目：${remaining}`;
   topicRemainingEl.className = "pill" + (remaining ? "" : " danger");
@@ -1128,17 +1144,177 @@ function renderHand() {
     return;
   }
 
+  syncTopicAssignmentsWithHand();
+
   const hasHand = Array.isArray(state.myHand) && state.myHand.length > 0;
   handCountEl.textContent = `${state.myHand.length} 張`;
   handEmptyEl.classList.toggle("hidden", hasHand);
   handListEl.innerHTML = "";
 
   if (!hasHand) return;
-  state.myHand.forEach((word) => {
+  state.myHand.forEach((word, index) => {
     const li = document.createElement("li");
     li.className = "card";
+    const handKey = `${index}:${word}`;
+    li.dataset.handKey = handKey;
+    li.dataset.handIndex = String(index);
+    li.dataset.word = word;
     li.textContent = word;
+    li.addEventListener("click", handleHandCardClick);
+    if (state.usedHandKeys.has(handKey)) {
+      markHandCardUsed(li, true);
+    }
     handListEl.appendChild(li);
+  });
+}
+
+function markHandCardUsed(element, used) {
+  if (!element) return;
+  if (used) {
+    element.dataset.used = "true";
+    element.style.opacity = "0.55";
+    element.style.pointerEvents = "none";
+  } else {
+    delete element.dataset.used;
+    element.style.opacity = "";
+    element.style.pointerEvents = "";
+  }
+}
+
+function syncTopicAssignmentsWithHand() {
+  if (!Array.isArray(state.myHand)) {
+    state.usedHandKeys = new Set();
+    state.topicAssignments = new Map();
+    state.topicFillValues = [];
+    return;
+  }
+  if (!Array.isArray(state.topicFillValues) || !state.topicFillValues.length) {
+    state.topicAssignments = new Map();
+    state.usedHandKeys = new Set();
+    return;
+  }
+  const availableKeys = new Set(state.myHand.map((word, index) => `${index}:${word}`));
+  let changed = false;
+  const nextAssignments = new Map();
+  state.topicAssignments.forEach((assignment, blankIndex) => {
+    if (assignment && availableKeys.has(assignment.handKey)) {
+      nextAssignments.set(blankIndex, assignment);
+    } else {
+      state.topicFillValues[blankIndex] = "";
+      changed = true;
+    }
+  });
+  state.topicAssignments = nextAssignments;
+  state.usedHandKeys = new Set(Array.from(nextAssignments.values(), (entry) => entry.handKey));
+  if (changed) {
+    updateTopicDisplay();
+  }
+}
+
+function handleHandCardClick(event) {
+  const item = event.target.closest("li.card");
+  if (!item || !item.dataset.handKey) return;
+  const handKey = item.dataset.handKey;
+  if (state.usedHandKeys.has(handKey)) {
+    showToast("這張黃卡已經使用過");
+    return;
+  }
+  const blankIndex = findNextBlankIndex();
+  if (blankIndex === -1) {
+    showToast("題目沒有空格可以填了");
+    return;
+  }
+  const word = item.dataset.word || item.textContent || "";
+  state.topicFillValues[blankIndex] = word;
+  state.topicAssignments.set(blankIndex, { handKey, word });
+  state.usedHandKeys.add(handKey);
+  markHandCardUsed(item, true);
+  updateTopicDisplay();
+}
+
+function handleTopicBlankClick(event) {
+  const blankEl = event.target.closest("span.topic-blank");
+  if (!blankEl) return;
+  const index = Number(blankEl.dataset.blankIndex);
+  if (Number.isNaN(index)) return;
+  const assignment = state.topicAssignments.get(index);
+  state.topicAssignments.delete(index);
+  state.topicFillValues[index] = "";
+  if (assignment && assignment.handKey) {
+    state.usedHandKeys.delete(assignment.handKey);
+    const cardEl = handListEl?.querySelector(`li.card[data-hand-key=\"${assignment.handKey}\"]`);
+    if (cardEl) {
+      markHandCardUsed(cardEl, false);
+    }
+  }
+  updateTopicDisplay();
+}
+
+function findNextBlankIndex() {
+  if (!Array.isArray(state.topicFillValues) || !state.topicFillValues.length) return -1;
+  return state.topicFillValues.findIndex((value) => !value);
+}
+
+function updateTopicDisplay() {
+  if (!currentTopicEl) return;
+  const segments = Array.isArray(state.topicSegments) ? state.topicSegments : [];
+  const fills = Array.isArray(state.topicFillValues) ? state.topicFillValues : [];
+  if (!segments.length) {
+    currentTopicEl.textContent = state.topicTemplate || "尚未抽題";
+    return;
+  }
+  currentTopicEl.innerHTML = "";
+  segments.forEach((segment, index) => {
+    if (segment) currentTopicEl.appendChild(document.createTextNode(segment));
+    if (index < fills.length) {
+      const span = document.createElement("span");
+      const value = fills[index] || "______";
+      span.className = "topic-blank" + (fills[index] ? " filled" : "");
+      span.dataset.blankIndex = String(index);
+      span.textContent = value;
+      currentTopicEl.appendChild(span);
+    }
+  });
+  refreshTopicBlankElements();
+}
+
+function setTopicTemplate(rawTopic) {
+  if (typeof rawTopic !== "string" || !rawTopic.length) {
+    state.topicTemplate = "";
+    state.topicSegments = [];
+    state.topicFillValues = [];
+    state.topicAssignments = new Map();
+    state.usedHandKeys = new Set();
+    updateTopicDisplay();
+    renderHand();
+    return;
+  }
+  state.topicTemplate = rawTopic;
+  const blankRegex = /_{2,}/g;
+  let matchBlanks;
+  let lastIndex = 0;
+  const segments = [];
+  const fillValues = [];
+  while ((matchBlanks = blankRegex.exec(rawTopic))) {
+    segments.push(rawTopic.slice(lastIndex, matchBlanks.index));
+    fillValues.push("");
+    lastIndex = matchBlanks.index + matchBlanks[0].length;
+  }
+  segments.push(rawTopic.slice(lastIndex));
+  state.topicSegments = segments;
+  state.topicFillValues = fillValues;
+  state.topicAssignments = new Map();
+  state.usedHandKeys = new Set();
+  updateTopicDisplay();
+  renderHand();
+}
+
+function refreshTopicBlankElements() {
+  const blanks = currentTopicEl?.querySelectorAll("span.topic-blank");
+  if (!blanks) return;
+  blanks.forEach((span) => {
+    span.removeEventListener("click", handleTopicBlankClick);
+    span.addEventListener("click", handleTopicBlankClick);
   });
 }
 
