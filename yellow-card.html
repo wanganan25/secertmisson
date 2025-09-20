@@ -75,6 +75,23 @@
       border-bottom-color: var(--accent);
     }
 
+    .ghost-link {
+      display: inline-flex;
+      align-items: center;
+      padding: .55rem .95rem;
+      border-radius: 18px;
+      border: 1px solid rgba(17, 24, 39, 0.18);
+      color: var(--text-primary);
+      text-decoration: none;
+      background: rgba(255, 255, 255, 0.7);
+      font-weight: 600;
+      transition: background-color .2s ease, color .2s ease;
+    }
+
+    .ghost-link:hover {
+      background: rgba(255, 255, 255, 0.9);
+    }
+
     .topic-blank:hover {
       background: rgba(239, 71, 111, 0.18);
     }
@@ -212,53 +229,6 @@
       color: var(--text-primary);
       letter-spacing: .06em;
     }
-    .rules-section {
-      background: rgba(17, 24, 39, 0.08);
-      border-radius: 26px;
-      padding: clamp(2.4rem, 6vw, 3.8rem);
-      color: #111827;
-      display: grid;
-      gap: 2rem;
-    }
-    .rules-section h2 {
-      margin: 0;
-      font-size: 2rem;
-      letter-spacing: .05em;
-    }
-    .rules-grid {
-      display: grid;
-      gap: 1.8rem;
-    }
-    .rule-block h3 {
-      margin: 0 0 .6rem;
-      font-size: 1.25rem;
-      color: #9d1d3f;
-      letter-spacing: .04em;
-    }
-    .rule-block p,
-    .rule-block li {
-      margin: 0;
-      line-height: 1.7;
-      color: #25313d;
-    }
-    .rule-block ul {
-      margin: 0;
-      padding-left: 1.2rem;
-      display: grid;
-      gap: .55rem;
-    }
-    .rules-note {
-      padding: 1.2rem 1.5rem;
-      border-radius: 20px;
-      background: rgba(255, 255, 255, 0.85);
-      border: 1px solid rgba(17, 24, 39, 0.08);
-      line-height: 1.6;
-      color: #374151;
-    }
-    .empty-hint {
-      color: var(--text-secondary);
-      font-style: italic;
-    }
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -321,57 +291,14 @@
   <div class="page">
     <header class="hero">
       <h1>迎新黃卡大廳</h1>
+      <div style="margin-top:1.2rem;">
+        <a class="ghost-link" href="../index.html">返回首頁</a>
+      </div>
     </header>
 
     <section class="rooms-section">
       <h2>可加入的房間</h2>
       <div class="rooms-grid" id="room-cards"></div>
-    </section>
-
-    <section class="rules-section" aria-labelledby="rules-title">
-      <h2 id="rules-title">遊戲規則與活動流程</h2>
-      <div class="rules-grid">
-        <div class="rule-block">
-          <h3>一、活動目的</h3>
-          <p>透過「黃牌」桌遊的趣味互動，打破新生與學長姐之間的隔閡，創造輕鬆歡樂的氛圍，讓大家在遊戲中自然熟悉彼此。</p>
-        </div>
-        <div class="rule-block">
-          <h3>二、適用對象</h3>
-          <p>新生與學長姐（總人數約 30 人）。</p>
-        </div>
-        <div class="rule-block">
-          <h3>三、所需材料</h3>
-          <ul>
-            <li>題目卡（紫卡）：約 25 張。</li>
-            <li>詞語卡（黃卡）：約 500 張。</li>
-            <li>黃牌紀錄卡：每位玩家一張，用來記錄累積的黃牌數量。</li>
-            <li>筆：30 枝。</li>
-          </ul>
-        </div>
-        <div class="rule-block">
-          <h3>四、活動規劃</h3>
-          <ul>
-            <li><strong>分組：</strong>將 30 人分為 3 組，每組約 10 人。建議每組指派學長姐擔任組長，負責引導與協調。</li>
-            <li><strong>第一階段（約 20 分鐘）：</strong>各組在指定區域進行「黃牌」遊戲。</li>
-            <li><strong>第二階段（約 20 分鐘）：</strong>進行第一次分組大風吹。組長引導大家重新分組（例如：每組的 1 號與 2 號成員換到下一組）。</li>
-            <li><strong>第三階段（約 20 分鐘）：</strong>新分組後，持續進行第二輪的「黃牌」遊戲。</li>
-          </ul>
-        </div>
-        <div class="rule-block">
-          <h3>五、遊戲核心規則</h3>
-          <ul>
-            <li><strong>發牌：</strong>每位玩家起始拿到 13 張詞語卡。</li>
-            <li><strong>選定裁判：</strong>玩家輪流擔任裁判，第一輪建議由組長或房主帶領；之後由前一回合獲得黃牌的玩家擔任。</li>
-            <li><strong>出題與丟牌：</strong>裁判抽取 1 張題目卡並大聲朗讀。其他玩家選出最具創意或最搞笑的詞語卡交給裁判，並立即補牌至 13 張。</li>
-            <li><strong>造句展示：</strong>裁判洗勻卡片後，依序將詞語填入題目，念出大家的句子。玩家確認自己是否已丟出手牌，並看到填入題目的結果。</li>
-            <li><strong>判黃牌：</strong>裁判選出最扯或最爆笑的答案，該玩家獲得 1 張黃牌並記錄在紀錄卡上。</li>
-            <li><strong>勝負判定：</strong>當任何玩家累積 3 張黃牌，遊戲立即結束；黃牌最少者獲勝。</li>
-          </ul>
-        </div>
-      </div>
-      <div class="rules-note">
-        提醒：每個房間都有重置按鈕，可在進入新階段時清除房間狀態；第一位加入的玩家即為房主，能管理房間、踢除違規玩家，以及協助宣布裁判與同步遊戲節奏。
-      </div>
     </section>
   </div>
 

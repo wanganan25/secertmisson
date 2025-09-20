@@ -108,18 +108,18 @@ const supplyTopicInput = document.getElementById("input-new-topic");
 const btnAddWord = document.getElementById("btn-add-word");
 const btnAddTopic = document.getElementById("btn-add-topic");
 
-btnBack.addEventListener("click", () => {
+btnBack?.addEventListener("click", () => {
   state.viewMode = "lobby";
   showLobbyView();
   lobbyPanel.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
-btnLeave.addEventListener("click", () => {
+btnLeave?.addEventListener("click", () => {
   if (!state.currentRoomId) return;
   leaveRoom(state.currentRoomId);
 });
 
-btnToggleReady.addEventListener("click", () => {
+btnToggleReady?.addEventListener("click", () => {
   const player = state.playerMap.get(state.clientId);
   if (!state.currentRoomId || !player) {
     showToast("尚未加入任何房間");
@@ -128,7 +128,7 @@ btnToggleReady.addEventListener("click", () => {
   toggleReady(state.currentRoomId, !player.ready);
 });
 
-btnResetReady.addEventListener("click", () => {
+btnResetReady?.addEventListener("click", () => {
   if (!state.currentRoomId) return;
   resetReadyState(state.currentRoomId);
 });
