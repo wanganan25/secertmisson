@@ -242,7 +242,7 @@ roomGrid?.addEventListener("click", (event) => {
   const resetButton = event.target.closest("button[data-reset-room-id]");
   if (resetButton) {
     const roomId = resetButton.dataset.resetRoomId;
-    const password = prompt("請輸入重製密碼 (remake)");
+    const password = prompt("請輸入重製密碼");
     if (password === null) {
       showToast("已取消重製");
       return;
