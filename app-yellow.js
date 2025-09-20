@@ -758,11 +758,18 @@ async function drawTopic(roomId, options = {}) {
         if (wordDeck.length < extraNeeded) {
           wordDeck = ensureWordSupply(wordDeck, wordDeck.length + extraNeeded + 20);
         }
+        // First: read all active player docs (reads must happen before any writes in a transaction)
+        const playerSnapshots = [];
         for (const playerId of activePlayers) {
           const playerRef = doc(playersRef, playerId);
           const playerSnap = await tx.get(playerRef);
-          if (!playerSnap.exists()) continue;
-          const playerData = playerSnap.data();
+          playerSnapshots.push({ id: playerId, ref: playerRef, snap: playerSnap });
+        }
+        // Second: perform updates based on the already-read snapshots
+        for (const entry of playerSnapshots) {
+          const { id: playerId, ref: playerRef, snap } = entry;
+          if (!snap.exists()) continue;
+          const playerData = snap.data();
           const hand = Array.isArray(playerData.hand) ? [...playerData.hand] : [];
           const extras = [];
           for (let i = 0; i < extraPerPlayer; i += 1) {
