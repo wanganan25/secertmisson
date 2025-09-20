@@ -1051,6 +1051,8 @@ async function giveYellowCard(roomId, playerId) {
         judgeId: playerId,
         judgeNickname: targetData.nickname || null,
         wordDeck,
+        // clear activity log at end of round
+        recentActivities: [],
         updatedAt: serverTimestamp()
       };
       // if someone reached 3 yellow cards, end game
@@ -1472,6 +1474,8 @@ function renderSubmissions() {
       }
     activityLogEl.appendChild(li);
   });
+  // update submit controls (disable for players who already submitted)
+  updateSubmitControls();
 }
 
 function renderHand() {
@@ -1510,6 +1514,8 @@ function renderHand() {
     handListEl.appendChild(li);
   });
   updateHandSelect();
+  // update submit control state (disable if already submitted)
+  updateSubmitControls();
 }
 
 function updateHandSelect() {
@@ -1530,6 +1536,26 @@ function updateHandSelect() {
     handSelect.appendChild(opt);
   });
   handSelect.disabled = false;
+}
+
+// Disable submit controls if the current player already has a submission
+async function updateSubmitControls() {
+  if (!state.currentRoomId) return;
+  try {
+    const roomRef = doc(db, ROOM_COLLECTION, state.currentRoomId);
+    const submissionsRef = collection(roomRef, "submissions");
+    const mySubRef = doc(submissionsRef, state.clientId);
+    const snap = await getDocs(submissionsRef);
+    const hasSubmitted = snap.docs.some((d) => d.id === state.clientId);
+    if (submitForm) {
+      // disable form controls if submitted
+      const disable = Boolean(hasSubmitted);
+      const selects = submitForm.querySelectorAll('select, button');
+      selects.forEach((el) => { el.disabled = disable; });
+    }
+  } catch (e) {
+    console.error("updateSubmitControls error", e);
+  }
 }
 
 // candidateSubmission holds the index and word user selected for confirmation
@@ -1562,26 +1588,21 @@ confirmSubmitOk?.addEventListener("click", async () => {
 
 // When user clicks the confirm button, open the preview modal instead of submitting immediately
 btnConfirmPlay?.addEventListener("click", () => {
-  // determine selected index from the dropdown
-  const selectedIndex = handSelect ? Number(handSelect.value) : -1;
-  if (Number.isNaN(selectedIndex) || selectedIndex < 0 || selectedIndex >= state.myHand.length) {
-    showToast("請先從下拉選擇一張手牌或點選手牌作為投稿");
+  // use candidateSubmission set by clicking a hand card
+  const candidate = state.candidateSubmission;
+  if (!candidate || typeof candidate.index !== "number") {
+    showToast("請先點選要出的手牌作為投稿");
     return;
   }
-  const chosenWord = state.myHand[selectedIndex];
-  if (!chosenWord) {
-    showToast("選擇的手牌無效");
-    return;
-  }
-  // build filled topic preview
+  // build filled topic preview (in case it changed)
   let filledTopic = state.topicTemplate || "";
   if (Array.isArray(state.topicSegments) && state.topicSegments.length) {
     filledTopic = state.topicSegments.map((seg, i) => seg + (state.topicFillValues[i] || "______")).join("");
   }
-  openConfirmSubmit(selectedIndex, chosenWord, filledTopic);
+  openConfirmSubmit(candidate.index, candidate.word, filledTopic);
 });
 
-async function submitTopic(event) {
+async function submitTopic(event, selectedIndexParam) {
   if (event && event.preventDefault) event.preventDefault();
   if (!state.currentRoomId) {
     showToast("尚未在房間中");
@@ -1591,8 +1612,10 @@ async function submitTopic(event) {
     showToast("目前沒有題目可以投稿");
     return;
   }
-  // 找到選中的手牌索引
-  const selectedIndex = handSelect ? Number(handSelect.value) : -1;
+  // 找到選中的手牌索引（優先使用傳入的參數）
+  const selectedIndex = Number.isFinite(Number(selectedIndexParam)) && Number(selectedIndexParam) >= 0
+    ? Number(selectedIndexParam)
+    : (handSelect ? Number(handSelect.value) : -1);
   if (Number.isNaN(selectedIndex) || selectedIndex < 0 || selectedIndex >= state.myHand.length) {
     showToast("請選擇一張手牌提交");
     return;
@@ -1620,6 +1643,9 @@ async function submitTopic(event) {
     await runTransaction(db, async (tx) => {
       const roomRef = doc(db, ROOM_COLLECTION, state.currentRoomId);
       const submissionsRef = collection(roomRef, "submissions");
+      const mySubmissionRef = doc(submissionsRef, state.clientId);
+      const existingSub = await tx.get(mySubmissionRef);
+      if (existingSub.exists()) throw new Error("你已經投稿過了，無法重複投稿");
       const playerRef = doc(roomRef, "players", state.clientId);
       const playerSnap = await tx.get(playerRef);
       if (!playerSnap.exists()) throw new Error("找不到玩家資料");
@@ -1632,15 +1658,18 @@ async function submitTopic(event) {
       // 新增 submission doc（使用 playerId 作為 doc id，避免重複投稿）
       tx.set(doc(submissionsRef, state.clientId), payload);
       tx.update(playerRef, { hand, lastActive: serverTimestamp() });
-      // 同步把匿名活動紀錄寫入 room（確保投稿與活動紀錄同時提交）
-      const msg = `匿名提交：${filledTopic}（出牌：${chosenWord}）`;
-      tx.update(roomRef, { recentActivities: arrayUnion(msg), updatedAt: serverTimestamp() });
+      // NOTE: per request, do NOT write recentActivities here. Keep submissions anonymous only.
     });
     // 本地更新 state
     state.myHand = state.myHand.filter((_, idx) => idx !== selectedIndex);
     // 同步 UI
     renderHand();
     updateTopicDisplay();
+    // disable submit controls for this player (already submitted)
+    updateSubmitControls();
+  // clear candidate selection and remove visual mark
+  state.candidateSubmission = null;
+  document.querySelectorAll('#hand-list li.card').forEach((el) => el.classList.remove('candidate'));
     showToast("已提交手牌，等待裁判評選");
   } catch (error) {
     console.error(error);
@@ -1802,12 +1831,13 @@ function handleHandCardClick(event) {
   markHandCardUsed(item, true);
   updateTopicDisplay();
 
-  // 同步選擇到下拉選單，但不立即提交；使用者需按下「確定出牌」才會真正投稿
+  // Set candidateSubmission so confirm button will use this selection. Only one candidate allowed.
   try {
     const idx = Number(item.dataset.handIndex);
-    if (!Number.isNaN(idx) && handSelect) {
-      handSelect.value = String(idx);
-    }
+    state.candidateSubmission = { index: idx, handKey, word };
+    // visually mark candidate (outline)
+    document.querySelectorAll('#hand-list li.card').forEach((el) => el.classList.remove('candidate'));
+    item.classList.add('candidate');
   } catch (e) {
     // ignore
   }
@@ -1826,6 +1856,11 @@ function handleTopicBlankClick(event) {
     const cardEl = handListEl?.querySelector(`li.card[data-hand-key=\"${assignment.handKey}\"]`);
     if (cardEl) {
       markHandCardUsed(cardEl, false);
+      // if this card was candidate, clear candidate
+      if (state.candidateSubmission && state.candidateSubmission.handKey === assignment.handKey) {
+        state.candidateSubmission = null;
+        cardEl.classList.remove('candidate');
+      }
     }
   }
   updateTopicDisplay();
