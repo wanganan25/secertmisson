@@ -111,6 +111,12 @@ const handListEl = document.getElementById("hand-list");
 const handEmptyEl = document.getElementById("hand-empty");
 const submitForm = document.getElementById("submit-form");
 const handSelect = document.getElementById("hand-select");
+const btnConfirmPlay = document.getElementById("btn-confirm-play");
+const confirmSubmitBackdrop = document.getElementById("confirm-submit-backdrop");
+const confirmSubmitModal = document.getElementById("confirm-submit-modal");
+const confirmSubmitPreview = document.getElementById("confirm-submit-preview");
+const confirmSubmitCancel = document.getElementById("confirm-submit-cancel");
+const confirmSubmitOk = document.getElementById("confirm-submit-ok");
 const supplyWordInput = document.getElementById("input-new-word");
 const supplyTopicInput = document.getElementById("input-new-topic");
 const btnAddWord = document.getElementById("btn-add-word");
@@ -1508,6 +1514,34 @@ function updateHandSelect() {
   handSelect.disabled = false;
 }
 
+// candidateSubmission holds the index and word user selected for confirmation
+state.candidateSubmission = null;
+
+function openConfirmSubmit(selectedIndex, word, filledTopic) {
+  if (!confirmSubmitBackdrop || !confirmSubmitPreview) return;
+  state.candidateSubmission = { index: selectedIndex, word, filledTopic };
+  confirmSubmitPreview.textContent = `你要投稿：${filledTopic}\n(出牌：${word})`;
+  confirmSubmitBackdrop.classList.remove("hidden");
+}
+
+function closeConfirmSubmit() {
+  if (!confirmSubmitBackdrop) return;
+  state.candidateSubmission = null;
+  confirmSubmitBackdrop.classList.add("hidden");
+}
+
+confirmSubmitCancel?.addEventListener("click", () => {
+  closeConfirmSubmit();
+});
+
+confirmSubmitOk?.addEventListener("click", async () => {
+  const candidate = state.candidateSubmission;
+  if (!candidate) return closeConfirmSubmit();
+  // call submitTopic with selected index (modified version handles optional index)
+  await submitTopic(null, candidate.index);
+  closeConfirmSubmit();
+});
+
 async function submitTopic(event) {
   if (event && event.preventDefault) event.preventDefault();
   if (!state.currentRoomId) {
@@ -1984,6 +2018,21 @@ window.addEventListener("beforeunload", () => {
 if (submitForm) {
   submitForm.addEventListener("submit", submitTopic);
 }
+
+// confirm button triggers preview modal before actual submission
+btnConfirmPlay?.addEventListener("click", () => {
+  const selectedIndex = handSelect ? Number(handSelect.value) : -1;
+  if (Number.isNaN(selectedIndex) || selectedIndex < 0) {
+    showToast("請先選擇要投稿的手牌");
+    return;
+  }
+  const word = state.myHand[selectedIndex] || "";
+  let filledTopic = state.topicTemplate || "";
+  if (Array.isArray(state.topicSegments) && state.topicSegments.length) {
+    filledTopic = state.topicSegments.map((seg, i) => seg + (state.topicFillValues[i] || "______")).join("");
+  }
+  openConfirmSubmit(selectedIndex, word, filledTopic);
+});
 
 
 
