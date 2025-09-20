@@ -219,6 +219,22 @@ function handleAddTopic() {
 }
 
 roomGrid.addEventListener("click", (event) => {
+  const resetButton = event.target.closest("button[data-reset-room-id]");
+  if (resetButton) {
+    const roomId = resetButton.dataset.resetRoomId;
+    const password = prompt("請輸入重製密碼 (remake)");
+    if (password === null) {
+      showToast("已取消重製");
+      return;
+    }
+    if (password.trim() !== "remake") {
+      showToast("密碼錯誤，無法重製房間");
+      return;
+    }
+    resetRoom(roomId);
+    return;
+  }
+
   const button = event.target.closest("button[data-room-id]");
   if (!button) return;
   const roomId = button.dataset.roomId;
@@ -693,6 +709,55 @@ async function startGame() {
 
 
 
+async function resetRoom(roomId) {
+  const room = state.rooms.find((r) => r.id === roomId);
+  if (!room) {
+    showToast("房間不存在");
+    return;
+  }
+  if (!confirm("重製房間會清除所有玩家與紀錄，確定要繼續嗎？")) return;
+
+  const freshWordDeck = ensureWordSupply([], MIN_WORD_SUPPLY);
+  const freshTopicDeck = ensureTopicSupply([], MIN_TOPIC_SUPPLY);
+
+  try {
+    await runTransaction(db, async (tx) => {
+      const roomRef = doc(db, ROOM_COLLECTION, roomId);
+      const roomSnap = await tx.get(roomRef);
+      if (!roomSnap.exists()) throw new Error("房間不存在");
+      const data = roomSnap.data();
+      const playersRef = collection(roomRef, "players");
+      const playerIds = Array.isArray(data.playerIds) ? [...data.playerIds] : [];
+      playerIds.forEach((playerId) => {
+        tx.delete(doc(playersRef, playerId));
+      });
+      tx.update(roomRef, {
+        playerIds: [],
+        playerCount: 0,
+        hostId: null,
+        hostNickname: null,
+        judgeId: null,
+        judgeNickname: null,
+        wordDeck: [...freshWordDeck],
+        topicDeck: [...freshTopicDeck],
+        usedTopics: [],
+        currentTopic: "",
+        phase: "",
+        updatedAt: serverTimestamp()
+      });
+    });
+    await clearSubmissions(roomId);
+    if (state.currentRoomId === roomId) {
+      cleanupAfterLeave();
+    }
+    showToast("房間已重製");
+  } catch (error) {
+    console.error(error);
+    showToast(error.message || "重製房間失敗");
+  }
+}
+
+
 async function giveYellowCard(roomId, playerId) {
   if (!isHost()) {
     showToast("只有房主可以給黃牌");
@@ -853,6 +918,13 @@ function renderLobby() {
       button.textContent = "加入房間";
     }
     card.appendChild(button);
+    const resetButton = document.createElement("button");
+    resetButton.type = "button";
+    resetButton.className = "ghost";
+    resetButton.dataset.resetRoomId = room.id;
+    resetButton.textContent = "重製房間";
+    resetButton.style.marginTop = "0.4rem";
+    card.appendChild(resetButton);
     roomGrid.appendChild(card);
   });
 }
