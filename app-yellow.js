@@ -399,31 +399,6 @@ async function confirmJoin() {
       const playersRef = collection(roomRef, "players");
       const meRef = doc(playersRef, state.clientId);
 
-      const existing = await getDocs(playersRef);
-      const nameUsage = new Map();
-      const suffixPattern = /(?:（|\()(\d+)(?:）|\))$/;
-      existing.forEach((docSnap) => {
-        const info = docSnap.data() || {};
-        const nick = info.nickname || "";
-        if (!nick) return;
-        const base = nick.replace(suffixPattern, "");
-        const match = nick.match(suffixPattern);
-        const next = match ? Number(match[1]) + 1 : 2;
-        const current = nameUsage.get(base) || 1;
-        if (next > current) {
-          nameUsage.set(base, next);
-        } else if (!nameUsage.has(base)) {
-          nameUsage.set(base, current);
-        }
-      });
-      if (nameUsage.has(baseNickname)) {
-        const index = nameUsage.get(baseNickname);
-        finalNickname = `${baseNickname}（${index}）`;
-        nameUsage.set(baseNickname, index + 1);
-      } else {
-        finalNickname = baseNickname;
-        nameUsage.set(baseNickname, 2);
-      }
 
       if (!isAlready) {
         if (playerIds.length >= capacity) throw new Error("房間已滿員");
