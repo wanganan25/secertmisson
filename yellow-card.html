@@ -130,6 +130,27 @@
       color: var(--ink-soft);
     }
 
+    .supply-form {
+      display: grid;
+      gap: .6rem;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+    }
+
+    .supply-form input {
+      font: inherit;
+      padding: .65rem .9rem;
+      border-radius: 12px;
+      border: 1px solid rgba(17,24,39,.18);
+      background: rgba(255,255,255,.98);
+    }
+
+    @media (max-width: 520px) {
+      .supply-form {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .meta-title {
       font-weight: 700;
       color: var(--ink);
@@ -413,10 +434,19 @@
     <p>歡迎進入黃牌房間大廳。</p>
   </header>
 
-  <main>
-    <section class="panel" id="lobby-panel">
+  <main>    <section class="panel" id="lobby-panel">
       <h2><span>01</span>房間大廳</h2>
       <div class="lobby">
+        <div class="card" id="supply-card">
+          <h3>補充牌庫</h3>
+          <p class="subtext">新增後會同步到所有房間，只能補充，不能刪除。</p>
+          <div class="supply-form">
+            <input id="input-new-word" type="text" maxlength="32" placeholder="輸入黃卡字詞">
+            <button id="btn-add-word" class="primary">加入黃卡</button>
+            <input id="input-new-topic" type="text" maxlength="80" placeholder="輸入紫卡句子">
+            <button id="btn-add-topic" class="ghost">加入紫卡</button>
+          </div>
+        </div>
         <div class="room-grid" id="room-grid"></div>
       </div>
     </section>
@@ -444,11 +474,17 @@
           <h3>玩家名單</h3>
           <table class="player-table">
             <thead>
-              <tr>                <th>玩家</th>\r\n                <th>身分</th>\r\n                <th>黃牌</th>\r\n                <th>手牌</th>\r\n                <th>狀態</th>\r\n                <th>操作</th>
+              <tr>
+                <th>玩家</th>
+                <th>身分</th>
+                <th>黃牌</th>
+                <th>手牌</th>
+                <th>狀態</th>
+                <th>操作</th>
               </tr>
             </thead>
             <tbody id="player-tbody">
-              <tr><td colspan="5" style="text-align:center;color:var(--ink-soft);padding:1.2rem;">尚未有玩家加入</td></tr>
+              <tr><td colspan="6" style="text-align:center;color:var(--ink-soft);padding:1.2rem;">尚未有玩家加入</td></tr>
             </tbody>
           </table>
         </div>
@@ -473,6 +509,19 @@
         </div>
       </div>
     </section>
+    <section class="panel hidden" id="hand-card">
+      <h2><span>03</span>我的手牌</h2>
+      <p class="subtext">僅顯示自己的黃卡內容，其他玩家看不到這個區塊。</p>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+          <h3 style="margin:0;">手牌數</h3>
+          <span id="hand-count" class="badge">0 張</span>
+        </div>
+        <div id="hand-empty" class="subtext" style="margin-top:.8rem;">目前沒有手牌。</div>
+        <ul id="hand-list" class="room-grid" style="margin-top:1rem;gap:.6rem;"></ul>
+      </div>
+    </section>
+
   </main>
 
   <footer>
