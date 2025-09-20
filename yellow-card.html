@@ -315,6 +315,18 @@
     </main>
   </div>
 
+  <!-- Confirm submit modal -->
+  <div id="confirm-submit-backdrop" class="modal-backdrop hidden">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="confirm-submit-title">
+      <h3 id="confirm-submit-title">確定要送出這張黃卡嗎？</h3>
+      <p id="confirm-submit-preview" style="margin:0;color:var(--text-soft);">預覽內容</p>
+      <div class="modal-actions">
+        <button type="button" id="confirm-submit-cancel" class="ghost">取消</button>
+        <button type="button" id="confirm-submit-ok" class="primary">送出</button>
+      </div>
+    </div>
+  </div>
+
   <footer class="page-footer">
     <a class="ghost-link" href="https://wanganan25.github.io/secertmisson/">返回主頁</a>
   </footer>
@@ -349,6 +361,18 @@
         <button type="button" class="primary" id="confirm-submit-ok">確定出牌</button>
       </div>
     </div>
+
+      <!-- Confirm vote modal for judge -->
+      <div class="modal-backdrop hidden" id="confirm-vote-backdrop" role="presentation">
+        <div class="modal" id="confirm-vote-modal" aria-modal="true" aria-labelledby="confirm-vote-title">
+          <h2 id="confirm-vote-title">確認投票</h2>
+          <p id="confirm-vote-preview" style="line-height:1.6;color:var(--text-soft);"></p>
+          <div style="display:flex;gap:.6rem;justify-content:flex-end;">
+            <button type="button" class="ghost" id="confirm-vote-cancel">取消</button>
+            <button type="button" class="primary" id="confirm-vote-ok">確定投票</button>
+          </div>
+        </div>
+      </div>
   </div>
 
   <div class="modal-backdrop hidden" id="join-dialog" role="dialog" aria-modal="true">

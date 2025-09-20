@@ -75,6 +75,9 @@ const state = {
   myDiscardPool: [],
   pendingDiscard: 0,
   discardMode: false,
+  // judge vote flow state
+  judgeConfirmingVote: false,
+  pendingJudgeSelection: null,
   viewMode: localStorage.getItem("yellow-card-active-room") ? "room" : "lobby"
 };
 
@@ -118,6 +121,12 @@ const confirmSubmitModal = document.getElementById("confirm-submit-modal");
 const confirmSubmitPreview = document.getElementById("confirm-submit-preview");
 const confirmSubmitCancel = document.getElementById("confirm-submit-cancel");
 const confirmSubmitOk = document.getElementById("confirm-submit-ok");
+// judge vote modal elements (may be absent until added to HTML)
+const btnConfirmVote = document.getElementById('btn-confirm-vote');
+const confirmVoteBackdrop = document.getElementById('confirm-vote-backdrop');
+const confirmVotePreview = document.getElementById('confirm-vote-preview');
+const confirmVoteCancel = document.getElementById('confirm-vote-cancel');
+const confirmVoteOk = document.getElementById('confirm-vote-ok');
 const supplyWordInput = document.getElementById("input-new-word");
 const supplyTopicInput = document.getElementById("input-new-topic");
 const btnAddWord = document.getElementById("btn-add-word");
@@ -1438,41 +1447,78 @@ function renderSubmissions() {
     // ignore
   }
 
-  // render anonymous submissions; the judge will see the give button only when allSubmitted and allDiscarded are true
+  // judge toolbar: toggle into vote-selection mode (only for judge)
+  if (isJudge()) {
+    const toolbar = document.createElement('li');
+    toolbar.className = 'card';
+    toolbar.style.display = 'flex';
+    toolbar.style.justifyContent = 'flex-end';
+    toolbar.style.gap = '.6rem';
+
+    const confirmVoteBtn = document.createElement('button');
+    confirmVoteBtn.className = 'primary';
+    confirmVoteBtn.textContent = state.judgeConfirmingVote ? '取消投票' : '確定投票';
+    // disable until submissions are ready and discards complete
+    if (!allSubmitted) {
+      confirmVoteBtn.disabled = true;
+      confirmVoteBtn.title = '尚未收齊所有投稿';
+    } else if (!allDiscarded) {
+      confirmVoteBtn.disabled = true;
+      confirmVoteBtn.title = '尚有玩家尚未完成棄牌';
+    }
+    confirmVoteBtn.addEventListener('click', () => {
+      state.judgeConfirmingVote = !state.judgeConfirmingVote;
+      if (!state.judgeConfirmingVote) state.pendingJudgeSelection = null;
+      renderSubmissions();
+    });
+    toolbar.appendChild(confirmVoteBtn);
+    activityLogEl.appendChild(toolbar);
+  }
+
+  // render anonymous submissions; when judgeConfirmingVote is true, show per-submission '選擇此答案' button
   state.submissionList.forEach((submission) => {
-    const li = document.createElement("li");
-    li.className = "card";
-    // anonymous title - show filled purple topic + yellow card
-    const filled = submission.filledTopic || "(未填寫紫卡)";
-    const word = submission.word || "(未出黃卡)";
+    const li = document.createElement('li');
+    li.className = 'card';
+    const filled = submission.filledTopic || '(未填寫紫卡)';
+    const word = submission.word || '(未出黃卡)';
     li.innerHTML = `
       <span class="meta-title">匿名投稿</span>
       <div style="font-size:0.95rem;color:var(--ink-strong);margin-top:.25rem;">${filled}</div>
       <div style="margin-top:.35rem;color:var(--ink-muted);">出牌：${word}</div>
     `;
-    // only show award button to the judge and only after all submissions received and all players have discarded
-      if (isJudge()) {
-        const button = document.createElement("button");
-        button.className = "ghost";
-        button.style.marginTop = ".35rem";
+    if (isJudge()) {
+      if (state.judgeConfirmingVote) {
+        const pickBtn = document.createElement('button');
+        pickBtn.className = 'primary';
+        pickBtn.style.marginTop = '.35rem';
+        pickBtn.textContent = '選擇此答案';
+        pickBtn.addEventListener('click', () => {
+          const preview = `${filled}\n出牌：${word}`;
+          openConfirmVote(submission.id || submission.playerId, preview);
+        });
+        li.appendChild(pickBtn);
+      } else {
+        // non-selection mode: keep previous hint/button behavior
+        const button = document.createElement('button');
+        button.className = 'ghost';
+        button.style.marginTop = '.35rem';
         if (allDiscarded) {
-          button.textContent = "給這個答案黃牌";
+          button.textContent = '給這個答案黃牌';
           button.disabled = false;
-          button.title = "選擇此答案給予黃牌";
-          button.addEventListener("click", () => giveYellowCard(state.currentRoomId, submission.playerId));
+          button.title = '選擇此答案給予黃牌';
+          button.addEventListener('click', () => giveYellowCard(state.currentRoomId, submission.playerId));
         } else if (allSubmitted) {
-          // all submitted but not all discarded yet
-          button.textContent = "等待玩家完成棄牌";
+          button.textContent = '等待玩家完成棄牌';
           button.disabled = true;
-          button.title = "尚有玩家尚未完成棄牌，裁判請耐心等待";
+          button.title = '尚有玩家尚未完成棄牌，裁判請耐心等待';
         } else {
-          // submissions not yet complete - show a disabled hint so judge knows where the button will appear
-          button.textContent = "尚未收齊投稿";
+          button.textContent = '尚未收齊投稿';
           button.disabled = true;
-          button.title = "尚未收齊所有投稿，投稿完成後會顯示投票按鈕";
+          button.title = '尚未收齊所有投稿，投稿完成後會顯示投票按鈕';
         }
         li.appendChild(button);
       }
+    }
     activityLogEl.appendChild(li);
   });
   // update submit controls (disable for players who already submitted)
@@ -1539,23 +1585,38 @@ function updateHandSelect() {
   handSelect.disabled = false;
 }
 
-// Disable submit controls if the current player already has a submission
+// Disable/enable submit controls based on judge status, candidate selection and submissions
 async function updateSubmitControls() {
   if (!state.currentRoomId) return;
   try {
+    const btn = document.getElementById('btn-confirm-play');
+    if (!btn) return;
+
+    // Judges must not see or use the submit button
+    if (isJudge()) {
+      btn.disabled = true;
+      btn.classList.add('hidden');
+      return;
+    }
+    btn.classList.remove('hidden');
+
     const roomRef = doc(db, ROOM_COLLECTION, state.currentRoomId);
     const submissionsRef = collection(roomRef, "submissions");
-    const mySubRef = doc(submissionsRef, state.clientId);
     const snap = await getDocs(submissionsRef);
     const hasSubmitted = snap.docs.some((d) => d.id === state.clientId);
-    if (submitForm) {
-      // disable form controls if submitted
-      const disable = Boolean(hasSubmitted);
-      const selects = submitForm.querySelectorAll('select, button');
-      selects.forEach((el) => { el.disabled = disable; });
+
+    if (hasSubmitted) {
+      btn.disabled = true;
+      btn.textContent = '已提交';
+      return;
     }
+
+    // enable only when a candidate is selected and not in discard mode
+    const canSubmit = Boolean(state.candidateSubmission) && !state.discardMode;
+    btn.disabled = !canSubmit;
+    btn.textContent = '確定出牌';
   } catch (e) {
-    console.error("updateSubmitControls error", e);
+    console.error('updateSubmitControls error', e);
   }
 }
 
@@ -1575,6 +1636,20 @@ function closeConfirmSubmit() {
   confirmSubmitBackdrop.classList.add("hidden");
 }
 
+function openConfirmVote(submissionId, previewText) {
+  // prepare vote selection state
+  state.judgeConfirmingVote = true;
+  state.pendingJudgeSelection = submissionId;
+  if (confirmVotePreview) confirmVotePreview.textContent = previewText || "您要投票給這個匿名投稿嗎？";
+  if (confirmVoteBackdrop) confirmVoteBackdrop.classList.remove('hidden');
+}
+
+function closeConfirmVote() {
+  state.judgeConfirmingVote = false;
+  state.pendingJudgeSelection = null;
+  if (confirmVoteBackdrop) confirmVoteBackdrop.classList.add('hidden');
+}
+
 confirmSubmitCancel?.addEventListener("click", () => {
   closeConfirmSubmit();
 });
@@ -1585,6 +1660,33 @@ confirmSubmitOk?.addEventListener("click", async () => {
   // call submitTopic with selected index (modified version handles optional index)
   await submitTopic(null, candidate.index);
   closeConfirmSubmit();
+});
+
+confirmVoteCancel?.addEventListener('click', () => {
+  closeConfirmVote();
+});
+
+confirmVoteOk?.addEventListener('click', async () => {
+  const subId = state.pendingJudgeSelection;
+  if (!subId) return closeConfirmVote();
+  try {
+    // call giveYellowCard with the playerId stored in the submission entry
+    const roomId = state.currentRoomId;
+    if (!roomId) return showToast('尚未在房間中');
+    // find submission by id in cached list
+    const sub = state.submissionList.find((s) => s.id === subId || s.playerId === subId);
+    if (!sub) {
+      showToast('找不到該投稿');
+      closeConfirmVote();
+      return;
+    }
+    // sub.playerId is the real player id (we stored submissions keyed by playerId)
+    await giveYellowCard(roomId, sub.playerId);
+  } catch (e) {
+    console.error(e);
+  } finally {
+    closeConfirmVote();
+  }
 });
 
 // When user clicks the confirm button, open the preview modal instead of submitting immediately
