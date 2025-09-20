@@ -1195,6 +1195,17 @@ function updateRoomPanel() {
   renderPlayerTable(state.playerList);
   renderTopic(roomData);
   renderSubmissions();
+    // phase 控制 deck 管理按鈕顯示
+    const phase = roomData?.phase || "";
+    if (phase === "running" || phase === "playing" || phase === "in_game") {
+      btnOpenDeckManager?.classList.add("hidden");
+      btnAddTopic?.classList.add("hidden");
+      btnAddWord?.classList.add("hidden");
+    } else {
+      btnOpenDeckManager?.classList.remove("hidden");
+      btnAddTopic?.classList.remove("hidden");
+      btnAddWord?.classList.remove("hidden");
+    }
 }
 
 function renderPlayerTable(players) {
@@ -1309,30 +1320,42 @@ function renderSubmissions() {
   });
 }
 
-function renderHand() {
+async function renderHand() {
   if (!handCard) return;
-  const inRoom = !!state.currentRoomId;
-  const phase = state.currentRoomData?.phase;
-  const inGame = phase === "in_game";
-  const shouldShow = inRoom && inGame;
-  if (!shouldShow) {
-    state.discardMode = false;
-    state.pendingDiscard = state.pendingDiscard || 0;
-  }
-  handCard.classList.toggle("hidden", !shouldShow);
-  if (!shouldShow) {
-    handCountEl.textContent = "0 張";
-    handListEl.innerHTML = "";
-    handEmptyEl.classList.remove("hidden");
-    updateDiscardUI();
+  const roomId = state.currentRoomId;
+  const roomData = state.currentRoomData;
+  if (!roomId || !roomData) return;
+  if (roomData.hostId !== state.clientId) {
+    alert("只有房主可以開始回合");
     return;
   }
-
-  syncTopicAssignmentsWithHand();
-
-  state.discardMode = state.discardMode && state.pendingDiscard > 0;
-  const hasHand = Array.isArray(state.myHand) && state.myHand.length > 0;
-  handCountEl.textContent = `${state.myHand.length} 張`;
+  // 只選已準備的玩家
+  const readyPlayers = Array.from(state.playerMap.values()).filter((p) => p.ready);
+  if (!readyPlayers.length) {
+    alert("至少要有一位玩家按下準備");
+    return;
+  }
+  // 隨機選裁判
+  const judgeEntry = readyPlayers[Math.floor(Math.random() * readyPlayers.length)];
+  const judgeId = judgeEntry ? judgeEntry.id : state.clientId;
+  const judgeNickname = judgeEntry ? (judgeEntry.nickname || "") : (state.nickname || "");
+  // 自動抽題
+  const deck = Array.isArray(roomData.topicDeck) ? [...roomData.topicDeck] : [];
+  if (!deck.length) {
+    alert("題庫已空，請先重置題目");
+    return;
+  }
+  const topic = deck.shift();
+  const used = Array.isArray(roomData.usedTopics) ? [...roomData.usedTopics, topic] : [topic];
+  await updateDoc(doc(db, "yellowRooms", roomId), {
+    phase: "running",
+    judgeId,
+    judgeNickname,
+    currentTopic: topic,
+    topicDeck: deck,
+    usedTopics: used,
+    updatedAt: serverTimestamp()
+  });
   handEmptyEl.classList.toggle("hidden", hasHand);
   handListEl.innerHTML = "";
   updateDiscardUI();
@@ -1603,33 +1626,67 @@ function refreshTopicBlankElements() {
   });
 }
 
-function manualSetJudge(playerId, nickname) {
+async function manualSetJudge(playerId, nickname) {
   if (!isHost()) {
     showToast("只有房主可以指定裁判");
     return;
   }
-  runTransaction(db, async (tx) => {
-    const roomRef = doc(db, ROOM_COLLECTION, state.currentRoomId);
-    const roomSnap = await tx.get(roomRef);
-    if (!roomSnap.exists()) throw new Error("房間不存在");
-    tx.update(roomRef, {
-      judgeId: playerId,
-      judgeNickname: nickname || null,
-      updatedAt: serverTimestamp()
+  const roomId = state.currentRoomId;
+  if (!roomId) {
+    showToast("尚未在房間中");
+    return;
+  }
+  try {
+    await runTransaction(db, async (tx) => {
+      const playerRef = doc(db, ROOM_COLLECTION, roomId, "players", playerId);
+      const snap = await tx.get(playerRef);
+      if (!snap.exists()) throw new Error("找不到該玩家");
+      const data = snap.data() || {};
+      const nextCount = (data.yellowCards || 0) + 1;
+      tx.update(playerRef, { yellowCards: nextCount });
+
+      const roomRef = doc(db, ROOM_COLLECTION, roomId);
+      // 取得所有玩家手牌
+      const playersRef = collection(roomRef, "players");
+      const playersSnap = await getDocs(playersRef);
+      let allHand = [];
+      playersSnap.forEach((docSnap) => {
+        const pdata = docSnap.data();
+        if (Array.isArray(pdata.hand)) {
+          allHand = allHand.concat(pdata.hand);
+        }
+      });
+
+      // 取得原牌庫
+      const roomSnap = await tx.get(roomRef);
+      if (!roomSnap.exists()) throw new Error("房間不存在");
+      const roomData = roomSnap.data() || {};
+      let fullDeck = Array.isArray(roomData.wordDeck) ? [...roomData.wordDeck] : [];
+      // 移除所有已在玩家手上的牌
+      fullDeck = fullDeck.filter((card) => !allHand.includes(card));
+
+      // 準備房間更新
+      const roomUpdates = {
+        judgeId: playerId,
+        judgeNickname: data.nickname || null,
+        wordDeck: fullDeck,
+        updatedAt: serverTimestamp()
+      };
+
+      if (nextCount >= 3) {
+        roomUpdates.phase = "finished";
+        tx.update(roomRef, roomUpdates);
+        return;
+      }
+
+      // 將裁判設定並標記需要抽題
+      shouldDrawNextTopic = true;
+      tx.update(roomRef, roomUpdates);
     });
-  }).catch((error) => {
+  } catch (error) {
     console.error(error);
     showToast(error.message || "指定裁判失敗");
-  });
-}
-
-function openJoinDialog(roomId, roomName) {
-  state.pendingJoinRoomId = roomId;
-  if (joinRoomNameEl) joinRoomNameEl.textContent = roomName || roomId;
-  if (nicknameInput) nicknameInput.value = state.nickname;
-  if (nicknameErrorEl) nicknameErrorEl.style.display = "none";
-  joinDialog?.classList.remove("hidden");
-  setTimeout(() => nicknameInput?.focus(), 50);
+  }
 }
 
 function closeJoinDialog() {
