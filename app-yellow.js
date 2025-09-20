@@ -1318,16 +1318,16 @@ function manualSetJudge(playerId, nickname) {
 
 function openJoinDialog(roomId, roomName) {
   state.pendingJoinRoomId = roomId;
-  joinRoomNameEl.textContent = roomName;
-  nicknameInput.value = state.nickname;
-  nicknameErrorEl.style.display = "none";
-  joinDialog.classList.remove("hidden");
-  setTimeout(() => nicknameInput.focus(), 50);
+  if (joinRoomNameEl) joinRoomNameEl.textContent = roomName || roomId;
+  if (nicknameInput) nicknameInput.value = state.nickname;
+  if (nicknameErrorEl) nicknameErrorEl.style.display = "none";
+  joinDialog?.classList.remove("hidden");
+  setTimeout(() => nicknameInput?.focus(), 50);
 }
 
 function closeJoinDialog() {
   state.pendingJoinRoomId = null;
-  joinDialog.classList.add("hidden");
+  joinDialog?.classList.add("hidden");
 }
 
 function isHost() {
