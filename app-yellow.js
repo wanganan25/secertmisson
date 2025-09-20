@@ -778,12 +778,12 @@ async function drawTopic(roomId, options = {}) {
           }
           if (extras.length) {
             hand.push(...extras);
+            // 不在此時設定 pendingDiscard，讓玩家可以先出牌投稿。
+            // pendingDiscard 會在所有投稿收齊後由 ensureDiscardPhaseIfNeeded() 一次設定。
             tx.update(playerRef, {
               hand,
-              pendingDiscard: (playerData.pendingDiscard || 0) + extras.length,
               lastActive: serverTimestamp()
             });
-            // NOTE: 不再記錄補牌到 recentActivities（依使用者要求）
           }
         }
       }
