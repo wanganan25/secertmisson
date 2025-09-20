@@ -804,6 +804,7 @@ async function drawTopic(roomId, options = {}) {
 }
 
 async function startGame() {
+  console.trace("startGame invoked");
   const roomId = state.currentRoomId;
   const roomData = state.currentRoomData;
   if (!roomId || !roomData) return;
@@ -1328,42 +1329,19 @@ function renderSubmissions() {
   });
 }
 
-async function renderHand() {
+function renderHand() {
   if (!handCard) return;
-  const roomId = state.currentRoomId;
-  const roomData = state.currentRoomData;
-  if (!roomId || !roomData) return;
-  if (roomData.hostId !== state.clientId) {
-    alert("只有房主可以開始回合");
+  const inRoom = !!state.currentRoomId;
+  handCard.classList.toggle("hidden", !inRoom);
+  if (!inRoom) {
+    handCountEl.textContent = "0 張";
+    handListEl.innerHTML = "";
+    handEmptyEl.classList.remove("hidden");
     return;
   }
-  // 只選已準備的玩家
-  const readyPlayers = Array.from(state.playerMap.values()).filter((p) => p.ready);
-  if (!readyPlayers.length) {
-    alert("至少要有一位玩家按下準備");
-    return;
-  }
-  // 隨機選裁判
-  const judgeEntry = readyPlayers[Math.floor(Math.random() * readyPlayers.length)];
-  const judgeId = judgeEntry ? judgeEntry.id : state.clientId;
-  const judgeNickname = judgeEntry ? (judgeEntry.nickname || "") : (state.nickname || "");
-  // 自動抽題
-  const deck = Array.isArray(roomData.topicDeck) ? [...roomData.topicDeck] : [];
-  if (!deck.length) {
-    alert("題庫已空，請先重置題目");
-    return;
-  }
-  const topic = deck.shift();
-  const used = Array.isArray(roomData.usedTopics) ? [...roomData.usedTopics, topic] : [topic];
-  await updateDoc(doc(db, "yellowRooms", roomId), {
-    phase: "running",
-    judgeId,
-    judgeNickname,
-    currentTopic: topic,
-    topicDeck: deck,
-    usedTopics: used,
-    updatedAt: serverTimestamp()
-  });
+
+  const hasHand = Array.isArray(state.myHand) && state.myHand.length > 0;
+  handCountEl.textContent = `${state.myHand.length} 張`;
   handEmptyEl.classList.toggle("hidden", hasHand);
   handListEl.innerHTML = "";
   updateDiscardUI();
