@@ -298,7 +298,12 @@
             <button type="button" class="ghost" id="btn-toggle-discard">選擇棄牌</button>
           </div>
           <div id="hand-empty" class="subtext" style="margin-top:.8rem;color:var(--text-soft);">目前沒有黃卡。</div>
-          <ul id="hand-list"></ul>
+              <ul id="hand-list"></ul>
+              <!-- Submit form for playing a card -->
+              <form id="submit-form" style="margin-top:.8rem;display:flex;gap:.6rem;align-items:center;">
+                <select id="hand-select" aria-label="選擇要出的黃卡" style="min-width:180px;padding:.5rem;border-radius:8px;border:1px solid rgba(23,33,43,.08);"></select>
+                <button type="button" id="btn-confirm-play" class="primary">確定出牌</button>
+              </form>
         </div>
       </section>
     </main>
@@ -324,6 +329,18 @@
       </div>
       <div class="modal-actions">
         <button type="button" class="ghost" id="btn-close-deck">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm submit modal (needed by app-yellow.js) -->
+  <div class="modal-backdrop hidden" id="confirm-submit-backdrop" role="presentation">
+    <div class="modal" id="confirm-submit-modal" aria-modal="true" aria-labelledby="confirm-submit-title">
+      <h2 id="confirm-submit-title">確認出牌</h2>
+      <p id="confirm-submit-preview" style="line-height:1.6;color:var(--text-soft);"></p>
+      <div style="display:flex;gap:.6rem;justify-content:flex-end;">
+        <button type="button" class="ghost" id="confirm-submit-cancel">取消</button>
+        <button type="button" class="primary" id="confirm-submit-ok">確定出牌</button>
       </div>
     </div>
   </div>
