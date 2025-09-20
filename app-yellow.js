@@ -50,6 +50,8 @@ const DEFAULT_TOPICS = [
 
 const MIN_WORD_SUPPLY = 150;
 const MIN_TOPIC_SUPPLY = 40;
+const INITIAL_HAND_SIZE = 10;
+const ROUND_TARGET_HAND_SIZE = 13;
 
 const state = {
   clientId: localStorage.getItem("yellow-card-client-id") || crypto.randomUUID(),
@@ -595,8 +597,8 @@ async function confirmJoin() {
         playerIds.push(state.clientId);
         const isHost = !data.hostId;
         let wordDeck = Array.isArray(data.wordDeck) ? [...data.wordDeck] : [];
-        wordDeck = ensureWordSupply(wordDeck, playerIds.length * 13 + 20);
-        const hand = wordDeck.splice(0, 13);
+        wordDeck = ensureWordSupply(wordDeck, playerIds.length * INITIAL_HAND_SIZE + 20);
+        const hand = wordDeck.splice(0, INITIAL_HAND_SIZE);
         tx.update(roomRef, {
           playerIds,
           playerCount: playerIds.length,
@@ -718,7 +720,7 @@ async function toggleReady(roomId, nextReady) {
 }
 
 async function resetReadyState(roomId) {
-  if (!isHost()) {
+  if (!isCurrentUserHost()) {
     showToast("只有房主可以重置狀態");
     return;
   }
@@ -743,8 +745,8 @@ async function resetReadyState(roomId) {
 
 async function drawTopic(roomId, options = {}) {
   const { force = false, silent = false } = options;
-  if (!force && !isHost()) {
-    showToast("只有主持人可以抽題");
+  if (!force && !isCurrentUserHost()) {
+    showToast("只有房主可以抽題");
     return;
   }
   let pickedTopic = null;
@@ -760,42 +762,44 @@ async function drawTopic(roomId, options = {}) {
       const playerIds = Array.isArray(data.playerIds) ? [...data.playerIds] : [];
       const judgeId = data.judgeId || null;
       const activePlayers = playerIds.filter((id) => id !== judgeId);
-      const extraPerPlayer = 3;
       const playersRef = collection(roomRef, "players");
 
-      const extraNeeded = activePlayers.length * extraPerPlayer;
-      if (extraNeeded > 0) {
-        if (wordDeck.length < extraNeeded) {
-          wordDeck = ensureWordSupply(wordDeck, wordDeck.length + extraNeeded + 20);
+      const playerSnapshots = [];
+      let totalNeeded = 0;
+      for (const playerId of activePlayers) {
+        const playerRef = doc(playersRef, playerId);
+        const playerSnap = await tx.get(playerRef);
+        playerSnapshots.push({ id: playerId, ref: playerRef, snap: playerSnap });
+        if (playerSnap.exists()) {
+          const pdata = playerSnap.data() || {};
+          const hand = Array.isArray(pdata.hand) ? pdata.hand : [];
+          totalNeeded += Math.max(0, ROUND_TARGET_HAND_SIZE - hand.length);
         }
-        // First: read all active player docs (reads must happen before any writes in a transaction)
-        const playerSnapshots = [];
-        for (const playerId of activePlayers) {
-          const playerRef = doc(playersRef, playerId);
-          const playerSnap = await tx.get(playerRef);
-          playerSnapshots.push({ id: playerId, ref: playerRef, snap: playerSnap });
-        }
-        // Second: perform updates based on the already-read snapshots
-        for (const entry of playerSnapshots) {
-          const { id: playerId, ref: playerRef, snap } = entry;
-          if (!snap.exists()) continue;
-          const playerData = snap.data();
-          const hand = Array.isArray(playerData.hand) ? [...playerData.hand] : [];
-          const extras = [];
-          for (let i = 0; i < extraPerPlayer; i += 1) {
-            if (!wordDeck.length) break;
-            extras.push(wordDeck.shift());
+      }
+
+      if (totalNeeded > 0 && wordDeck.length < totalNeeded) {
+        wordDeck = ensureWordSupply(wordDeck, wordDeck.length + totalNeeded + 20);
+      }
+
+      for (const entry of playerSnapshots) {
+        const { ref: playerRef, snap } = entry;
+        if (!snap.exists()) continue;
+        const pdata = snap.data() || {};
+        const hand = Array.isArray(pdata.hand) ? [...pdata.hand] : [];
+        const needed = Math.max(0, ROUND_TARGET_HAND_SIZE - hand.length);
+        if (needed > 0) {
+          const extras = wordDeck.splice(0, needed);
+          if (extras.length < needed) {
+            throw new Error("牌庫已用完");
           }
-          if (extras.length) {
-            hand.push(...extras);
-            // 不在此時設定 pendingDiscard，讓玩家可以先出牌投稿。
-            // pendingDiscard 會在所有投稿收齊後由 ensureDiscardPhaseIfNeeded() 一次設定。
-            tx.update(playerRef, {
-              hand,
-              lastActive: serverTimestamp()
-            });
-          }
+          hand.push(...extras);
         }
+        const nextPending = Math.max(0, hand.length - (INITIAL_HAND_SIZE + 1));
+        tx.update(playerRef, {
+          hand,
+          pendingDiscard: nextPending,
+          lastActive: serverTimestamp()
+        });
       }
 
       if (!topicDeck.length) {
@@ -806,7 +810,7 @@ async function drawTopic(roomId, options = {}) {
           usedTopics = [];
         }
       }
-      if (!topicDeck.length) throw new Error("題庫不足，請先補充題目");
+      if (!topicDeck.length) throw new Error("題庫已空，請補充題目");
       pickedTopic = topicDeck.shift();
       usedTopics.push(pickedTopic);
       tx.update(roomRef, {
@@ -828,11 +832,10 @@ async function drawTopic(roomId, options = {}) {
 }
 
 async function startGame() {
-  console.trace("startGame invoked");
   const roomId = state.currentRoomId;
   const roomData = state.currentRoomData;
   if (!roomId || !roomData) return;
-  if (!isHost()) {
+  if (!isCurrentUserHost()) {
     showToast("只有房主可以開始遊戲");
     return;
   }
@@ -843,7 +846,7 @@ async function startGame() {
   }
   const notReady = players.filter((player) => !player.ready);
   if (notReady.length) {
-    showToast("還有人沒有按下我準備好了");
+    showToast("所有玩家都要按下準備");
     return;
   }
   try {
@@ -851,7 +854,7 @@ async function startGame() {
       const roomRef = doc(db, ROOM_COLLECTION, roomId);
       const roomSnap = await tx.get(roomRef);
       if (!roomSnap.exists()) throw new Error("房間不存在");
-      const data = roomSnap.data();
+      const data = roomSnap.data() || {};
       const playerIds = Array.isArray(data.playerIds) ? [...data.playerIds] : [];
       if (!playerIds.length) throw new Error("房間內沒有玩家");
       const playersRef = collection(roomRef, "players");
@@ -866,49 +869,38 @@ async function startGame() {
           data: playerSnap.data() || {}
         });
       }
-      if (!participantEntries.length) {
-        throw new Error("房間沒有可用玩家");
-      }
-      let deck = Array.isArray(data.wordDeck) ? [...data.wordDeck] : [];
-      const requiredCards = participantEntries.length * 13;
-      if (deck.length < requiredCards) {
-        deck = ensureWordSupply(deck, requiredCards + 20);
+      if (!participantEntries.length) throw new Error("找不到可用的玩家資料");
+      let wordDeck = Array.isArray(data.wordDeck) ? [...data.wordDeck] : [];
+      const requiredCards = participantEntries.length * INITIAL_HAND_SIZE;
+      if (wordDeck.length < requiredCards) {
+        wordDeck = ensureWordSupply(wordDeck, requiredCards + 20);
       }
       const judgeEntry = participantEntries[Math.floor(Math.random() * participantEntries.length)];
       const judgeId = judgeEntry.id;
       const judgeNickname = judgeEntry.data.nickname || null;
-      const playerUpdates = [];
       participantEntries.forEach((entry) => {
         const hand = Array.isArray(entry.data.hand) ? [...entry.data.hand] : [];
-        const needed = Math.max(0, 13 - hand.length);
+        const needed = Math.max(0, INITIAL_HAND_SIZE - hand.length);
         if (needed > 0) {
-          if (deck.length < needed) {
-            throw new Error("牌庫字數不足，無法補齊 13 張手牌");
+          if (wordDeck.length < needed) {
+            throw new Error("牌庫不足，無法補齊手牌");
           }
-          hand.push(...deck.splice(0, needed));
+          hand.push(...wordDeck.splice(0, needed));
         }
-        playerUpdates.push({
-          ref: entry.ref,
-          payload: {
-            hand,
-            pendingDiscard: 0,
-            ready: false,
-            isHost: false,
-            lastActive: serverTimestamp()
-          }
+        tx.update(entry.ref, {
+          hand,
+          pendingDiscard: 0,
+          ready: false,
+          isHost: entry.id === data.hostId,
+          lastActive: serverTimestamp()
         });
-      });
-      playerUpdates.forEach((update) => {
-        tx.update(update.ref, update.payload);
       });
       tx.update(roomRef, {
         judgeId,
         judgeNickname,
-        wordDeck: deck,
+        wordDeck,
         currentTopic: "",
         phase: "in_game",
-        hostId: null,
-        hostNickname: null,
         updatedAt: serverTimestamp()
       });
     });
@@ -922,7 +914,7 @@ async function startGame() {
     }
     state.viewMode = "room";
     showRoomView();
-    showToast("遊戲開始！已抽出第一題，準備對決");
+    showToast("遊戲開始！");
   } catch (error) {
     console.error(error);
     showToast(error.message || "開始遊戲失敗");
@@ -980,7 +972,7 @@ async function resetRoom(roomId) {
 
 async function giveYellowCard(roomId, playerId) {
   // Only judge may award a yellow card during discard phase (or playing)
-  if (!isJudge()) {
+  if (!isCurrentUserJudge()) {
     showToast("只有裁判可以頒發黃牌");
     return;
   }
@@ -1017,7 +1009,7 @@ async function giveYellowCard(roomId, playerId) {
       // increment yellow card for target
       tx.update(targetPlayerRef, { yellowCards: nextCount });
 
-      // reset pendingDiscard for all players to 0 and enforce max 13 hand size
+      // reset pendingDiscard for all players and clamp hands back to the baseline size
       const playerIdsAfter = Array.isArray(roomData.playerIds) ? [...roomData.playerIds] : [];
       let wordDeck = Array.isArray(roomData.wordDeck) ? [...roomData.wordDeck] : [];
       for (const pid of playerIdsAfter) {
@@ -1026,9 +1018,9 @@ async function giveYellowCard(roomId, playerId) {
         if (!pSnap.exists()) continue;
         const pData = pSnap.data() || {};
         const hand = Array.isArray(pData.hand) ? [...pData.hand] : [];
-        // if player has more than 13 cards, randomly discard extra back to wordDeck
-        if (hand.length > 13) {
-          const excess = hand.length - 13;
+        // if a player has more than the baseline hand size, randomly discard the extras back to the word deck
+        if (hand.length > INITIAL_HAND_SIZE) {
+          const excess = hand.length - INITIAL_HAND_SIZE;
           for (let i = 0; i < excess; i += 1) {
             const idx = Math.floor(Math.random() * hand.length);
             const [removed] = hand.splice(idx, 1);
@@ -1082,7 +1074,7 @@ async function giveYellowCard(roomId, playerId) {
 }
 
 async function kickPlayer(roomId, playerId) {
-  if (!isHost()) {
+  if (!isCurrentUserHost()) {
     showToast("只有房主可以移除玩家");
     return;
   }
@@ -1285,10 +1277,10 @@ function updateRoomPanel() {
   btnLeave.disabled = !player;
   btnToggleReady.disabled = !player;
   btnToggleReady.textContent = player?.ready ? "取消準備" : "我準備好了";
-  btnResetReady.disabled = !isHost() || !totalPlayers;
+  btnResetReady.disabled = !isCurrentUserHost() || !totalPlayers;
   if (btnStartGame) {
-    btnStartGame.classList.toggle("hidden", !isHost());
-    btnStartGame.disabled = !isHost() || !allReady || !enoughPlayers;
+    btnStartGame.classList.toggle("hidden", !isCurrentUserHost());
+    btnStartGame.disabled = !isCurrentUserHost() || !allReady || !enoughPlayers;
   }
 
   renderPlayerTable(state.playerList);
@@ -1326,9 +1318,9 @@ function renderPlayerTable(players) {
     const row = document.createElement("tr");
     const isHostPlayer = player.id === state.currentRoomData?.hostId;
     const isJudgePlayer = player.id === state.currentRoomData?.judgeId;
-    let role = isJudgePlayer ? "Judge" : "Player";
+    let role = isJudgePlayer ? "裁判" : "玩家";
     if (isHostPlayer) {
-      role = `Host/${role}`;
+      role = `房主/${role}`;
     }
     const status = player.ready ? "✅ 準備完成" : "⏳ 等待中";
     const handCount = typeof player.handCount === "number" ? player.handCount : 0;
@@ -1349,7 +1341,7 @@ function renderPlayerTable(players) {
       btn.textContent = player.ready ? "取消準備" : "我要準備";
       btn.addEventListener("click", () => toggleReady(state.currentRoomId, !player.ready));
       actionsCell.appendChild(btn);
-    } else if (isHost()) {
+    } else if (isCurrentUserHost()) {
       const yellowBtn = document.createElement("button");
       yellowBtn.className = "ghost";
       yellowBtn.textContent = "給黃牌";
@@ -1423,7 +1415,7 @@ function renderSubmissions() {
   // DEBUG: help identify why judge vote button may not appear in UI
   try {
     console.debug("renderSubmissions:", {
-      isJudge: Boolean(isJudge()),
+      isJudge: Boolean(isCurrentUserJudge()),
       submissionCount: state.submissionList.length,
       activePlayersCount: activePlayers.length,
       allSubmitted,
@@ -1434,7 +1426,7 @@ function renderSubmissions() {
   }
 
   // judge toolbar: toggle into vote-selection mode (only for judge)
-  if (isJudge()) {
+  if (isCurrentUserJudge()) {
     const toolbar = document.createElement('li');
     toolbar.className = 'card';
     toolbar.style.display = 'flex';
@@ -1472,7 +1464,7 @@ function renderSubmissions() {
       <div style="font-size:0.95rem;color:var(--ink-strong);margin-top:.25rem;">${filled}</div>
       <div style="margin-top:.35rem;color:var(--ink-muted);">出牌：${word}</div>
     `;
-    if (isJudge()) {
+    if (isCurrentUserJudge()) {
       if (state.judgeConfirmingVote) {
         const pickBtn = document.createElement('button');
         pickBtn.className = 'primary';
@@ -1579,7 +1571,7 @@ async function updateSubmitControls() {
     if (!btn) return;
 
     // Judges must not see or use the submit button
-    if (isJudge()) {
+    if (isCurrentUserJudge()) {
       btn.disabled = true;
       btn.classList.add('hidden');
       return;
@@ -1678,7 +1670,7 @@ confirmVoteOk?.addEventListener('click', async () => {
 // When user clicks the confirm button, open the preview modal instead of submitting immediately
 btnConfirmPlay?.addEventListener("click", () => {
   // judges cannot submit
-  if (isJudge()) {
+  if (isCurrentUserJudge()) {
     showToast("裁判不得出牌");
     return;
   }
@@ -1913,7 +1905,7 @@ function handleHandCardClick(event) {
   const item = event.target.closest("li.card");
   if (!item || !item.dataset.handKey) return;
   // judges are not allowed to play
-  if (isJudge()) {
+  if (isCurrentUserJudge()) {
     showToast("裁判不得出牌");
     return;
   }
@@ -2052,11 +2044,11 @@ function closeJoinDialog() {
   joinDialog?.classList.add("hidden");
 }
 
-function isHost() {
+function isCurrentUserHost() {
   return state.currentRoomData && state.currentRoomData.hostId === state.clientId;
 }
 
-function isJudge() {
+function isCurrentUserJudge() {
   return state.currentRoomData && state.currentRoomData.judgeId === state.clientId;
 }
 
@@ -2084,7 +2076,7 @@ async function ensureDiscardPhaseIfNeeded() {
       if (rData.phase === "discard") return;
       const playersRef = collection(roomRef, "players");
       for (const pid of activePlayers) {
-        tx.update(doc(playersRef, pid), { pendingDiscard: 3, lastActive: serverTimestamp() });
+        tx.update(doc(playersRef, pid), { pendingDiscard: Math.max(0, ROUND_TARGET_HAND_SIZE - (INITIAL_HAND_SIZE + 1)), lastActive: serverTimestamp() });
       }
       tx.update(roomRef, { phase: "discard", updatedAt: serverTimestamp() });
     });
