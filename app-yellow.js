@@ -725,18 +725,22 @@ async function giveYellowCard(roomId, playerId) {
   }
   try {
     await runTransaction(db, async (tx) => {
+      const roomRef = doc(db, ROOM_COLLECTION, roomId);
       const playerRef = doc(db, ROOM_COLLECTION, roomId, "players", playerId);
       const snap = await tx.get(playerRef);
       if (!snap.exists()) throw new Error("找不到玩家");
       const data = snap.data();
       const nextCount = (data.yellowCards || 0) + 1;
       tx.update(playerRef, { yellowCards: nextCount });
+      const roomUpdates = {
+        judgeId: playerId,
+        judgeNickname: data.nickname || null,
+        updatedAt: serverTimestamp()
+      };
       if (nextCount >= 3) {
-        tx.update(doc(db, ROOM_COLLECTION, roomId), {
-          phase: "finished",
-          updatedAt: serverTimestamp()
-        });
+        roomUpdates.phase = "finished";
       }
+      tx.update(roomRef, roomUpdates);
     });
   } catch (error) {
     console.error(error);
