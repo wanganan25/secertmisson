@@ -1422,6 +1422,19 @@ function renderSubmissions() {
     return p && Number(p.pendingDiscard) === 0;
   });
 
+  // DEBUG: help identify why judge vote button may not appear in UI
+  try {
+    console.debug("renderSubmissions:", {
+      isJudge: Boolean(isJudge()),
+      submissionCount: state.submissionList.length,
+      activePlayersCount: activePlayers.length,
+      allSubmitted,
+      allDiscarded
+    });
+  } catch (e) {
+    // ignore
+  }
+
   // render anonymous submissions; the judge will see the give button only when allSubmitted and allDiscarded are true
   state.submissionList.forEach((submission) => {
     const li = document.createElement("li");
@@ -1435,23 +1448,28 @@ function renderSubmissions() {
       <div style="margin-top:.35rem;color:var(--ink-muted);">出牌：${word}</div>
     `;
     // only show award button to the judge and only after all submissions received and all players have discarded
-    if (isJudge()) {
-      const button = document.createElement("button");
-      button.className = "ghost";
-      button.style.marginTop = ".35rem";
-      if (allDiscarded) {
-        button.textContent = "給這個答案黃牌";
-        button.disabled = false;
-        button.title = "選擇此答案給予黃牌";
-        button.addEventListener("click", () => giveYellowCard(state.currentRoomId, submission.playerId));
-      } else if (allSubmitted) {
-        // all submitted but not all discarded yet
-        button.textContent = "等待玩家完成棄牌";
-        button.disabled = true;
-        button.title = "尚有玩家尚未完成棄牌，裁判請耐心等待";
+      if (isJudge()) {
+        const button = document.createElement("button");
+        button.className = "ghost";
+        button.style.marginTop = ".35rem";
+        if (allDiscarded) {
+          button.textContent = "給這個答案黃牌";
+          button.disabled = false;
+          button.title = "選擇此答案給予黃牌";
+          button.addEventListener("click", () => giveYellowCard(state.currentRoomId, submission.playerId));
+        } else if (allSubmitted) {
+          // all submitted but not all discarded yet
+          button.textContent = "等待玩家完成棄牌";
+          button.disabled = true;
+          button.title = "尚有玩家尚未完成棄牌，裁判請耐心等待";
+        } else {
+          // submissions not yet complete - show a disabled hint so judge knows where the button will appear
+          button.textContent = "尚未收齊投稿";
+          button.disabled = true;
+          button.title = "尚未收齊所有投稿，投稿完成後會顯示投票按鈕";
+        }
+        li.appendChild(button);
       }
-      li.appendChild(button);
-    }
     activityLogEl.appendChild(li);
   });
 }
@@ -1540,6 +1558,27 @@ confirmSubmitOk?.addEventListener("click", async () => {
   // call submitTopic with selected index (modified version handles optional index)
   await submitTopic(null, candidate.index);
   closeConfirmSubmit();
+});
+
+// When user clicks the confirm button, open the preview modal instead of submitting immediately
+btnConfirmPlay?.addEventListener("click", () => {
+  // determine selected index from the dropdown
+  const selectedIndex = handSelect ? Number(handSelect.value) : -1;
+  if (Number.isNaN(selectedIndex) || selectedIndex < 0 || selectedIndex >= state.myHand.length) {
+    showToast("請先從下拉選擇一張手牌或點選手牌作為投稿");
+    return;
+  }
+  const chosenWord = state.myHand[selectedIndex];
+  if (!chosenWord) {
+    showToast("選擇的手牌無效");
+    return;
+  }
+  // build filled topic preview
+  let filledTopic = state.topicTemplate || "";
+  if (Array.isArray(state.topicSegments) && state.topicSegments.length) {
+    filledTopic = state.topicSegments.map((seg, i) => seg + (state.topicFillValues[i] || "______")).join("");
+  }
+  openConfirmSubmit(selectedIndex, chosenWord, filledTopic);
 });
 
 async function submitTopic(event) {
@@ -1762,6 +1801,16 @@ function handleHandCardClick(event) {
   state.usedHandKeys.add(handKey);
   markHandCardUsed(item, true);
   updateTopicDisplay();
+
+  // 同步選擇到下拉選單，但不立即提交；使用者需按下「確定出牌」才會真正投稿
+  try {
+    const idx = Number(item.dataset.handIndex);
+    if (!Number.isNaN(idx) && handSelect) {
+      handSelect.value = String(idx);
+    }
+  } catch (e) {
+    // ignore
+  }
 }
 
 function handleTopicBlankClick(event) {
