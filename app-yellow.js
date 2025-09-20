@@ -794,10 +794,8 @@ async function drawTopic(roomId, options = {}) {
           }
           hand.push(...extras);
         }
-        const nextPending = Math.max(0, hand.length - (INITIAL_HAND_SIZE + 1));
         tx.update(playerRef, {
           hand,
-          pendingDiscard: nextPending,
           lastActive: serverTimestamp()
         });
       }
@@ -1829,7 +1827,7 @@ async function discardSelectedCard(element) {
       const hand = Array.isArray(playerData.hand) ? [...playerData.hand] : [];
       if (index < 0 || index >= hand.length) throw new Error("無法棄牌，手牌不同步");
       const [removedCard] = hand.splice(index, 1);
-      const nextPending = Math.max(0, (playerData.pendingDiscard || 0) - 1);
+      const nextPending = Math.max(0, hand.length - INITIAL_HAND_SIZE);
       const roomSnap = await tx.get(roomRef);
       if (!roomSnap.exists()) throw new Error("房間不存在");
       const roomData = roomSnap.data() || {};
@@ -2076,7 +2074,13 @@ async function ensureDiscardPhaseIfNeeded() {
       if (rData.phase === "discard") return;
       const playersRef = collection(roomRef, "players");
       for (const pid of activePlayers) {
-        tx.update(doc(playersRef, pid), { pendingDiscard: Math.max(0, ROUND_TARGET_HAND_SIZE - (INITIAL_HAND_SIZE + 1)), lastActive: serverTimestamp() });
+        const playerRef = doc(playersRef, pid);
+        const playerSnap = await tx.get(playerRef);
+        if (!playerSnap.exists()) continue;
+        const playerData = playerSnap.data() || {};
+        const hand = Array.isArray(playerData.hand) ? playerData.hand : [];
+        const pending = Math.max(0, hand.length - INITIAL_HAND_SIZE);
+        tx.update(playerRef, { pendingDiscard: pending, lastActive: serverTimestamp() });
       }
       tx.update(roomRef, { phase: "discard", updatedAt: serverTimestamp() });
     });
