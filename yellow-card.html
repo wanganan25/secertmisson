@@ -307,13 +307,13 @@
       <h2 id="join-form-title">加入房間</h2>
       <p id="join-room-name" class="subtext" style="margin:0;color:var(--text-secondary);"></p>
       <p id="join-form-hint">請輸入暱稱後加入。若您已在其他房間，將自動移動到新的房間。</p>
-      <label for="nickname">暱稱
-        <input id="nickname" name="nickname" maxlength="16" autocomplete="off" required>
+      <label for="nickname-input">暱稱
+        <input id="nickname-input" name="nickname" maxlength="16" autocomplete="off" required>
       </label>
       <p class="error-text hidden" id="join-error" role="alert"></p>
       <div class="modal-actions">
-        <button type="button" class="btn-secondary" data-close>取消</button>
-        <button type="submit" class="btn-primary">加入房間</button>
+        <button type="button" class="btn-secondary" id="btn-cancel-join">取消</button>
+        <button type="button" class="btn-primary" id="btn-confirm-join">加入房間</button>
       </div>
     </form>
   </div>
