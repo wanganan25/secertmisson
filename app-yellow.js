@@ -1750,7 +1750,10 @@ async function submitTopic(event, selectedIndexParam) {
       // 新增 submission doc（使用 playerId 作為 doc id，避免重複投稿）
       tx.set(doc(submissionsRef, state.clientId), payload);
       tx.update(playerRef, { hand, lastActive: serverTimestamp() });
-      // NOTE: per request, do NOT write recentActivities here. Keep submissions anonymous only.
+      tx.update(roomRef, {
+        recentActivities: arrayUnion('匿名投稿已送出'),
+        updatedAt: serverTimestamp()
+      });
     });
     // 本地更新 state
     state.myHand = state.myHand.filter((_, idx) => idx !== selectedIndex);
