@@ -238,7 +238,7 @@ function handleAddTopic() {
 
 
 
-roomGrid.addEventListener("click", (event) => {
+roomGrid?.addEventListener("click", (event) => {
   const resetButton = event.target.closest("button[data-reset-room-id]");
   if (resetButton) {
     const roomId = resetButton.dataset.resetRoomId;
