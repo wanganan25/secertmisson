@@ -1324,11 +1324,11 @@ function renderPlayerTable(players) {
 
   players.forEach((player) => {
     const row = document.createElement("tr");
-    const isHost = player.id === state.currentRoomData?.hostId;
-    const isJudge = player.id === state.currentRoomData?.judgeId;
-    let role = isJudge ? "裁判" : "玩家";
-    if (isHost) {
-      role = `房主／${role}`;
+    const isHostPlayer = player.id === state.currentRoomData?.hostId;
+    const isJudgePlayer = player.id === state.currentRoomData?.judgeId;
+    let role = isJudgePlayer ? "Judge" : "Player";
+    if (isHostPlayer) {
+      role = `Host/${role}`;
     }
     const status = player.ready ? "✅ 準備完成" : "⏳ 等待中";
     const handCount = typeof player.handCount === "number" ? player.handCount : 0;
