@@ -71,6 +71,8 @@ const state = {
   topicFillValues: [],
   topicAssignments: new Map(),
   usedHandKeys: new Set(),
+  pendingDiscard: 0,
+  discardMode: false,
   viewMode: localStorage.getItem("yellow-card-active-room") ? "room" : "lobby"
 };
 
@@ -107,6 +109,9 @@ const supplyWordInput = document.getElementById("input-new-word");
 const supplyTopicInput = document.getElementById("input-new-topic");
 const btnAddWord = document.getElementById("btn-add-word");
 const btnAddTopic = document.getElementById("btn-add-topic");
+const discardToolbar = document.getElementById("discard-toolbar");
+const discardStatusEl = document.getElementById("discard-status");
+const btnToggleDiscard = document.getElementById("btn-toggle-discard");
 
 btnBack?.addEventListener("click", () => {
   state.viewMode = "lobby";
@@ -137,6 +142,16 @@ btnStartGame?.addEventListener("click", startGame);
 
 btnAddWord?.addEventListener("click", handleAddWord);
 btnAddTopic?.addEventListener("click", handleAddTopic);
+btnToggleDiscard?.addEventListener("click", () => {
+  if (state.pendingDiscard <= 0) {
+    state.discardMode = false;
+    updateDiscardUI();
+    return;
+  }
+  state.discardMode = !state.discardMode;
+  updateDiscardUI();
+  showToast(state.discardMode ? "點選要棄掉的手牌" : "已離開棄牌模式");
+});
 
 function ensureWordSupply(deck, minSize) {
   const target = Math.max(minSize, MIN_WORD_SUPPLY);
@@ -364,10 +379,15 @@ function subscribeToRoom(roomId) {
         isHost: !!data.isHost,
         joinedAt: data.joinedAt,
         lastActive: data.lastActive,
-        handCount: hand.length
+        handCount: hand.length,
+        pendingDiscard: Number(data.pendingDiscard) || 0
       };
       if (docSnap.id === state.clientId) {
         state.myHand = hand;
+        state.pendingDiscard = entry.pendingDiscard;
+        if (state.pendingDiscard <= 0) {
+          state.discardMode = false;
+        }
         entry.hand = hand;
       }
       list.push(entry);
@@ -414,8 +434,11 @@ function unsubscribeRoomStreams() {
   state.topicFillValues = [];
   state.topicAssignments = new Map();
   state.usedHandKeys = new Set();
+  state.pendingDiscard = 0;
+  state.discardMode = false;
   renderHand();
   updateTopicDisplay();
+  updateDiscardUI();
 }
 
 async function confirmJoin() {
@@ -545,10 +568,14 @@ function cleanupAfterLeave() {
   state.currentRoomId = null;
   state.currentRoomData = null;
   state.viewMode = "lobby";
+  state.myHand = [];
+  state.pendingDiscard = 0;
+  state.discardMode = false;
+  renderHand();
+  updateDiscardUI();
   localStorage.removeItem("yellow-card-active-room");
   showLobbyView();
   renderLobby();
-  renderHand();
 }
 
 
@@ -603,22 +630,57 @@ async function drawTopic(roomId, options = {}) {
       const roomSnap = await tx.get(roomRef);
       if (!roomSnap.exists()) throw new Error("房間不存在");
       const data = roomSnap.data();
-      let deck = Array.isArray(data.topicDeck) ? [...data.topicDeck] : [];
-      let used = Array.isArray(data.usedTopics) ? [...data.usedTopics] : [];
-      if (!deck.length) {
-        if (!used.length) {
-          deck = ensureTopicSupply([], 20);
-        } else {
-          deck = ensureTopicSupply([...used], 20);
-          used = [];
+      let topicDeck = Array.isArray(data.topicDeck) ? [...data.topicDeck] : [];
+      let usedTopics = Array.isArray(data.usedTopics) ? [...data.usedTopics] : [];
+      let wordDeck = Array.isArray(data.wordDeck) ? [...data.wordDeck] : [];
+      const playerIds = Array.isArray(data.playerIds) ? [...data.playerIds] : [];
+      const judgeId = data.judgeId || null;
+      const activePlayers = playerIds.filter((id) => id !== judgeId);
+      const extraPerPlayer = 3;
+      const playersRef = collection(roomRef, "players");
+
+      const extraNeeded = activePlayers.length * extraPerPlayer;
+      if (extraNeeded > 0) {
+        if (wordDeck.length < extraNeeded) {
+          wordDeck = ensureWordSupply(wordDeck, wordDeck.length + extraNeeded + 20);
+        }
+        for (const playerId of activePlayers) {
+          const playerRef = doc(playersRef, playerId);
+          const playerSnap = await tx.get(playerRef);
+          if (!playerSnap.exists()) continue;
+          const playerData = playerSnap.data();
+          const hand = Array.isArray(playerData.hand) ? [...playerData.hand] : [];
+          const extras = [];
+          for (let i = 0; i < extraPerPlayer; i += 1) {
+            if (!wordDeck.length) break;
+            extras.push(wordDeck.shift());
+          }
+          if (extras.length) {
+            hand.push(...extras);
+            tx.update(playerRef, {
+              hand,
+              pendingDiscard: (playerData.pendingDiscard || 0) + extras.length,
+              lastActive: serverTimestamp()
+            });
+          }
         }
       }
-      if (!deck.length) throw new Error("題庫不足，請先補充題目");
-      pickedTopic = deck.shift();
-      used.push(pickedTopic);
+
+      if (!topicDeck.length) {
+        if (!usedTopics.length) {
+          topicDeck = ensureTopicSupply([], 20);
+        } else {
+          topicDeck = ensureTopicSupply([...usedTopics], 20);
+          usedTopics = [];
+        }
+      }
+      if (!topicDeck.length) throw new Error("題庫不足，請先補充題目");
+      pickedTopic = topicDeck.shift();
+      usedTopics.push(pickedTopic);
       tx.update(roomRef, {
-        topicDeck: deck,
-        usedTopics: used,
+        topicDeck,
+        usedTopics,
+        wordDeck,
         currentTopic: pickedTopic,
         phase: "playing",
         updatedAt: serverTimestamp()
@@ -685,6 +747,7 @@ async function startGame() {
         }
         tx.update(playerRef, {
           hand,
+          pendingDiscard: 0,
           ready: false,
           lastActive: serverTimestamp()
         });
@@ -699,10 +762,15 @@ async function startGame() {
       });
     });
     await clearSubmissions(roomId);
-    await drawTopic(roomId, { force: true });
+    const firstTopic = await drawTopic(roomId, { force: true });
+    if (firstTopic) {
+      state.currentRoomData = { ...(state.currentRoomData || {}), currentTopic: firstTopic };
+      setTopicTemplate(firstTopic);
+      updateTopicDisplay();
+    }
     state.viewMode = "room";
     showRoomView();
-    showToast("遊戲開始！已指派裁判並補滿手牌");
+    showToast("遊戲開始！已抽出第一題，準備對決");
   } catch (error) {
     console.error(error);
     showToast(error.message || "開始遊戲失敗");
@@ -851,10 +919,30 @@ async function kickPlayer(roomId, playerId) {
 }
 async function clearSubmissions(roomId) {
   try {
-    const submissionsRef = collection(doc(db, ROOM_COLLECTION, roomId), "submissions");
+    const roomRef = doc(db, ROOM_COLLECTION, roomId);
+    const submissionsRef = collection(roomRef, "submissions");
     const existing = await getDocs(submissionsRef);
-    const removals = existing.docs.map((docSnap) => deleteDoc(docSnap.ref));
-    await Promise.all(removals);
+    if (existing.empty) {
+      return;
+    }
+    const submissions = existing.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    await runTransaction(db, async (tx) => {
+      const roomSnap = await tx.get(roomRef);
+      if (!roomSnap.exists()) return;
+      const data = roomSnap.data() || {};
+      const wordDeck = Array.isArray(data.wordDeck) ? [...data.wordDeck] : [];
+      submissions.forEach((submission) => {
+        const word = typeof submission.word === "string" ? submission.word.trim() : "";
+        if (word) {
+          wordDeck.push(word);
+        }
+        tx.delete(doc(submissionsRef, submission.id));
+      });
+      tx.update(roomRef, {
+        wordDeck,
+        updatedAt: serverTimestamp()
+      });
+    });
   } catch (error) {
     console.error(error);
   }
@@ -1109,20 +1197,30 @@ function renderSubmissions() {
 function renderHand() {
   if (!handCard) return;
   const inRoom = !!state.currentRoomId;
-  handCard.classList.toggle("hidden", !inRoom);
-  if (!inRoom) {
+  const phase = state.currentRoomData?.phase;
+  const inGame = phase === "in_game";
+  const shouldShow = inRoom && inGame;
+  if (!shouldShow) {
+    state.discardMode = false;
+    state.pendingDiscard = state.pendingDiscard || 0;
+  }
+  handCard.classList.toggle("hidden", !shouldShow);
+  if (!shouldShow) {
     handCountEl.textContent = "0 張";
     handListEl.innerHTML = "";
     handEmptyEl.classList.remove("hidden");
+    updateDiscardUI();
     return;
   }
 
   syncTopicAssignmentsWithHand();
 
+  state.discardMode = state.discardMode && state.pendingDiscard > 0;
   const hasHand = Array.isArray(state.myHand) && state.myHand.length > 0;
   handCountEl.textContent = `${state.myHand.length} 張`;
   handEmptyEl.classList.toggle("hidden", hasHand);
   handListEl.innerHTML = "";
+  updateDiscardUI();
 
   if (!hasHand) return;
   state.myHand.forEach((word, index) => {
@@ -1136,6 +1234,9 @@ function renderHand() {
     li.addEventListener("click", handleHandCardClick);
     if (state.usedHandKeys.has(handKey)) {
       markHandCardUsed(li, true);
+    }
+    if (state.discardMode) {
+      li.classList.add("discard-mode");
     }
     handListEl.appendChild(li);
   });
@@ -1154,7 +1255,94 @@ function markHandCardUsed(element, used) {
   }
 }
 
-function syncTopicAssignmentsWithHand() {
+function updateDiscardUI() {
+  if (!discardToolbar || !discardStatusEl || !btnToggleDiscard) return;
+  const needDiscard = state.pendingDiscard > 0;
+  const active = state.discardMode && needDiscard;
+  const shouldShow = needDiscard || state.discardMode;
+  discardToolbar.classList.toggle("hidden", !shouldShow);
+  if (!shouldShow) {
+    discardStatusEl.textContent = "目前無需棄牌";
+    btnToggleDiscard.textContent = "選擇棄牌";
+    btnToggleDiscard.disabled = true;
+    return;
+  }
+  if (needDiscard) {
+    discardStatusEl.textContent = active
+      ? `請再棄掉 ${state.pendingDiscard} 張`
+      : `需棄牌 ${state.pendingDiscard} 張`;
+    btnToggleDiscard.disabled = false;
+    btnToggleDiscard.textContent = active ? "退出棄牌" : "開始棄牌";
+  } else {
+    discardStatusEl.textContent = "棄牌完成";
+    btnToggleDiscard.disabled = true;
+    btnToggleDiscard.textContent = "開始棄牌";
+  }
+}
+
+async function discardSelectedCard(element) {
+  if (!state.currentRoomId) return;
+  if (state.pendingDiscard <= 0) {
+    state.discardMode = false;
+    updateDiscardUI();
+    return;
+  }
+  const index = Number(element.dataset.handIndex);
+  if (Number.isNaN(index)) return;
+  let result = null;
+  try {
+    result = await runTransaction(db, async (tx) => {
+      const roomRef = doc(db, ROOM_COLLECTION, state.currentRoomId);
+      const playerRef = doc(roomRef, "players", state.clientId);
+      const playerSnap = await tx.get(playerRef);
+      if (!playerSnap.exists()) throw new Error("找不到玩家資料");
+      const playerData = playerSnap.data() || {};
+      const hand = Array.isArray(playerData.hand) ? [...playerData.hand] : [];
+      if (index < 0 || index >= hand.length) throw new Error("無法棄牌，手牌不同步");
+      const [removedCard] = hand.splice(index, 1);
+      const nextPending = Math.max(0, (playerData.pendingDiscard || 0) - 1);
+      const roomSnap = await tx.get(roomRef);
+      if (!roomSnap.exists()) throw new Error("房間不存在");
+      const roomData = roomSnap.data() || {};
+      let wordDeck = Array.isArray(roomData.wordDeck) ? [...roomData.wordDeck] : [];
+      if (removedCard) {
+        wordDeck.push(removedCard);
+      }
+      tx.update(playerRef, {
+        hand,
+        pendingDiscard: nextPending,
+        lastActive: serverTimestamp()
+      });
+      tx.update(roomRef, {
+        wordDeck,
+        updatedAt: serverTimestamp()
+      });
+      return { hand, nextPending };
+    });
+  } catch (error) {
+    console.error(error);
+    showToast(error.message || "棄牌失敗");
+    return;
+  }
+  state.myHand = Array.isArray(result?.hand) ? result.hand : [];
+  state.pendingDiscard = result?.nextPending ?? 0;
+  state.discardMode = state.pendingDiscard > 0;
+  if (Array.isArray(state.topicFillValues) && state.topicFillValues.length) {
+    state.topicFillValues = state.topicFillValues.map(() => "");
+  }
+  state.topicAssignments = new Map();
+  state.usedHandKeys = new Set();
+  updateTopicDisplay();
+  renderHand();
+  updateDiscardUI();
+  if (state.pendingDiscard > 0) {
+    showToast(`還需棄牌 ${state.pendingDiscard} 張`);
+  } else {
+    showToast("棄牌完成");
+  }
+}
+
+function syncTopicAssignmentsWithHand"() {
   if (!Array.isArray(state.myHand)) {
     state.usedHandKeys = new Set();
     state.topicAssignments = new Map();
@@ -1187,6 +1375,10 @@ function syncTopicAssignmentsWithHand() {
 function handleHandCardClick(event) {
   const item = event.target.closest("li.card");
   if (!item || !item.dataset.handKey) return;
+  if (state.discardMode) {
+    discardSelectedCard(item);
+    return;
+  }
   const handKey = item.dataset.handKey;
   if (state.usedHandKeys.has(handKey)) {
     showToast("這張黃卡已經使用過");
@@ -1206,6 +1398,7 @@ function handleHandCardClick(event) {
 }
 
 function handleTopicBlankClick(event) {
+(event) {
   const blankEl = event.target.closest("span.topic-blank");
   if (!blankEl) return;
   const index = Number(blankEl.dataset.blankIndex);

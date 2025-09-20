@@ -201,7 +201,6 @@
   <div class="page">
     <header class="hero">
       <h1>迎新黃卡大廳</h1>
-      <a class="ghost-link" href="https://wanganan25.github.io/secertmisson/">返回首頁</a>
     </header>
 
     <main>
@@ -283,12 +282,20 @@
             <h3 style="margin:0;">手牌數</h3>
             <span id="hand-count" class="badge">0 張</span>
           </div>
+          <div id="discard-toolbar" class="subtext hidden" style="margin-top:.8rem;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;color:var(--text-soft);">
+            <span id="discard-status"></span>
+            <button type="button" class="ghost" id="btn-toggle-discard">選擇棄牌</button>
+          </div>
           <div id="hand-empty" class="subtext" style="margin-top:.8rem;color:var(--text-soft);">目前沒有黃卡。</div>
           <ul id="hand-list"></ul>
         </div>
       </section>
     </main>
   </div>
+
+  <footer class="page-footer">
+    <a class="ghost-link" href="https://wanganan25.github.io/secertmisson/">返回主頁</a>
+  </footer>
 
   <div class="modal-backdrop hidden" id="join-dialog" role="dialog" aria-modal="true">
     <form class="modal" id="join-form" aria-labelledby="join-form-title">
