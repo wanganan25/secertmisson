@@ -182,6 +182,13 @@
     .topic-blank.filled { background: var(--accent-soft); }
     .topic-blank:hover { background: rgba(239,71,111,.18); }
 
+    /* candidate visual for selected hand card */
+    #hand-list li.card.candidate {
+      outline: 3px solid var(--accent);
+      box-shadow: 0 8px 30px rgba(239,71,111,.12);
+      transform: translateY(-2px);
+    }
+
     #hand-card .card { background: var(--panel-strong); border-radius: 16px; padding: 1.2rem; box-shadow: var(--shadow); }
     #hand-list { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: .6rem; }
     #hand-list .card { background: rgba(255,255,255,.85); border-radius: 12px; padding: .65rem .8rem; box-shadow: inset 0 0 0 1px rgba(23,33,43,.1); }
@@ -299,9 +306,8 @@
           </div>
           <div id="hand-empty" class="subtext" style="margin-top:.8rem;color:var(--text-soft);">目前沒有黃卡。</div>
               <ul id="hand-list"></ul>
-              <!-- Submit form for playing a card -->
+              <!-- Submit form for playing a card (select removed — choose by clicking a hand card) -->
               <form id="submit-form" style="margin-top:.8rem;display:flex;gap:.6rem;align-items:center;">
-                <select id="hand-select" aria-label="選擇要出的黃卡" style="min-width:180px;padding:.5rem;border-radius:8px;border:1px solid rgba(23,33,43,.08);"></select>
                 <button type="button" id="btn-confirm-play" class="primary">確定出牌</button>
               </form>
         </div>

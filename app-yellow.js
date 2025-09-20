@@ -100,7 +100,8 @@ const activityLogEl = document.getElementById("activity-log");
 const joinDialog = document.getElementById("join-dialog");
 const joinRoomNameEl = document.getElementById("join-room-name");
 const nicknameInput = document.getElementById("nickname-input");
-const nicknameErrorEl = document.getElementById("nickname-error");
+// HTML uses id="join-error" for the join form error paragraph
+const nicknameErrorEl = document.getElementById("join-error");
 const btnConfirmJoin = document.getElementById("btn-confirm-join");
 const btnCancelJoin = document.getElementById("btn-cancel-join");
 const toastEl = document.getElementById("toast");
@@ -1588,6 +1589,12 @@ confirmSubmitOk?.addEventListener("click", async () => {
 
 // When user clicks the confirm button, open the preview modal instead of submitting immediately
 btnConfirmPlay?.addEventListener("click", () => {
+  // judges cannot submit
+  if (isJudge()) {
+    showToast("裁判不得出牌");
+    return;
+  }
+
   // use candidateSubmission set by clicking a hand card
   const candidate = state.candidateSubmission;
   if (!candidate || typeof candidate.index !== "number") {
@@ -1642,6 +1649,13 @@ async function submitTopic(event, selectedIndexParam) {
     // 以 transaction 寫入 submission 並從玩家手牌中移除該張
     await runTransaction(db, async (tx) => {
       const roomRef = doc(db, ROOM_COLLECTION, state.currentRoomId);
+      // server-side check: ensure current player is not judge
+      const roomSnapCheck = await tx.get(roomRef);
+      if (!roomSnapCheck.exists()) throw new Error("房間不存在");
+      const roomDataCheck = roomSnapCheck.data() || {};
+      if ((roomDataCheck.judgeId || null) === state.clientId) {
+        throw new Error("裁判不得投稿");
+      }
       const submissionsRef = collection(roomRef, "submissions");
       const mySubmissionRef = doc(submissionsRef, state.clientId);
       const existingSub = await tx.get(mySubmissionRef);
@@ -1810,6 +1824,12 @@ function syncTopicAssignmentsWithHand() {
 function handleHandCardClick(event) {
   const item = event.target.closest("li.card");
   if (!item || !item.dataset.handKey) return;
+  // judges are not allowed to play
+  if (isJudge()) {
+    showToast("裁判不得出牌");
+    return;
+  }
+
   if (state.discardMode) {
     discardSelectedCard(item);
     return;
