@@ -278,8 +278,6 @@ function handleAddWord() {
     });
 }
 
-
-
 function handleAddTopic() {
   const value = (supplyTopicInput?.value || "").trim();
   if (!value) {
@@ -371,8 +369,6 @@ async function handleRemoveDeckCard(value, type) {
     showToast(error.message || "移除卡片失敗");
   }
 }
-
-
 
 roomGrid?.addEventListener("click", (event) => {
   const resetButton = event.target.closest("button[data-reset-room-id]");
@@ -594,7 +590,6 @@ async function confirmJoin() {
       const playersRef = collection(roomRef, "players");
       const meRef = doc(playersRef, state.clientId);
 
-
       if (!isAlready) {
         if (playerIds.length >= capacity) throw new Error("房間已滿員");
         playerIds.push(state.clientId);
@@ -707,7 +702,6 @@ function cleanupAfterLeave() {
   showLobbyView();
   renderLobby();
 }
-
 
 async function toggleReady(roomId, nextReady) {
   const player = state.playerMap.get(state.clientId);
@@ -924,6 +918,7 @@ async function startGame() {
       state.currentRoomData = { ...(state.currentRoomData || {}), currentTopic: firstTopic };
       setTopicTemplate(firstTopic);
       updateTopicDisplay();
+      renderTopic(state.currentRoomData);
     }
     state.viewMode = "room";
     showRoomView();
@@ -933,8 +928,6 @@ async function startGame() {
     showToast(error.message || "開始遊戲失敗");
   }
 }
-
-
 
 async function resetRoom(roomId) {
   const room = state.rooms.find((r) => r.id === roomId);
@@ -984,7 +977,6 @@ async function resetRoom(roomId) {
     showToast(error.message || "重製房間失敗");
   }
 }
-
 
 async function giveYellowCard(roomId, playerId) {
   // Only judge may award a yellow card during discard phase (or playing)
@@ -1173,8 +1165,6 @@ async function clearSubmissions(roomId) {
   }
 }
 
-
-
 function showLobbyView() {
   if (heroEl) heroEl.classList.remove("hidden");
   if (lobbyPanel) lobbyPanel.classList.remove("hidden");
@@ -1198,7 +1188,6 @@ if (state.viewMode === "room") {
 } else {
   showLobbyView();
 }
-
 
 function renderLobby() {
   if (state.viewMode === "room") {
@@ -1335,9 +1324,12 @@ function renderPlayerTable(players) {
 
   players.forEach((player) => {
     const row = document.createElement("tr");
-    const role = player.id === state.currentRoomData?.hostId
-      ? "房主"
-      : (player.id === state.currentRoomData?.judgeId ? "裁判" : "玩家");
+    const isHost = player.id === state.currentRoomData?.hostId;
+    const isJudge = player.id === state.currentRoomData?.judgeId;
+    let role = isJudge ? "裁判" : "玩家";
+    if (isHost) {
+      role = `房主／${role}`;
+    }
     const status = player.ready ? "✅ 準備完成" : "⏳ 等待中";
     const handCount = typeof player.handCount === "number" ? player.handCount : 0;
     row.innerHTML = `
@@ -1363,12 +1355,6 @@ function renderPlayerTable(players) {
       yellowBtn.textContent = "給黃牌";
       yellowBtn.addEventListener("click", () => giveYellowCard(state.currentRoomId, player.id));
       actionsCell.appendChild(yellowBtn);
-
-      const judgeBtn = document.createElement("button");
-      judgeBtn.className = "ghost";
-      judgeBtn.textContent = "設為裁判";
-      judgeBtn.addEventListener("click", () => manualSetJudge(player.id, player.nickname));
-      actionsCell.appendChild(judgeBtn);
 
       const kickBtn = document.createElement("button");
       kickBtn.className = "ghost";
@@ -2061,82 +2047,6 @@ function refreshTopicBlankElements() {
   });
 }
 
-async function manualSetJudge(playerId, nickname) {
-  if (!isHost()) {
-    showToast("只有房主可以指定裁判");
-    return;
-  }
-  const roomId = state.currentRoomId;
-  if (!roomId) {
-    showToast("尚未在房間中");
-    return;
-  }
-  try {
-    let finished = false;
-    await runTransaction(db, async (tx) => {
-      const playerRef = doc(db, ROOM_COLLECTION, roomId, "players", playerId);
-      const snap = await tx.get(playerRef);
-      if (!snap.exists()) throw new Error("找不到該玩家");
-      const data = snap.data() || {};
-      const nextCount = (data.yellowCards || 0) + 1;
-      tx.update(playerRef, { yellowCards: nextCount });
-
-      const roomRef = doc(db, ROOM_COLLECTION, roomId);
-      // 取得所有玩家手牌
-      const playersRef = collection(roomRef, "players");
-      const playersSnap = await getDocs(playersRef);
-      let allHand = [];
-      playersSnap.forEach((docSnap) => {
-        const pdata = docSnap.data();
-        if (Array.isArray(pdata.hand)) {
-          allHand = allHand.concat(pdata.hand);
-        }
-      });
-
-      // 取得原牌庫
-      const roomSnap = await tx.get(roomRef);
-      if (!roomSnap.exists()) throw new Error("房間不存在");
-      const roomData = roomSnap.data() || {};
-      let fullDeck = Array.isArray(roomData.wordDeck) ? [...roomData.wordDeck] : [];
-      // 移除所有已在玩家手上的牌
-      fullDeck = fullDeck.filter((card) => !allHand.includes(card));
-
-      // 準備房間更新
-      const roomUpdates = {
-        judgeId: playerId,
-        judgeNickname: data.nickname || null,
-        wordDeck: fullDeck,
-        updatedAt: serverTimestamp()
-      };
-
-      if (nextCount >= 3) {
-        roomUpdates.phase = "finished";
-        tx.update(roomRef, roomUpdates);
-        finished = true;
-        return;
-      }
-
-      // 將裁判設定
-      tx.update(roomRef, roomUpdates);
-    });
-    // after successful transaction, if game not finished, clear submissions and draw next topic
-    if (!finished) {
-      try {
-        await clearSubmissions(roomId);
-        await drawTopic(roomId, { force: true });
-        showToast("已指定裁判並抽題");
-      } catch (err) {
-        console.error("draw after manualSetJudge failed", err);
-      }
-    } else {
-      showToast("已指定裁判；遊戲結束（該玩家黃牌達上限）。");
-    }
-  } catch (error) {
-    console.error(error);
-    showToast(error.message || "指定裁判失敗");
-  }
-}
-
 function closeJoinDialog() {
   state.pendingJoinRoomId = null;
   joinDialog?.classList.add("hidden");
@@ -2239,11 +2149,4 @@ btnConfirmPlay?.addEventListener("click", () => {
   }
   openConfirmSubmit(selectedIndex, word, filledTopic);
 });
-
-
-
-
-
-
-
 
