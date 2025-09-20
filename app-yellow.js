@@ -404,6 +404,14 @@ nicknameInput?.addEventListener("keydown", (event) => {
   }
 });
 
+function openJoinDialog(roomId, roomName) {
+  state.pendingJoinRoomId = roomId;
+  if (joinRoomNameEl) joinRoomNameEl.textContent = roomName || roomId;
+  if (nicknameInput) nicknameInput.value = state.nickname || "";
+  joinDialog?.classList.remove("hidden");
+  setTimeout(() => nicknameInput?.focus(), 50);
+}
+
 signInAnonymously(auth)
   .then(() => {
     console.info("Firebase anonymous auth established");
