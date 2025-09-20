@@ -95,6 +95,14 @@
       gap: 1rem;
     }
 
+    .supply-header { display: flex; justify-content: space-between; align-items: center; gap: .8rem; flex-wrap: wrap; }
+    .deck-modal { max-width: min(720px, 100%); gap: 1.4rem; }
+    .deck-columns { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+    .deck-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; max-height: 260px; overflow: auto; }
+    .deck-item { display: flex; justify-content: space-between; align-items: center; gap: .6rem; padding: .6rem .75rem; border-radius: 12px; background: rgba(23,33,43,.06); }
+    .deck-empty { color: var(--text-soft); font-style: italic; }
+    .deck-remove { white-space: nowrap; }
+
     .supply-form {
       display: grid;
       gap: .75rem;
@@ -207,7 +215,10 @@
       <section class="panel" id="lobby-panel">
         <div class="lobby">
           <div class="supply-card">
-            <h2 style="margin:0">補充卡片</h2>
+            <div class="supply-header">
+              <h2 style="margin:0">補給牌庫</h2>
+              <button id="btn-open-deck-manager" class="ghost" type="button">管理牌庫</button>
+            </div>
             <p class="subtext" style="margin:0;color:var(--text-soft);">新增卡片會同步到所有房間的牌庫，並自動加入後備清單。</p>
             <div class="supply-form">
               <input id="input-new-word" type="text" maxlength="32" placeholder="輸入新的黃卡字詞">
@@ -296,6 +307,26 @@
   <footer class="page-footer">
     <a class="ghost-link" href="https://wanganan25.github.io/secertmisson/">返回主頁</a>
   </footer>
+
+  <div class="modal-backdrop hidden" id="deck-dialog" role="dialog" aria-modal="true">
+    <div class="modal deck-modal">
+      <h2>牌庫管理</h2>
+      <p class="subtext" style="margin:0;color:var(--text-soft);">所有房間共用同一份黃卡與紫卡。移除後僅影響補給牌堆，玩家手牌不會即時回收。</p>
+      <div class="deck-columns">
+        <section>
+          <h3>黃卡</h3>
+          <ul class="deck-list" id="deck-word-list"></ul>
+        </section>
+        <section>
+          <h3>紫卡</h3>
+          <ul class="deck-list" id="deck-topic-list"></ul>
+        </section>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="ghost" id="btn-close-deck">關閉</button>
+      </div>
+    </div>
+  </div>
 
   <div class="modal-backdrop hidden" id="join-dialog" role="dialog" aria-modal="true">
     <form class="modal" id="join-form" aria-labelledby="join-form-title">

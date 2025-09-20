@@ -12,7 +12,8 @@ import {
   serverTimestamp,
   query,
   orderBy,
-  arrayUnion
+  arrayUnion,
+  arrayRemove
 } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -113,6 +114,12 @@ const discardToolbar = document.getElementById("discard-toolbar");
 const discardStatusEl = document.getElementById("discard-status");
 const btnToggleDiscard = document.getElementById("btn-toggle-discard");
 
+const btnOpenDeckManager = document.getElementById("btn-open-deck-manager");
+const deckDialog = document.getElementById("deck-dialog");
+const btnCloseDeck = document.getElementById("btn-close-deck");
+const deckWordListEl = document.getElementById("deck-word-list");
+const deckTopicListEl = document.getElementById("deck-topic-list");
+
 btnBack?.addEventListener("click", () => {
   state.viewMode = "lobby";
   showLobbyView();
@@ -142,6 +149,13 @@ btnStartGame?.addEventListener("click", startGame);
 
 btnAddWord?.addEventListener("click", handleAddWord);
 btnAddTopic?.addEventListener("click", handleAddTopic);
+btnOpenDeckManager?.addEventListener("click", openDeckManager);
+btnCloseDeck?.addEventListener("click", closeDeckManager);
+deckDialog?.addEventListener("click", (event) => {
+  if (event.target === deckDialog) {
+    closeDeckManager();
+  }
+});
 btnToggleDiscard?.addEventListener("click", () => {
   if (state.pendingDiscard <= 0) {
     state.discardMode = false;
@@ -192,6 +206,28 @@ function addCardToAllRooms(field, value) {
     })
   );
   return Promise.all(writes);
+}
+
+function removeCardFromAllRooms(field, value, options = {}) {
+  const { alsoRemoveUsedTopics = false } = options;
+  if (!value) {
+    return Promise.resolve();
+  }
+  if (!state.rooms.length) {
+    return Promise.resolve();
+  }
+  const updates = state.rooms.map((room) => {
+    const roomRef = doc(db, ROOM_COLLECTION, room.id);
+    const payload = {
+      [field]: arrayRemove(value),
+      updatedAt: serverTimestamp()
+    };
+    if (alsoRemoveUsedTopics) {
+      payload.usedTopics = arrayRemove(value);
+    }
+    return updateDoc(roomRef, payload);
+  });
+  return Promise.all(updates);
 }
 
 function handleAddWord() {
@@ -249,6 +285,70 @@ function handleAddTopic() {
       console.error(error);
       showToast(error.message || "補充紫卡失敗");
     });
+}
+
+function openDeckManager() {
+  renderDeckManager();
+  deckDialog?.classList.remove("hidden");
+}
+
+function closeDeckManager() {
+  deckDialog?.classList.add("hidden");
+}
+
+function renderDeckManager() {
+  renderDeckSection(DEFAULT_WORDS, deckWordListEl, "word");
+  renderDeckSection(DEFAULT_TOPICS, deckTopicListEl, "topic");
+}
+
+function renderDeckSection(list, container, type) {
+  if (!container) return;
+  container.innerHTML = "";
+  if (!Array.isArray(list) || !list.length) {
+    const empty = document.createElement("li");
+    empty.className = "deck-empty";
+    empty.textContent = type === "topic" ? "目前沒有題目卡。" : "目前沒有黃卡字詞。";
+    container.appendChild(empty);
+    return;
+  }
+  list.forEach((value) => {
+    const li = document.createElement("li");
+    li.className = "deck-item";
+    const span = document.createElement("span");
+    span.textContent = value;
+    li.appendChild(span);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ghost deck-remove";
+    button.textContent = "移除";
+    button.addEventListener("click", () => handleRemoveDeckCard(value, type));
+    li.appendChild(button);
+    container.appendChild(li);
+  });
+}
+
+async function handleRemoveDeckCard(value, type) {
+  const list = type === "topic" ? DEFAULT_TOPICS : DEFAULT_WORDS;
+  const index = list.indexOf(value);
+  if (index === -1) return;
+  const confirmMessage = type === "topic"
+    ? `確定要移除題目：${value}？`
+    : `確定要移除黃卡：${value}？`;
+  if (!confirm(confirmMessage)) return;
+  const [removed] = list.splice(index, 1);
+  renderDeckManager();
+  try {
+    const field = type === "topic" ? "topicDeck" : "wordDeck";
+    await removeCardFromAllRooms(field, removed, { alsoRemoveUsedTopics: type === "topic" });
+    showToast(type === "topic"
+      ? `已移除題目：${removed}`
+      : `已移除黃卡：${removed}`);
+  } catch (error) {
+    list.splice(index, 0, removed);
+    renderDeckManager();
+    console.error(error);
+    showToast(error.message || "移除卡片失敗");
+  }
 }
 
 
@@ -1398,7 +1498,6 @@ function handleHandCardClick(event) {
 }
 
 function handleTopicBlankClick(event) {
-(event) {
   const blankEl = event.target.closest("span.topic-blank");
   if (!blankEl) return;
   const index = Number(blankEl.dataset.blankIndex);
@@ -1549,8 +1648,13 @@ function shuffle(list) {
 }
 
 window.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && !joinDialog.classList.contains("hidden")) {
-    closeJoinDialog();
+  if (event.key === "Escape") {
+    if (joinDialog && !joinDialog.classList.contains("hidden")) {
+      closeJoinDialog();
+    }
+    if (deckDialog && !deckDialog.classList.contains("hidden")) {
+      closeDeckManager();
+    }
   }
 });
 
