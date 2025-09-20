@@ -192,6 +192,15 @@ function handleAddWord() {
     showToast("請先輸入黃卡字詞");
     return;
   }
+  const existsInDefaults = DEFAULT_WORDS.includes(value);
+  const existsInRooms = state.rooms.some((room) => {
+    const deck = Array.isArray(room.wordDeck) ? room.wordDeck : [];
+    return deck.includes(value);
+  });
+  if (existsInDefaults || existsInRooms) {
+    showToast(`已有此黃卡：${value}`);
+    return;
+  }
   addCardToAllRooms("wordDeck", value)
     .then(() => {
       DEFAULT_WORDS.push(value);
@@ -204,10 +213,22 @@ function handleAddWord() {
     });
 }
 
+
+
 function handleAddTopic() {
   const value = (supplyTopicInput?.value || "").trim();
   if (!value) {
-    showToast("請先輸入紫卡句子");
+    showToast("請先輸入紫卡題目");
+    return;
+  }
+  const existsInDefaults = DEFAULT_TOPICS.includes(value);
+  const existsInRooms = state.rooms.some((room) => {
+    const deck = Array.isArray(room.topicDeck) ? room.topicDeck : [];
+    const used = Array.isArray(room.usedTopics) ? room.usedTopics : [];
+    return deck.includes(value) || used.includes(value);
+  });
+  if (existsInDefaults || existsInRooms) {
+    showToast(`已有此紫卡：${value}`);
     return;
   }
   addCardToAllRooms("topicDeck", value)
@@ -221,6 +242,8 @@ function handleAddTopic() {
       showToast(error.message || "補充紫卡失敗");
     });
 }
+
+
 
 roomGrid.addEventListener("click", (event) => {
   const resetButton = event.target.closest("button[data-reset-room-id]");
